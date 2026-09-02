@@ -7,7 +7,8 @@ Plataforma minimalista de eventos y cartelera comunitaria.
 - [Astro](https://astro.build) (TypeScript estricto, `output: 'server'`)
 - [Tailwind CSS v4](https://tailwindcss.com)
 - [`@astrojs/node`](https://docs.astro.build/en/guides/integrations-guide/node/) (adaptador SSR, modo `standalone`)
-- `lucide-astro`, `clsx`, `tailwind-merge`
+- [Firebase](https://firebase.google.com) (`firebase` en el cliente para Auth, `firebase-admin` en el servidor para Firestore)
+- `@lucide/astro`, `clsx`, `tailwind-merge`
 
 ## Estructura
 
@@ -18,7 +19,9 @@ src/
 │   ├── events/       # componentes del dominio de eventos
 │   └── common/        # Navbar, Footer, etc.
 ├── layouts/           # BaseLayout.astro
-├── lib/                # utilidades (cn, etc.)
+├── lib/
+│   ├── firebase/       # client.ts (Auth), server.ts (Admin SDK), events.ts (getEvents)
+│   └── utils.ts         # cn, etc.
 ├── types/              # tipos de dominio (NodoEvent, etc.)
 └── pages/               # rutas
 ```
@@ -27,12 +30,26 @@ src/
 
 - Node.js **>= 22.12.0** (requerido por Astro; ver `engines` en [package.json](package.json))
 - npm
+- Un proyecto de Firebase (opcional para desarrollo local: sin credenciales, la home cae de forma silenciosa al estado vacío del catálogo)
 
 ## Instalación local
 
 ```bash
 npm install
 ```
+
+### Variables de entorno
+
+```bash
+cp .env.example .env
+```
+
+Completa `.env` con las credenciales de tu proyecto de Firebase:
+
+- `PUBLIC_FIREBASE_*`: config del SDK cliente (Auth), tomada de la consola de Firebase → configuración del proyecto.
+- `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`: credenciales de una cuenta de servicio (Firebase Admin), usadas solo en el servidor para leer/escribir en Firestore. `FIREBASE_PRIVATE_KEY` debe conservar los `\n` tal como los entrega la consola.
+
+Si `.env` no está configurado, el build y el servidor funcionan igual: `getEvents()` falla de forma controlada y la home muestra el estado vacío del catálogo.
 
 ### Desarrollo
 
@@ -83,6 +100,8 @@ La app queda disponible en `http://localhost:4321`.
 | `HOST`   | `0.0.0.0`              | Host donde escucha el servidor Node   |
 | `PORT`   | `4321`                 | Puerto donde escucha el servidor Node |
 
+Además, para que el catálogo lea datos reales de Firestore en producción, pasa las variables de [`.env.example`](.env.example) al contenedor en tiempo de ejecución (`docker run -e ...` o `--env-file`), nunca horneadas en la imagen.
+
 Para desplegar en un proveedor (Fly.io, Railway, Render, un VPS, etc.), construye y publica la imagen con `docker build`/`docker push` y expón el puerto `4321` (o el que definas vía `PORT`).
 
 ## Scripts
@@ -92,4 +111,5 @@ Para desplegar en un proveedor (Fly.io, Railway, Render, un VPS, etc.), construy
 | `npm run dev`        | Servidor de desarrollo en `localhost:4321`       |
 | `npm run build`       | Build de producción a `./dist/`                  |
 | `npm run preview`      | Sirve el build localmente antes de desplegar     |
+| `npm run check`        | Chequeo de tipos estricto (`astro check`)          |
 | `npm run astro ...`     | Ejecuta el CLI de Astro (`astro add`, `astro check`, etc.) |
