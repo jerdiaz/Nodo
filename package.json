@@ -9,18 +9,25 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "check": "astro check",
     "astro": "astro"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.5",
+    "@lucide/astro": "^1.39.0",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.10",
     "clsx": "^2.1.1",
-    "lucide-astro": "^0.556.0",
+    "firebase": "^12.18.0",
+    "firebase-admin": "^14.3.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3"
   },
   "allowScripts": {
     "esbuild": true
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^6.0.3"
   }
 }
