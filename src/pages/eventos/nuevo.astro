@@ -123,16 +123,18 @@ if (!user) {
       </div>
 
       <div>
-        <label for="bannerUrl" class="block text-sm font-medium text-neutral-300">
+        <label for="bannerFile" class="block text-sm font-medium text-neutral-300">
           Banner <span class="text-neutral-600">(opcional)</span>
         </label>
         <input
-          id="bannerUrl"
-          name="bannerUrl"
-          type="url"
-          class="mt-1.5 w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
-          placeholder="https://images.unsplash.com/..."
+          id="bannerFile"
+          name="bannerFile"
+          type="file"
+          accept="image/*"
+          class="mt-1.5 block w-full text-sm text-neutral-300 file:mr-3 file:rounded-full file:border-0 file:bg-neutral-800 file:px-3.5 file:py-2 file:text-sm file:font-medium file:text-neutral-200 file:transition-colors hover:file:bg-neutral-700"
         />
+        <img id="banner-preview" class="mt-3 hidden aspect-[16/9] w-full rounded-lg object-cover" alt="Vista previa del banner" />
+        <p class="mt-1.5 text-xs text-neutral-600">JPG, PNG o WEBP. Máx. 5 MB.</p>
       </div>
 
       <div>
@@ -162,14 +164,33 @@ if (!user) {
 </BaseLayout>
 
 <script>
+  import { uploadEventBanner } from '../../lib/firebase/client';
+
+  const MAX_BANNER_SIZE = 5 * 1024 * 1024;
+
   const form = document.getElementById('event-form') as HTMLFormElement;
   const modalitySelect = document.getElementById('modality') as HTMLSelectElement;
   const locationGroup = document.querySelector('[data-field-group="location"]') as HTMLElement;
   const onlineGroup = document.querySelector('[data-field-group="online"]') as HTMLElement;
   const cityInput = document.getElementById('city') as HTMLInputElement;
   const meetingUrlInput = document.getElementById('meetingUrl') as HTMLInputElement;
+  const bannerInput = document.getElementById('bannerFile') as HTMLInputElement;
+  const bannerPreview = document.getElementById('banner-preview') as HTMLImageElement;
   const errorBox = document.getElementById('form-error') as HTMLParagraphElement;
   const submitButton = document.getElementById('submit-button') as HTMLButtonElement;
+
+  bannerInput.addEventListener('change', () => {
+    const file = bannerInput.files?.[0];
+
+    if (!file) {
+      bannerPreview.classList.add('hidden');
+      bannerPreview.removeAttribute('src');
+      return;
+    }
+
+    bannerPreview.src = URL.createObjectURL(file);
+    bannerPreview.classList.remove('hidden');
+  });
 
   function updateConditionalFields(): void {
     const modality = modalitySelect.value;
@@ -202,30 +223,47 @@ if (!user) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     errorBox.classList.add('hidden');
+
+    const bannerFile = bannerInput.files?.[0];
+
+    if (bannerFile && bannerFile.size > MAX_BANNER_SIZE) {
+      errorBox.textContent = 'La imagen no puede superar 5 MB.';
+      errorBox.classList.remove('hidden');
+      return;
+    }
+
     submitButton.disabled = true;
-    submitButton.textContent = 'Publicando…';
-
-    const formData = new FormData(form);
-    const tagsRaw = String(formData.get('tags') ?? '');
-
-    const payload = {
-      title: formData.get('title'),
-      description: formData.get('description'),
-      modality: formData.get('modality'),
-      city: formData.get('city') || undefined,
-      venue: formData.get('venue') || undefined,
-      address: formData.get('address') || undefined,
-      meetingUrl: formData.get('meetingUrl') || undefined,
-      bannerUrl: formData.get('bannerUrl') || undefined,
-      startDate: toIsoStringOrEmpty(formData.get('startDate')),
-      endDate: toIsoStringOrEmpty(formData.get('endDate')),
-      tags: tagsRaw
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-    };
 
     try {
+      let bannerUrl: string | undefined;
+
+      if (bannerFile) {
+        submitButton.textContent = 'Subiendo imagen…';
+        bannerUrl = await uploadEventBanner(bannerFile);
+      }
+
+      submitButton.textContent = 'Publicando…';
+
+      const formData = new FormData(form);
+      const tagsRaw = String(formData.get('tags') ?? '');
+
+      const payload = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        modality: formData.get('modality'),
+        city: formData.get('city') || undefined,
+        venue: formData.get('venue') || undefined,
+        address: formData.get('address') || undefined,
+        meetingUrl: formData.get('meetingUrl') || undefined,
+        bannerUrl,
+        startDate: toIsoStringOrEmpty(formData.get('startDate')),
+        endDate: toIsoStringOrEmpty(formData.get('endDate')),
+        tags: tagsRaw
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      };
+
       const response = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
