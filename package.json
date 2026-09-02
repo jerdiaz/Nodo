@@ -1,0 +1,26 @@
+{
+  "name": "nodo",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.5",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.2.10",
+    "clsx": "^2.1.1",
+    "lucide-astro": "^0.556.0",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.3"
+  },
+  "allowScripts": {
+    "esbuild": true
+  }
+}

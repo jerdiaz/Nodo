@@ -1,0 +1,29 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import EmptyState from '../components/events/EmptyState.astro';
+import type { NodoEvent } from '../types/event';
+
+const events: NodoEvent[] = [];
+---
+
+<BaseLayout>
+  <section class="mx-auto max-w-6xl px-6 pb-16 pt-20 text-center">
+    <p class="text-sm font-medium text-emerald-400">Cartelera comunitaria</p>
+    <h1 class="mt-3 text-4xl font-bold tracking-tight text-neutral-100 sm:text-5xl">
+      Encuentra tu próximo evento
+    </h1>
+    <p class="mx-auto mt-4 max-w-xl text-base text-neutral-400">
+      Nodo conecta a tu comunidad con talleres, encuentros y actividades locales.
+      Descubre lo que está pasando cerca de ti.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-6xl px-6 pb-24">
+    <div class="mb-6 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-neutral-100">Próximos eventos</h2>
+      <span class="text-sm text-neutral-500">{events.length} eventos</span>
+    </div>
+
+    {events.length === 0 && <EmptyState />}
+  </section>
+</BaseLayout>

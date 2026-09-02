@@ -1,0 +1,15 @@
+node_modules
+dist
+.astro
+.git
+.gitignore
+.vscode
+npm-debug.log*
+.env
+.env.*
+!.env.example
+README.md
+AGENTS.md
+CLAUDE.md
+.dockerignore
+Dockerfile
