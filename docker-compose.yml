@@ -1,0 +1,48 @@
+# Despliegue de Nodo en el VPS.
+#
+# Va en Docker y no con PM2 como el resto de sitios Node de este servidor por
+# una razón concreta: Astro exige Node >=22.12.0 (ver "engines" en
+# package.json) y el sistema corre Node 20, del que dependen otros seis
+# procesos PM2 en producción. El contenedor aísla ese requisito sin tocarlos.
+#
+# La imagen se construye en el propio VPS (arm64), así los binarios nativos por
+# arquitectura de sharp se resuelven solos.
+services:
+  app:
+    build:
+      context: .
+    image: nodo-app
+    container_name: nodo-app
+    restart: unless-stopped
+
+    # Los secretos viven en /opt/nodo/.env, fuera del repo y fuera de la imagen
+    # (.dockerignore excluye .env). Compose los parsea con un lector tipo
+    # dotenv, que sí quita las comillas del valor: FIREBASE_PRIVATE_KEY tiene
+    # que llegar con los "\n" literales y sin comillas, porque
+    # src/lib/firebase/server.ts hace .replace(/\\n/g, '\n') sobre él.
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+      # 0.0.0.0 es dentro del contenedor: el servidor tiene que escuchar en
+      # todas las interfaces de SU namespace para que el mapeo de puerto
+      # funcione. La restricción a loopback se hace abajo, en "ports".
+      HOST: 0.0.0.0
+      PORT: 4321
+
+    ports:
+      # Solo loopback del host: el acceso público entra siempre por nginx, que
+      # es quien termina el TLS. Sin el 127.0.0.1 el contenedor quedaría
+      # expuesto directo a internet.
+      - "127.0.0.1:4321:4321"
+
+    # Informativo: marca el contenedor como unhealthy si la app deja de
+    # responder. No lo reinicia (restart solo actúa si el proceso muere), pero
+    # hace visible el problema en "docker ps".
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:4321/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
