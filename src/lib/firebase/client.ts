@@ -1,5 +1,5 @@
 import { getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
-import { GoogleAuthProvider, getAuth, signInWithPopup, signOut } from 'firebase/auth';
+import { GoogleAuthProvider, OAuthProvider, getAuth, signInWithPopup, signOut, type AuthProvider } from 'firebase/auth';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -14,8 +14,7 @@ export const firebaseApp = getApps().length ? getApps()[0]! : initializeApp(fire
 
 export const auth = getAuth(firebaseApp);
 
-export async function loginWithGoogle(): Promise<void> {
-  const provider = new GoogleAuthProvider();
+async function completeSignIn(provider: AuthProvider): Promise<void> {
   const credential = await signInWithPopup(auth, provider);
   const idToken = await credential.user.getIdToken();
 
@@ -30,6 +29,17 @@ export async function loginWithGoogle(): Promise<void> {
   }
 
   window.location.reload();
+}
+
+export function loginWithGoogle(): Promise<void> {
+  return completeSignIn(new GoogleAuthProvider());
+}
+
+export function loginWithMicrosoft(): Promise<void> {
+  // Cubre cuentas Microsoft personales y de organización (incluye tenants
+  // educativos/corporativos como el de la UTB), siempre que el registro de
+  // la app en Azure tenga habilitado "cualquier tenant + cuentas personales".
+  return completeSignIn(new OAuthProvider('microsoft.com'));
 }
 
 export async function logout(): Promise<void> {

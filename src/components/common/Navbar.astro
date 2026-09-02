@@ -54,34 +54,47 @@ const user = await getCurrentUser(Astro.cookies);
           </button>
         </div>
       ) : (
-        <button
-          id="nodo-login-button"
-          type="button"
-          class="inline-flex items-center rounded-full border border-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:border-neutral-600"
-        >
-          Iniciar sesión
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            id="nodo-login-google"
+            type="button"
+            class="inline-flex items-center rounded-full border border-neutral-800 px-3.5 py-2 text-sm font-medium text-neutral-200 transition-colors hover:border-neutral-600"
+          >
+            Google
+          </button>
+          <button
+            id="nodo-login-microsoft"
+            type="button"
+            class="inline-flex items-center rounded-full border border-neutral-800 px-3.5 py-2 text-sm font-medium text-neutral-200 transition-colors hover:border-neutral-600"
+          >
+            Microsoft
+          </button>
+        </div>
       )}
     </div>
   </nav>
 </header>
 
 <script>
-  import { loginWithGoogle, logout } from '../../lib/firebase/client';
+  import { loginWithGoogle, loginWithMicrosoft, logout } from '../../lib/firebase/client';
 
-  const loginButton = document.getElementById('nodo-login-button') as HTMLButtonElement | null;
+  const googleButton = document.getElementById('nodo-login-google') as HTMLButtonElement | null;
+  const microsoftButton = document.getElementById('nodo-login-microsoft') as HTMLButtonElement | null;
   const logoutButton = document.getElementById('nodo-logout-button') as HTMLButtonElement | null;
 
-  loginButton?.addEventListener('click', async () => {
-    loginButton.disabled = true;
+  async function handleLogin(button: HTMLButtonElement, login: () => Promise<void>): Promise<void> {
+    button.disabled = true;
 
     try {
-      await loginWithGoogle();
+      await login();
     } catch (error) {
       console.error('No se pudo iniciar sesión:', error);
-      loginButton.disabled = false;
+      button.disabled = false;
     }
-  });
+  }
+
+  googleButton?.addEventListener('click', () => handleLogin(googleButton, loginWithGoogle));
+  microsoftButton?.addEventListener('click', () => handleLogin(microsoftButton, loginWithMicrosoft));
 
   logoutButton?.addEventListener('click', async () => {
     logoutButton.disabled = true;
