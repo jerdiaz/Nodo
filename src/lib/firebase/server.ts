@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getSecret } from 'astro:env/server';
 
 function getFirebaseAdminApp(): App {
   const [existingApp] = getApps();
@@ -7,9 +8,9 @@ function getFirebaseAdminApp(): App {
     return existingApp;
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const projectId = getSecret('FIREBASE_PROJECT_ID');
+  const clientEmail = getSecret('FIREBASE_CLIENT_EMAIL');
+  const privateKey = getSecret('FIREBASE_PRIVATE_KEY')?.replace(/\\n/g, '\n');
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error(

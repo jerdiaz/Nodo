@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
+    "preview": "node --env-file-if-exists=.env node_modules/astro/bin/astro.mjs preview",
     "check": "astro check",
     "astro": "astro"
   },
