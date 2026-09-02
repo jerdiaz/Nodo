@@ -1,6 +1,6 @@
 # Nodo
 
-Plataforma minimalista de eventos y cartelera comunitaria, inspirada en Lu.ma.
+Plataforma minimalista de eventos y cartelera comunitaria.
 
 ## Stack
 
