@@ -1,11 +1,14 @@
 ---
 import { Plus } from '@lucide/astro';
+import { getCurrentUser } from '../../lib/auth';
 
 const links = [
   { href: '/', label: 'Explorar' },
   { href: '/calendario', label: 'Calendario' },
   { href: '/comunidades', label: 'Comunidades' },
 ];
+
+const user = await getCurrentUser(Astro.cookies);
 ---
 
 <header class="sticky top-0 z-50 border-b border-neutral-900 bg-neutral-950/80 backdrop-blur">
@@ -24,12 +27,64 @@ const links = [
       ))}
     </ul>
 
-    <a
-      href="/eventos/nuevo"
-      class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-emerald-400"
-    >
-      <Plus class="size-4" stroke-width={2.5} />
-      Publicar evento
-    </a>
+    <div class="flex items-center gap-3">
+      <a
+        href="/eventos/nuevo"
+        class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-emerald-400"
+      >
+        <Plus class="size-4" stroke-width={2.5} />
+        Publicar evento
+      </a>
+
+      {user ? (
+        <div class="flex items-center gap-2.5">
+          {user.avatarUrl ? (
+            <img src={user.avatarUrl} alt={user.name} class="size-8 rounded-full object-cover" />
+          ) : (
+            <div class="flex size-8 items-center justify-center rounded-full bg-neutral-800 text-xs font-medium text-neutral-300">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <button
+            id="nodo-logout-button"
+            type="button"
+            class="text-sm text-neutral-400 transition-colors hover:text-neutral-100"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      ) : (
+        <button
+          id="nodo-login-button"
+          type="button"
+          class="inline-flex items-center rounded-full border border-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:border-neutral-600"
+        >
+          Iniciar sesión
+        </button>
+      )}
+    </div>
   </nav>
 </header>
+
+<script>
+  import { loginWithGoogle, logout } from '../../lib/firebase/client';
+
+  const loginButton = document.getElementById('nodo-login-button') as HTMLButtonElement | null;
+  const logoutButton = document.getElementById('nodo-logout-button') as HTMLButtonElement | null;
+
+  loginButton?.addEventListener('click', async () => {
+    loginButton.disabled = true;
+
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      console.error('No se pudo iniciar sesión:', error);
+      loginButton.disabled = false;
+    }
+  });
+
+  logoutButton?.addEventListener('click', async () => {
+    logoutButton.disabled = true;
+    await logout();
+  });
+</script>
