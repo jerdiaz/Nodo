@@ -1,0 +1,62 @@
+---
+import { MapPin, Video } from '@lucide/astro';
+import { formatEventDate, formatEventTime, getEventLocationLabel } from '../../lib/format';
+import type { EventModality, NodoEvent } from '../../types/event';
+
+interface Props {
+  event: NodoEvent;
+}
+
+const { event } = Astro.props;
+
+const modalityLabel: Record<EventModality, string> = {
+  presencial: 'Presencial',
+  virtual: 'Virtual',
+  hibrido: 'Híbrido',
+};
+
+const ModalityIcon = event.modality === 'virtual' ? Video : MapPin;
+const locationLabel = getEventLocationLabel(event);
+---
+
+<article class="group overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-900/40 transition-colors hover:border-neutral-700">
+  <a href={`/eventos/${event.slug}`} class="block">
+    <div class="aspect-[16/9] w-full overflow-hidden">
+      {event.bannerUrl ? (
+        <img src={event.bannerUrl} alt={event.title} class="h-full w-full object-cover" loading="lazy" />
+      ) : (
+        <div class="h-full w-full bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950" />
+      )}
+    </div>
+
+    <div class="space-y-3 p-5">
+      <p class="text-xs font-medium uppercase tracking-wide text-emerald-400">
+        {formatEventDate(event.startDate)} · {formatEventTime(event.startDate)}
+      </p>
+
+      <h3 class="text-lg font-semibold text-neutral-100 transition-colors group-hover:text-white">
+        {event.title}
+      </h3>
+
+      <div class="flex items-center gap-1.5 text-sm text-neutral-400">
+        <ModalityIcon class="size-4 shrink-0" stroke-width={1.75} />
+        <span>{modalityLabel[event.modality]}{locationLabel && ` · ${locationLabel}`}</span>
+      </div>
+
+      <div class="flex items-center gap-2 pt-2">
+        {event.organizer.avatarUrl ? (
+          <img
+            src={event.organizer.avatarUrl}
+            alt={event.organizer.name}
+            class="size-6 rounded-full object-cover"
+          />
+        ) : (
+          <div class="flex size-6 items-center justify-center rounded-full bg-neutral-800 text-[10px] font-medium text-neutral-400">
+            {event.organizer.name.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <span class="text-xs text-neutral-500">{event.organizer.name}</span>
+      </div>
+    </div>
+  </a>
+</article>
