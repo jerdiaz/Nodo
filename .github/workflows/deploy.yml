@@ -1,0 +1,90 @@
+name: Deploy a VPS
+
+# La imagen se construye EN el VPS, no en el runner: el VPS es arm64 y el
+# runner x64, y así los binarios nativos por arquitectura de sharp se resuelven
+# solos. Por eso este workflow no compila nada ni necesita hacer checkout —
+# solo ordena al servidor que se actualice y reconstruya.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Dos despliegues solapados reconstruirían la misma imagen a la vez.
+concurrency:
+  group: deploy-nodo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # El default de GitHub son 6 horas. La construcción en el VPS tarda unos
+    # minutos; si se pasa de esto, algo va mal y conviene cortar.
+    timeout-minutes: 20
+    steps:
+      - name: Preparar clave SSH
+        # Los secrets se pasan por "env" y no interpolados con ${{ }} dentro del
+        # script: así su valor nunca forma parte del texto del comando.
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Reconstruir y levantar en el VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$VPS_USER@$VPS_HOST" '
+            set -e
+            cd /opt/nodo
+
+            # "reset --hard" y no "pull": deja el checkout idéntico a origin sin
+            # posibilidad de conflicto. No toca /opt/nodo/.env, que está en
+            # .gitignore y por tanto fuera del control de git.
+            git fetch origin main
+            git reset --hard origin/main
+
+            sudo docker compose up -d --build
+
+            # Las imágenes viejas quedan colgando tras cada reconstrucción y el
+            # disco del VPS ronda el 80%. Solo borra las huérfanas.
+            sudo docker image prune -f
+
+            # Espera a que el healthcheck pase antes de dar el despliegue por
+            # bueno: "up -d" vuelve en cuanto el contenedor arranca, no cuando
+            # la app ya responde.
+            estado=arrancando
+            for i in $(seq 1 30); do
+              estado=$(sudo docker inspect -f "{{.State.Health.Status}}" nodo-app 2>/dev/null || echo desconocido)
+              [ "$estado" = healthy ] && break
+              sleep 2
+            done
+            echo "Estado del contenedor: $estado"
+            if [ "$estado" != healthy ]; then
+              echo "::error::El contenedor no quedó healthy tras el despliegue."
+              sudo docker compose logs --tail 40 app
+              exit 1
+            fi
+          '
+
+      - name: Verificar el despliegue
+        run: |
+          # Todo curl con --max-time: sin él, un cuelgue de red dejaría el job
+          # corriendo hasta el timeout del runner.
+          curl -fsS --max-time 30 -o /dev/null -w "Inicio: HTTP %{http_code}\n" \
+            https://nodo-eventos.duckdns.org/
+
+          # Una ruta inexistente debe dar 404. Si diera 200, significaría que la
+          # app está sirviendo la home ante cualquier URL.
+          code=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" \
+            https://nodo-eventos.duckdns.org/ruta-que-no-existe)
+          if [ "$code" = "404" ]; then
+            echo "404:    HTTP 404 (correcto)"
+          else
+            echo "::error::Se esperaba 404 en una ruta inexistente, llegó $code."
+            exit 1
+          fi
