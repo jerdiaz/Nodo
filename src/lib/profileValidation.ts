@@ -15,6 +15,29 @@ function isHttpUrl(value: string): boolean {
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,28}[a-z0-9])$/;
 const HANDLE_PATTERN = /^[A-Za-z0-9._-]{1,60}$/;
 
+export const USERNAME_RULES =
+  'Entre 3 y 30 caracteres: letras, números, punto, guion o guion bajo, sin empezar ni terminar en símbolo.';
+
+export function isValidUsername(value: string): boolean {
+  return USERNAME_PATTERN.test(value);
+}
+
+// Propuesta a partir del nombre que devuelve el proveedor de identidad: sin
+// tildes, sin espacios y en minusculas. Puede quedar corta o vacia -un nombre
+// en alfabeto no latino se queda sin nada-, y en ese caso no se sugiere nada.
+export function suggestUsername(name: string, email: string | null): string {
+  const fromName = name
+    .normalize('NFD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+  const fromEmail = (email ?? '').split('@')[0]?.toLowerCase().replace(/[^a-z0-9._-]/g, '') ?? '';
+  const candidate = (fromName.length >= 3 ? fromName : fromEmail).slice(0, 30);
+
+  return isValidUsername(candidate) ? candidate : '';
+}
+
 export type ValidatedProfile = Omit<UserProfile, 'uid'>;
 
 export function validateProfilePayload(body: unknown): { data: ValidatedProfile } | { error: string } {

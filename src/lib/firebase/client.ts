@@ -30,6 +30,16 @@ async function completeSignIn(provider: AuthProvider): Promise<void> {
     throw new Error('No se pudo iniciar sesión.');
   }
 
+  const result = await response.json().catch(() => ({}));
+
+  // Sin nombre de usuario aun: se pasa por la bienvenida para elegirlo y
+  // corregir el nombre que venga del proveedor, en vez de recargar y dejar a
+  // la persona sin saber que puede cambiarlo.
+  if (result.needsOnboarding) {
+    window.location.href = '/bienvenida';
+    return;
+  }
+
   window.location.reload();
 }
 
