@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Badge from '../components/ui/Badge.astro';
 import EmptyState from '../components/events/EmptyState.astro';
 import { getCurrentUser } from '../lib/auth';
 import { filterEvents, getEvents } from '../lib/firebase/events';
@@ -66,6 +67,37 @@ function groupByMonth(events: NodoEvent[]): MonthGroup[] {
 
 const groups = groupByMonth(upcomingEvents);
 
+// La clave de dia se calcula en la zona horaria del propio evento: comparar
+// contra `new Date()` a secas usaria la del servidor, que no es la misma y
+// desplazaria el "Hoy" de los eventos cercanos a medianoche.
+function dayKey(date: Date, timezone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+const todayKey = dayKey(new Date(), 'America/Bogota');
+const tomorrowKey = dayKey(new Date(Date.now() + 86_400_000), 'America/Bogota');
+
+function dayBadge(event: NodoEvent): string | null {
+  const key = dayKey(event.startDate, event.timezone);
+  if (key === todayKey) return 'Hoy';
+  if (key === tomorrowKey) return 'Mañana';
+  return null;
+}
+
+// Un evento abre dia nuevo si el anterior de la lista cae en otra fecha; solo
+// entonces se dibuja el separador, para que los del mismo dia se lean juntos.
+function startsNewDay(events: NodoEvent[], index: number): boolean {
+  if (index === 0) return true;
+  const current = events[index]!;
+  const previous = events[index - 1]!;
+  return dayKey(current.startDate, current.timezone) !== dayKey(previous.startDate, previous.timezone);
+}
+
 const modalityLabel: Record<EventModality, string> = {
   presencial: 'Presencial',
   virtual: 'Virtual',
@@ -94,14 +126,18 @@ const modalityLabel: Record<EventModality, string> = {
               <h2 class="mb-5 text-lg font-semibold text-neutral-100">{group.label}</h2>
 
               <div class="border-l border-white/[0.08] pl-6">
-                {group.events.map((event) => {
+                {group.events.map((event, index) => {
                   const count = rsvpCounts.get(event.id) ?? 0;
                   const location = getEventLocationLabel(event);
+                  const badge = dayBadge(event);
 
                   return (
                     <a
                       href={`/eventos/${event.slug}`}
-                      class="group -ml-2 flex items-start gap-4 rounded-2xl px-2 py-4 transition active:scale-[0.99] hover:bg-neutral-900/50"
+                      class:list={[
+                        'group -ml-2 flex items-start gap-4 rounded-2xl px-2 py-4 transition active:scale-[0.99] hover:bg-neutral-900/50',
+                        !startsNewDay(group.events, index) && 'border-t border-white/[0.06]',
+                      ]}
                     >
                       <div class="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl border border-white/[0.08] bg-neutral-900/60 leading-none transition group-hover:border-emerald-500/40">
                         <span class="text-[10px] uppercase text-emerald-400">
@@ -113,9 +149,12 @@ const modalityLabel: Record<EventModality, string> = {
                       </div>
 
                       <div class="min-w-0 flex-1">
-                        <p class="font-medium text-neutral-100 transition group-hover:text-white">
-                          {event.title}
-                        </p>
+                        <div class="flex flex-wrap items-center gap-2">
+                          <p class="font-medium text-neutral-100 transition group-hover:text-white">
+                            {event.title}
+                          </p>
+                          {badge && <Badge variant="emerald">{badge}</Badge>}
+                        </div>
 
                         {/* En móvil hora y ubicación se apilan: en línea, el "·"
                             quedaba colgando al final del renglón cuando la
