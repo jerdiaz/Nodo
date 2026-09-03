@@ -23,17 +23,25 @@ function getVisionClient(): ImageAnnotatorClient {
     return visionClient;
   }
 
-  const projectId = getSecret('FIREBASE_PROJECT_ID');
-  const clientEmail = getSecret('FIREBASE_CLIENT_EMAIL');
-  const privateKey = getSecret('FIREBASE_PRIVATE_KEY')?.replace(/\\n/g, '\n');
+  // Vision puede llamarse con credenciales de otro proyecto: la API no tiene
+  // por que estar habilitada en el mismo sitio que Firestore y Storage. Si hay
+  // VISION_* se usan esas -y el consumo se factura a ese proyecto-; si no, se
+  // reutiliza la cuenta de servicio del Admin SDK.
+  const visionProject = getSecret('VISION_PROJECT_ID');
+  const visionEmail = getSecret('VISION_CLIENT_EMAIL');
+  const visionKey = getSecret('VISION_PRIVATE_KEY');
+  const useOverride = Boolean(visionProject && visionEmail && visionKey);
+
+  const projectId = useOverride ? visionProject : getSecret('FIREBASE_PROJECT_ID');
+  const clientEmail = useOverride ? visionEmail : getSecret('FIREBASE_CLIENT_EMAIL');
+  const privateKey = (useOverride ? visionKey : getSecret('FIREBASE_PRIVATE_KEY'))?.replace(/\\n/g, '\n');
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error('Faltan credenciales para el cliente de Vision.');
   }
 
   // TransCar no pasa credenciales porque corre dentro de Cloud Functions y las
-  // toma del entorno. Aqui estamos en un VPS, asi que se reutiliza la misma
-  // cuenta de servicio que ya usa el Admin SDK.
+  // toma del entorno. Aqui estamos en un VPS, asi que hay que darselas.
   visionClient = new ImageAnnotatorClient({
     projectId,
     credentials: { client_email: clientEmail, private_key: privateKey },
