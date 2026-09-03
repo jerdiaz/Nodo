@@ -2,13 +2,14 @@
 import { Plus } from '@lucide/astro';
 import { getCurrentUser } from '../../lib/auth';
 
+const user = await getCurrentUser(Astro.cookies);
+
 const links = [
   { href: '/', label: 'Explorar' },
   { href: '/calendario', label: 'Calendario' },
   { href: '/comunidades', label: 'Comunidades' },
+  ...(user ? [{ href: '/mis-eventos', label: 'Mis eventos' }] : []),
 ];
-
-const user = await getCurrentUser(Astro.cookies);
 ---
 
 <header class="sticky top-0 z-50 border-b border-neutral-900 bg-neutral-950/80 backdrop-blur">

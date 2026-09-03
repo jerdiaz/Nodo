@@ -1,0 +1,92 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import EmptyState from '../components/events/EmptyState.astro';
+import EventCard from '../components/events/EventCard.astro';
+import StatusToast from '../components/common/StatusToast.astro';
+import { getCurrentUser } from '../lib/auth';
+import { filterEvents, getEvents } from '../lib/firebase/events';
+import type { NodoEvent } from '../types/event';
+
+const user = await getCurrentUser(Astro.cookies);
+
+if (!user) {
+  return Astro.redirect('/?login=required');
+}
+
+let myEvents: NodoEvent[] = [];
+
+try {
+  myEvents = await getEvents({ organizerUid: user.uid });
+} catch (error) {
+  console.warn('No se pudo obtener el catálogo de eventos desde Firebase:', error);
+}
+
+const upcomingEvents = filterEvents(myEvents, { timeframe: 'upcoming' });
+const pastEvents = filterEvents(myEvents, { timeframe: 'past' });
+
+const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
+---
+
+<BaseLayout title="Mis eventos — Nodo" description="Los eventos que has publicado en Nodo.">
+  {eventDeleted && <StatusToast paramKey="deleted" message="Evento eliminado correctamente." />}
+
+  <div class="mx-auto max-w-6xl px-6 pb-24 pt-16">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-neutral-100">Mis eventos</h1>
+        <p class="mt-2 text-sm text-neutral-400">Los eventos que has publicado en Nodo.</p>
+      </div>
+      <a
+        href="/eventos/nuevo"
+        class="inline-flex items-center rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950 transition-colors hover:bg-emerald-400"
+      >
+        Publicar evento
+      </a>
+    </div>
+
+    {
+      myEvents.length === 0 ? (
+        <div class="mt-10">
+          <EmptyState
+            title="Aún no has publicado eventos"
+            description="Cuando publiques uno, aparecerá aquí para que puedas verlo y gestionarlo."
+          />
+        </div>
+      ) : (
+        <div class="mt-10 space-y-12">
+          <section>
+            <div class="mb-5 flex items-center gap-3">
+              <h2 class="text-lg font-semibold text-neutral-100">Próximos</h2>
+              <span class="text-sm text-neutral-500">{upcomingEvents.length} eventos</span>
+            </div>
+            {upcomingEvents.length === 0 ? (
+              <p class="text-sm text-neutral-500">No tienes eventos próximos.</p>
+            ) : (
+              <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {upcomingEvents.map((event) => (
+                  <EventCard event={event} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div class="mb-5 flex items-center gap-3">
+              <h2 class="text-lg font-semibold text-neutral-100">Pasados</h2>
+              <span class="text-sm text-neutral-500">{pastEvents.length} eventos</span>
+            </div>
+            {pastEvents.length === 0 ? (
+              <p class="text-sm text-neutral-500">No tienes eventos pasados.</p>
+            ) : (
+              <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {pastEvents.map((event) => (
+                  <EventCard event={event} />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>

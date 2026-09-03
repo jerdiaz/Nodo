@@ -6,6 +6,7 @@ export interface EventFilters {
   city?: string;
   timeframe?: 'upcoming' | 'past' | 'all';
   search?: string;
+  organizerUid?: string;
 }
 
 // Quita tildes/diacríticos antes de comparar, para que "ceramica" encuentre
@@ -47,6 +48,10 @@ export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoE
   const now = Date.now();
 
   return events.filter((event) => {
+    if (filters.organizerUid && event.organizer.uid !== filters.organizerUid) {
+      return false;
+    }
+
     if (filters.modality && event.modality !== filters.modality) {
       return false;
     }
