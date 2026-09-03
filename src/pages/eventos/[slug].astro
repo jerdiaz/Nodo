@@ -1,8 +1,9 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCurrentUser } from '../../lib/auth';
 import { getEventBySlug } from '../../lib/firebase/events';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
-import { formatEventDateLong, formatEventTime } from '../../lib/format';
+import { formatEventDateLong, formatEventDay, formatEventMonthShort, formatEventTime } from '../../lib/format';
 import { CalendarPlus, Download, MapPin, Video } from '@lucide/astro';
 import type { EventModality } from '../../types/event';
 
@@ -13,6 +14,9 @@ if (!event) {
   return new Response(null, { status: 404, statusText: 'Evento no encontrado' });
 }
 
+const user = await getCurrentUser(Astro.cookies);
+const isOwner = user?.uid === event.organizer.uid;
+
 const modalityLabel: Record<EventModality, string> = {
   presencial: 'Presencial',
   virtual: 'Virtual',
@@ -20,7 +24,8 @@ const modalityLabel: Record<EventModality, string> = {
 };
 
 const physicalLocation = [event.venue, event.address, event.city].filter(Boolean).join(', ');
-const monthLabel = new Intl.DateTimeFormat('es', { month: 'short' }).format(event.startDate);
+const monthLabel = formatEventMonthShort(event.startDate, event.timezone);
+const dayLabel = formatEventDay(event.startDate, event.timezone);
 
 const googleCalendarUrl = getGoogleCalendarUrl(event);
 const icsDataUrl = getIcsDataUrl(event);
@@ -39,6 +44,25 @@ const icsDataUrl = getIcsDataUrl(event);
     </div>
 
     <div class="mx-auto max-w-3xl px-6 pb-24 pt-10">
+      {isOwner && (
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+          <p class="text-xs text-neutral-500">Estás viendo este evento como organizador</p>
+          <div class="flex items-center gap-4">
+            <a href={`/eventos/${event.slug}/editar`} class="text-sm font-medium text-neutral-200 hover:text-white">
+              Editar evento
+            </a>
+            <button
+              id="delete-event-button"
+              type="button"
+              data-event-id={event.id}
+              class="text-sm font-medium text-red-400 transition-colors hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Eliminar evento
+            </button>
+          </div>
+        </div>
+      )}
+
       <span class="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-1 text-xs font-medium text-neutral-300">
         {event.modality === 'virtual' ? (
           <Video class="size-3.5" stroke-width={2} />
@@ -55,12 +79,12 @@ const icsDataUrl = getIcsDataUrl(event);
       <div class="mt-6 flex items-center gap-3 text-neutral-300">
         <div class="flex size-11 shrink-0 flex-col items-center justify-center rounded-lg bg-neutral-900 leading-none">
           <span class="text-[10px] uppercase text-emerald-400">{monthLabel}</span>
-          <span class="text-base font-semibold">{event.startDate.getDate()}</span>
+          <span class="text-base font-semibold">{dayLabel}</span>
         </div>
         <div>
-          <p class="font-medium capitalize">{formatEventDateLong(event.startDate)}</p>
+          <p class="font-medium capitalize">{formatEventDateLong(event.startDate, event.timezone)}</p>
           <p class="text-sm text-neutral-500">
-            {formatEventTime(event.startDate)} – {formatEventTime(event.endDate)}
+            {formatEventTime(event.startDate, event.timezone)} – {formatEventTime(event.endDate, event.timezone)}
           </p>
         </div>
       </div>
@@ -147,3 +171,33 @@ const icsDataUrl = getIcsDataUrl(event);
     </div>
   </article>
 </BaseLayout>
+
+{isOwner && (
+  <script>
+    const deleteButton = document.getElementById('delete-event-button') as HTMLButtonElement | null;
+
+    deleteButton?.addEventListener('click', async () => {
+      const confirmed = window.confirm('¿Seguro que quieres eliminar este evento? Esta acción no se puede deshacer.');
+
+      if (!confirmed) {
+        return;
+      }
+
+      deleteButton.disabled = true;
+
+      try {
+        const response = await fetch(`/api/events/${deleteButton.dataset.eventId}`, { method: 'DELETE' });
+
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error ?? 'No se pudo eliminar el evento.');
+        }
+
+        window.location.href = '/';
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : 'No se pudo eliminar el evento.');
+        deleteButton.disabled = false;
+      }
+    });
+  </script>
+)}

@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import EventForm from '../../../components/events/EventForm.astro';
+import { getCurrentUser } from '../../../lib/auth';
+import { getEventBySlug } from '../../../lib/firebase/events';
+
+const { slug } = Astro.params;
+const event = slug ? await getEventBySlug(slug).catch(() => null) : null;
+
+if (!event) {
+  return new Response(null, { status: 404, statusText: 'Evento no encontrado' });
+}
+
+const user = await getCurrentUser(Astro.cookies);
+
+if (!user) {
+  return Astro.redirect('/?login=required');
+}
+
+if (user.uid !== event.organizer.uid) {
+  return new Response(null, { status: 403, statusText: 'Forbidden' });
+}
+---
+
+<BaseLayout title={`Editar ${event.title} — Nodo`} description="Edita los datos de tu evento en Nodo.">
+  <div class="mx-auto max-w-xl px-6 pb-24 pt-16">
+    <h1 class="text-2xl font-bold tracking-tight text-neutral-100">Editar evento</h1>
+    <p class="mt-2 text-sm text-neutral-400">Actualiza los datos de tu evento y guarda los cambios.</p>
+
+    <EventForm event={event} />
+  </div>
+</BaseLayout>

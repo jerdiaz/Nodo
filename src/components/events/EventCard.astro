@@ -31,7 +31,7 @@ const locationLabel = getEventLocationLabel(event);
 
     <div class="space-y-3 p-5">
       <p class="text-xs font-medium uppercase tracking-wide text-emerald-400">
-        {formatEventDate(event.startDate)} · {formatEventTime(event.startDate)}
+        {formatEventDate(event.startDate, event.timezone)} · {formatEventTime(event.startDate, event.timezone)}
       </p>
 
       <h3 class="text-lg font-semibold text-neutral-100 transition-colors group-hover:text-white">

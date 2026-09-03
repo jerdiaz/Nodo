@@ -94,7 +94,7 @@ for (const event of events) {
   await db
     .collection('events')
     .doc(event.slug)
-    .set({ ...event, createdAt: FieldValue.serverTimestamp() });
+    .set({ timezone: 'America/Bogota', ...event, createdAt: FieldValue.serverTimestamp() });
   console.log(`Sembrado: ${event.slug}`);
 }
 

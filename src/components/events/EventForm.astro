@@ -1,0 +1,324 @@
+---
+import type { NodoEvent } from '../../types/event';
+
+interface Props {
+  event?: NodoEvent;
+}
+
+const { event } = Astro.props;
+const isEdit = Boolean(event);
+
+function toDatetimeLocalValue(date: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '00';
+
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+}
+
+const startValue = event ? toDatetimeLocalValue(event.startDate, event.timezone) : '';
+const endValue = event ? toDatetimeLocalValue(event.endDate, event.timezone) : '';
+const tagsValue = event ? event.tags.join(', ') : '';
+const submitUrl = isEdit ? `/api/events/${event!.id}` : '/api/events';
+const submitMethod = isEdit ? 'PUT' : 'POST';
+const submitLabel = isEdit ? 'Guardar cambios' : 'Publicar evento';
+
+const inputClass =
+  'mt-1.5 w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none';
+---
+
+<form
+  id="event-form"
+  class="mt-8 space-y-6"
+  novalidate
+  data-method={submitMethod}
+  data-action={submitUrl}
+  data-existing-banner={event?.bannerUrl ?? ''}
+>
+  <input type="hidden" id="timezone" name="timezone" />
+
+  <div>
+    <label for="title" class="block text-sm font-medium text-neutral-300">Título</label>
+    <input
+      id="title"
+      name="title"
+      type="text"
+      required
+      maxlength="140"
+      class={inputClass}
+      placeholder="Taller de cerámica comunitaria"
+      value={event?.title ?? ''}
+    />
+  </div>
+
+  <div>
+    <label for="description" class="block text-sm font-medium text-neutral-300">Descripción</label>
+    <textarea
+      id="description"
+      name="description"
+      required
+      rows="5"
+      class={inputClass}
+      placeholder="Cuéntale a la comunidad de qué se trata tu evento..."
+    >{event?.description ?? ''}</textarea>
+  </div>
+
+  <div>
+    <label for="modality" class="block text-sm font-medium text-neutral-300">Modalidad</label>
+    <select id="modality" name="modality" class={inputClass}>
+      <option value="presencial" selected={event?.modality === 'presencial'}>Presencial</option>
+      <option value="virtual" selected={event?.modality === 'virtual'}>Virtual</option>
+      <option value="hibrido" selected={event?.modality === 'hibrido'}>Híbrido</option>
+    </select>
+  </div>
+
+  <div data-field-group="location" class="space-y-4">
+    <div>
+      <label for="city" class="block text-sm font-medium text-neutral-300">Ciudad</label>
+      <input id="city" name="city" type="text" class={inputClass} placeholder="Bogotá" value={event?.city ?? ''} />
+    </div>
+    <div>
+      <label for="venue" class="block text-sm font-medium text-neutral-300">Lugar</label>
+      <input
+        id="venue"
+        name="venue"
+        type="text"
+        class={inputClass}
+        placeholder="Casa Taller Chapinero"
+        value={event?.venue ?? ''}
+      />
+    </div>
+    <div>
+      <label for="address" class="block text-sm font-medium text-neutral-300">Dirección</label>
+      <input
+        id="address"
+        name="address"
+        type="text"
+        class={inputClass}
+        placeholder="Cra 13 #45-12"
+        value={event?.address ?? ''}
+      />
+    </div>
+  </div>
+
+  <div data-field-group="online" class="hidden">
+    <label for="meetingUrl" class="block text-sm font-medium text-neutral-300">Enlace de reunión</label>
+    <input
+      id="meetingUrl"
+      name="meetingUrl"
+      type="url"
+      class={inputClass}
+      placeholder="https://meet.google.com/..."
+      value={event?.meetingUrl ?? ''}
+    />
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div>
+      <label for="startDate" class="block text-sm font-medium text-neutral-300">Inicio</label>
+      <input
+        id="startDate"
+        name="startDate"
+        type="datetime-local"
+        required
+        class={inputClass}
+        value={startValue}
+      />
+    </div>
+    <div>
+      <label for="endDate" class="block text-sm font-medium text-neutral-300">Fin</label>
+      <input id="endDate" name="endDate" type="datetime-local" required class={inputClass} value={endValue} />
+    </div>
+  </div>
+
+  <div>
+    <label for="bannerFile" class="block text-sm font-medium text-neutral-300">
+      Banner <span class="text-neutral-600">(opcional)</span>
+    </label>
+    <input
+      id="bannerFile"
+      name="bannerFile"
+      type="file"
+      accept="image/*"
+      class="mt-1.5 block w-full text-sm text-neutral-300 file:mr-3 file:rounded-full file:border-0 file:bg-neutral-800 file:px-3.5 file:py-2 file:text-sm file:font-medium file:text-neutral-200 file:transition-colors hover:file:bg-neutral-700"
+    />
+    <img
+      id="banner-preview"
+      class={`mt-3 aspect-[16/9] w-full rounded-lg object-cover ${event?.bannerUrl ? '' : 'hidden'}`}
+      src={event?.bannerUrl}
+      alt="Vista previa del banner"
+    />
+    <p class="mt-1.5 text-xs text-neutral-600">
+      {isEdit ? 'Sube una imagen solo si quieres reemplazar la actual. ' : ''}JPG, PNG o WEBP. Máx. 5 MB.
+    </p>
+  </div>
+
+  <div>
+    <label for="tags" class="block text-sm font-medium text-neutral-300">
+      Etiquetas <span class="text-neutral-600">(separadas por coma)</span>
+    </label>
+    <input
+      id="tags"
+      name="tags"
+      type="text"
+      class={inputClass}
+      placeholder="arte, comunidad, gratis"
+      value={tagsValue}
+    />
+  </div>
+
+  <p id="form-error" class="hidden text-sm text-red-400"></p>
+
+  <button
+    id="submit-button"
+    type="submit"
+    class="inline-flex w-full items-center justify-center rounded-full bg-neutral-100 px-4 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+  >
+    {submitLabel}
+  </button>
+</form>
+
+<script>
+  import { uploadEventBanner } from '../../lib/firebase/client';
+
+  const MAX_BANNER_SIZE = 5 * 1024 * 1024;
+
+  const form = document.getElementById('event-form') as HTMLFormElement;
+  const modalitySelect = document.getElementById('modality') as HTMLSelectElement;
+  const locationGroup = document.querySelector('[data-field-group="location"]') as HTMLElement;
+  const onlineGroup = document.querySelector('[data-field-group="online"]') as HTMLElement;
+  const cityInput = document.getElementById('city') as HTMLInputElement;
+  const meetingUrlInput = document.getElementById('meetingUrl') as HTMLInputElement;
+  const bannerInput = document.getElementById('bannerFile') as HTMLInputElement;
+  const bannerPreview = document.getElementById('banner-preview') as HTMLImageElement;
+  const timezoneInput = document.getElementById('timezone') as HTMLInputElement;
+  const errorBox = document.getElementById('form-error') as HTMLParagraphElement;
+  const submitButton = document.getElementById('submit-button') as HTMLButtonElement;
+
+  const originalButtonText = submitButton.textContent ?? 'Publicar evento';
+
+  timezoneInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  bannerInput.addEventListener('change', () => {
+    const file = bannerInput.files?.[0];
+
+    if (!file) {
+      const existingBanner = form.dataset.existingBanner;
+      if (existingBanner) {
+        bannerPreview.src = existingBanner;
+        bannerPreview.classList.remove('hidden');
+      } else {
+        bannerPreview.classList.add('hidden');
+        bannerPreview.removeAttribute('src');
+      }
+      return;
+    }
+
+    bannerPreview.src = URL.createObjectURL(file);
+    bannerPreview.classList.remove('hidden');
+  });
+
+  function updateConditionalFields(): void {
+    const modality = modalitySelect.value;
+    const showLocation = modality === 'presencial' || modality === 'hibrido';
+    const showOnline = modality === 'virtual' || modality === 'hibrido';
+
+    locationGroup.classList.toggle('hidden', !showLocation);
+    onlineGroup.classList.toggle('hidden', !showOnline);
+
+    cityInput.required = showLocation;
+    meetingUrlInput.required = showOnline;
+  }
+
+  modalitySelect.addEventListener('change', updateConditionalFields);
+  updateConditionalFields();
+
+  // Los inputs `datetime-local` no llevan zona horaria: `new Date(valor)`
+  // los interpreta con la hora local de quien ejecuta el código. Se
+  // resuelven aquí, en el navegador (con la hora local real de quien
+  // publica), a un ISO string absoluto en UTC — así el servidor, sin
+  // importar en qué huso horario corra, interpreta el instante correcto.
+  function toIsoStringOrEmpty(value: FormDataEntryValue | null): string {
+    if (typeof value !== 'string' || !value) {
+      return '';
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorBox.classList.add('hidden');
+
+    const bannerFile = bannerInput.files?.[0];
+
+    if (bannerFile && bannerFile.size > MAX_BANNER_SIZE) {
+      errorBox.textContent = 'La imagen no puede superar 5 MB.';
+      errorBox.classList.remove('hidden');
+      return;
+    }
+
+    submitButton.disabled = true;
+
+    try {
+      // Sin archivo nuevo, bannerUrl queda `undefined` y el banner actual
+      // (si lo hay) se conserva sin cambios en la actualización.
+      let bannerUrl: string | undefined;
+
+      if (bannerFile) {
+        submitButton.textContent = 'Subiendo imagen…';
+        bannerUrl = await uploadEventBanner(bannerFile);
+      }
+
+      submitButton.textContent = form.dataset.method === 'PUT' ? 'Guardando…' : 'Publicando…';
+
+      const formData = new FormData(form);
+      const tagsRaw = String(formData.get('tags') ?? '');
+
+      const payload = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        modality: formData.get('modality'),
+        city: formData.get('city') || undefined,
+        venue: formData.get('venue') || undefined,
+        address: formData.get('address') || undefined,
+        meetingUrl: formData.get('meetingUrl') || undefined,
+        bannerUrl,
+        startDate: toIsoStringOrEmpty(formData.get('startDate')),
+        endDate: toIsoStringOrEmpty(formData.get('endDate')),
+        timezone: formData.get('timezone') || undefined,
+        tags: tagsRaw
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      };
+
+      const response = await fetch(form.dataset.action ?? '/api/events', {
+        method: form.dataset.method ?? 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? 'No se pudo guardar el evento.');
+      }
+
+      window.location.href = `/eventos/${result.slug}`;
+    } catch (error) {
+      errorBox.textContent = error instanceof Error ? error.message : 'No se pudo guardar el evento.';
+      errorBox.classList.remove('hidden');
+      submitButton.disabled = false;
+      submitButton.textContent = originalButtonText;
+    }
+  });
+</script>

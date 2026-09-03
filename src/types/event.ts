@@ -19,6 +19,7 @@ export interface NodoEvent {
   meetingUrl?: string;
   startDate: Date;
   endDate: Date;
+  timezone: string;
   tags: string[];
   organizer: EventOrganizer;
 }

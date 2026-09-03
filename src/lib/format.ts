@@ -1,24 +1,57 @@
 import type { NodoEvent } from '../types/event';
 
-const shortDateFormatter = new Intl.DateTimeFormat('es', { weekday: 'short', day: 'numeric', month: 'short' });
-const longDateFormatter = new Intl.DateTimeFormat('es', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
-const timeFormatter = new Intl.DateTimeFormat('es', { hour: 'numeric', minute: '2-digit', hour12: true });
+const DEFAULT_TIMEZONE = 'America/Bogota';
 
-export function formatEventDate(date: Date): string {
-  return shortDateFormatter.format(date);
+export function formatEventDate(date: Date, timezone?: string): string {
+  return new Intl.DateTimeFormat('es', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: timezone || DEFAULT_TIMEZONE,
+  }).format(date);
 }
 
-export function formatEventDateLong(date: Date): string {
-  return longDateFormatter.format(date);
+export function formatEventDateLong(date: Date, timezone?: string): string {
+  return new Intl.DateTimeFormat('es', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: timezone || DEFAULT_TIMEZONE,
+  }).format(date);
 }
 
-export function formatEventTime(date: Date): string {
-  return timeFormatter.format(date);
+export function formatEventTime(date: Date, timezone?: string): string {
+  return new Intl.DateTimeFormat('es', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: timezone || DEFAULT_TIMEZONE,
+  }).format(date);
+}
+
+export function formatEventDay(date: Date, timezone?: string): string {
+  return new Intl.DateTimeFormat('en', {
+    day: 'numeric',
+    timeZone: timezone || DEFAULT_TIMEZONE,
+  }).format(date);
+}
+
+export function formatEventMonthShort(date: Date, timezone?: string): string {
+  return new Intl.DateTimeFormat('es', {
+    month: 'short',
+    timeZone: timezone || DEFAULT_TIMEZONE,
+  }).format(date);
+}
+
+export function formatEventMonthYear(date: Date, timezone?: string): string {
+  const label = new Intl.DateTimeFormat('es', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: timezone || DEFAULT_TIMEZONE,
+  }).format(date);
+
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 export function getEventLocationLabel(event: NodoEvent): string {

@@ -22,6 +22,7 @@ function mapDocToEvent(doc: FirebaseFirestore.QueryDocumentSnapshot): NodoEvent 
     meetingUrl: data.meetingUrl,
     startDate: data.startDate.toDate(),
     endDate: data.endDate.toDate(),
+    timezone: data.timezone ?? 'America/Bogota',
     tags: data.tags ?? [],
     organizer: data.organizer,
   };
