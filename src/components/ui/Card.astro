@@ -1,0 +1,14 @@
+---
+import { cn } from '../../lib/utils';
+
+interface Props {
+  blur?: boolean;
+  class?: string;
+}
+
+const { blur = false, class: className } = Astro.props;
+---
+
+<div class={cn('rounded-2xl border border-white/10 bg-neutral-900/60', blur && 'backdrop-blur', className)}>
+  <slot />
+</div>

@@ -1,105 +1,45 @@
 ---
 import { cn } from '../../lib/utils';
+import { buildFilterHref } from '../../lib/eventFilterHref';
 
 interface Props {
-  cities: string[];
   selectedModality?: string;
   selectedCity?: string;
   selectedTimeframe?: 'past';
   selectedSearch?: string;
 }
 
-const { cities, selectedModality, selectedCity, selectedTimeframe, selectedSearch } = Astro.props;
+const { selectedModality, selectedCity, selectedTimeframe, selectedSearch } = Astro.props;
 
 const modalities: { label: string; value?: string }[] = [
   { label: 'Todos', value: undefined },
   { label: 'Presenciales', value: 'presencial' },
   { label: 'Virtuales', value: 'virtual' },
 ];
-
-interface HrefOverrides {
-  modality?: string;
-  city?: string;
-  timeframe?: string;
-  search?: string;
-}
-
-function buildHref(overrides: HrefOverrides): string {
-  const params = new URLSearchParams();
-  if (overrides.modality) params.set('modalidad', overrides.modality);
-  if (overrides.city) params.set('ciudad', overrides.city);
-  if (overrides.timeframe) params.set('tiempo', overrides.timeframe);
-  if (overrides.search) params.set('q', overrides.search);
-  const query = params.toString();
-  return query ? `/?${query}` : '/';
-}
-
-const showCityFilter = !selectedModality || selectedModality === 'presencial';
 ---
 
-<div class="flex flex-col items-start gap-3 sm:items-end">
-  <div class="flex flex-wrap gap-2">
-    {modalities.map((modality) => {
-      const isActive = selectedModality === modality.value || (!selectedModality && !modality.value);
-      const nextCity = modality.value === 'virtual' ? undefined : selectedCity;
+<div class="flex flex-wrap justify-center gap-2">
+  {modalities.map((modality) => {
+    const isActive = selectedModality === modality.value || (!selectedModality && !modality.value);
+    const nextCity = modality.value === 'virtual' ? undefined : selectedCity;
 
-      return (
-        <a
-          href={buildHref({
-            modality: modality.value,
-            city: nextCity,
-            timeframe: selectedTimeframe,
-            search: selectedSearch,
-          })}
-          class={cn(
-            'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-            isActive ? 'bg-neutral-100 text-neutral-950' : 'bg-neutral-900 text-neutral-400 hover:text-neutral-100',
-          )}
-        >
-          {modality.label}
-        </a>
-      );
-    })}
-  </div>
-
-  {showCityFilter && cities.length > 0 && (
-    <div class="flex flex-wrap justify-end gap-2">
+    return (
       <a
-        href={buildHref({ modality: selectedModality, timeframe: selectedTimeframe, search: selectedSearch })}
+        href={buildFilterHref({
+          modality: modality.value,
+          city: nextCity,
+          timeframe: selectedTimeframe,
+          search: selectedSearch,
+        })}
         class={cn(
-          'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-          !selectedCity ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-500 hover:text-neutral-200',
+          'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+          isActive
+            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+            : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-100',
         )}
       >
-        Todas las ciudades
+        {modality.label}
       </a>
-      {cities.map((city) => (
-        <a
-          href={buildHref({
-            modality: selectedModality,
-            city,
-            timeframe: selectedTimeframe,
-            search: selectedSearch,
-          })}
-          class={cn(
-            'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-            selectedCity === city ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-500 hover:text-neutral-200',
-          )}
-        >
-          {city}
-        </a>
-      ))}
-    </div>
-  )}
-
-  <a
-    href={
-      selectedTimeframe === 'past'
-        ? buildHref({ modality: selectedModality, city: selectedCity, search: selectedSearch })
-        : buildHref({ modality: selectedModality, city: selectedCity, timeframe: 'past', search: selectedSearch })
-    }
-    class="text-xs text-neutral-600 underline-offset-2 transition-colors hover:text-neutral-400 hover:underline"
-  >
-    {selectedTimeframe === 'past' ? 'Ver próximos eventos' : 'Ver eventos pasados'}
-  </a>
+    );
+  })}
 </div>

@@ -1,0 +1,19 @@
+---
+import { cn } from '../../lib/utils';
+
+interface Props {
+  variant?: 'emerald' | 'neutral';
+  class?: string;
+}
+
+const { variant = 'neutral', class: className } = Astro.props;
+
+const variants = {
+  emerald: 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-400',
+  neutral: 'border border-neutral-700/60 bg-neutral-800 text-neutral-300',
+};
+---
+
+<span class={cn('inline-flex items-center rounded-full px-3 py-1 text-xs font-medium', variants[variant], className)}>
+  <slot />
+</span>

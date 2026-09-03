@@ -1,6 +1,7 @@
 ---
 import { MapPin, Video } from '@lucide/astro';
-import { formatEventDate, formatEventTime, getEventLocationLabel } from '../../lib/format';
+import Badge from '../ui/Badge.astro';
+import { formatEventDay, formatEventMonthShort, getEventLocationLabel } from '../../lib/format';
 import type { EventModality, NodoEvent } from '../../types/event';
 
 interface Props {
@@ -17,23 +18,27 @@ const modalityLabel: Record<EventModality, string> = {
 
 const ModalityIcon = event.modality === 'virtual' ? Video : MapPin;
 const locationLabel = getEventLocationLabel(event);
+const firstTag = event.tags[0];
 ---
 
-<article class="group overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-900/40 transition-colors hover:border-neutral-700">
+<article class="group overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-900/40 transition-all duration-200 hover:border-emerald-500/40">
   <a href={`/eventos/${event.slug}`} class="block">
-    <div class="aspect-[16/9] w-full overflow-hidden">
+    <div class="relative aspect-[16/9] w-full overflow-hidden">
       {event.bannerUrl ? (
         <img src={event.bannerUrl} alt={event.title} class="h-full w-full object-cover" loading="lazy" />
       ) : (
         <div class="h-full w-full bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950" />
       )}
+
+      <div class="absolute left-3 top-3 flex flex-col items-center rounded-lg bg-neutral-950/70 px-2.5 py-1.5 leading-none backdrop-blur-sm">
+        <span class="text-[10px] font-semibold uppercase tracking-wide text-neutral-300">
+          {formatEventMonthShort(event.startDate, event.timezone)}
+        </span>
+        <span class="text-sm font-bold text-white">{formatEventDay(event.startDate, event.timezone)}</span>
+      </div>
     </div>
 
     <div class="space-y-3 p-5">
-      <p class="text-xs font-medium uppercase tracking-wide text-emerald-400">
-        {formatEventDate(event.startDate, event.timezone)} · {formatEventTime(event.startDate, event.timezone)}
-      </p>
-
       <h3 class="text-lg font-semibold text-neutral-100 transition-colors group-hover:text-white">
         {event.title}
       </h3>
@@ -43,19 +48,27 @@ const locationLabel = getEventLocationLabel(event);
         <span>{modalityLabel[event.modality]}{locationLabel && ` · ${locationLabel}`}</span>
       </div>
 
-      <div class="flex items-center gap-2 pt-2">
-        {event.organizer.avatarUrl ? (
-          <img
-            src={event.organizer.avatarUrl}
-            alt={event.organizer.name}
-            class="size-6 rounded-full object-cover"
-          />
-        ) : (
-          <div class="flex size-6 items-center justify-center rounded-full bg-neutral-800 text-[10px] font-medium text-neutral-400">
-            {event.organizer.name.charAt(0).toUpperCase()}
-          </div>
+      <div class="flex items-center justify-between gap-3 border-t border-neutral-900 pt-3">
+        <div class="flex min-w-0 items-center gap-2">
+          {event.organizer.avatarUrl ? (
+            <img
+              src={event.organizer.avatarUrl}
+              alt={event.organizer.name}
+              class="size-6 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div class="flex size-6 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-[10px] font-medium text-neutral-400">
+              {event.organizer.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span class="truncate text-xs text-neutral-500">{event.organizer.name}</span>
+        </div>
+
+        {firstTag && (
+          <Badge variant="emerald" class="shrink-0">
+            {firstTag}
+          </Badge>
         )}
-        <span class="text-xs text-neutral-500">{event.organizer.name}</span>
       </div>
     </div>
   </a>

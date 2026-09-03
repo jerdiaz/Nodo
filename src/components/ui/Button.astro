@@ -1,0 +1,42 @@
+---
+import { cn } from '../../lib/utils';
+
+interface Props {
+  variant?: 'primary' | 'secondary' | 'danger';
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  class?: string;
+  id?: string;
+  disabled?: boolean;
+  target?: string;
+  rel?: string;
+  download?: string | boolean;
+  'aria-label'?: string;
+  [key: `data-${string}`]: string | undefined;
+}
+
+const { variant = 'primary', href, type = 'button', class: className, ...rest } = Astro.props;
+
+const variants = {
+  primary: 'bg-neutral-100 text-neutral-950 hover:bg-emerald-400',
+  secondary:
+    'border border-white/10 bg-neutral-900/60 text-neutral-200 hover:border-neutral-600 hover:bg-neutral-900',
+  danger: 'text-red-400 hover:text-red-300',
+};
+
+const base =
+  'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60';
+const classes = cn(base, variants[variant], className);
+---
+
+{
+  href ? (
+    <a href={href} class={classes} {...rest}>
+      <slot />
+    </a>
+  ) : (
+    <button type={type} class={classes} {...rest}>
+      <slot />
+    </button>
+  )
+}

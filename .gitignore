@@ -26,3 +26,6 @@ pnpm-debug.log*
 
 # Claude Code local runtime state
 .claude/scheduled_tasks.lock
+
+# Mockups de referencia de diseño (imágenes pesadas, no son código del sitio)
+/mockups/
