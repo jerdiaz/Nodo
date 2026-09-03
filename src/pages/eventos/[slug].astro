@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button.astro';
 import { getCurrentUser } from '../../lib/auth';
 import { getEventBySlug } from '../../lib/firebase/events';
 import { getRsvpInfo } from '../../lib/firebase/rsvps';
+import { getEventJsonLd } from '../../lib/eventSchema';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
 import { formatEventDateLong, formatEventTime } from '../../lib/format';
 import { CalendarDays, MapPin, Video } from '@lucide/astro';
@@ -41,7 +42,10 @@ const tzAbbreviation = new Intl.DateTimeFormat('es', { timeZone: event.timezone,
 
 const googleCalendarUrl = getGoogleCalendarUrl(event);
 const icsDataUrl = getIcsDataUrl(event);
-const pageUrl = new URL(Astro.url.pathname, Astro.url.origin).toString();
+const pageUrl = new URL(Astro.url.pathname, Astro.site?.origin ?? Astro.url.origin).toString();
+// Escapa "<" para que una descripción de evento con "</script>" no pueda cerrar
+// este bloque JSON-LD e inyectar HTML/JS — el texto es contenido de usuario sin sanitizar.
+const eventJsonLdString = JSON.stringify(getEventJsonLd(event, pageUrl)).replace(/</g, '\\u003c');
 
 const eventCreated = Astro.url.searchParams.get('created') === 'true';
 const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
@@ -53,6 +57,8 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
   image={event.bannerUrl}
   type="article"
 >
+  <script type="application/ld+json" is:inline set:html={eventJsonLdString} />
+
   {eventCreated && <StatusToast paramKey="created" message="¡Evento publicado correctamente!" />}
   {eventUpdated && <StatusToast paramKey="updated" message="Evento actualizado correctamente." />}
 
