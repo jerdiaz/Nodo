@@ -17,8 +17,9 @@ const {
   type = 'website',
 } = Astro.props;
 
-const canonicalUrl = new URL(Astro.url.pathname, Astro.url.origin).toString();
-const ogImageUrl = new URL(image || '/logo-icon.png', Astro.url.origin).toString();
+const siteOrigin = Astro.site?.origin ?? Astro.url.origin;
+const canonicalUrl = new URL(Astro.url.pathname, siteOrigin).toString();
+const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
 ---
 
 <html lang="es">

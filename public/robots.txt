@@ -1,0 +1,17 @@
+User-agent: *
+Disallow: /api/
+Disallow: /mis-eventos
+Disallow: /eventos/nuevo
+Disallow: /eventos/*/editar
+
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: FirecrawlAgent
+User-agent: ExaBot
+Allow: /
+
+Sitemap: https://nodo-eventos.duckdns.org/sitemap.xml
