@@ -54,7 +54,7 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 let posts: InstagramPost[] = [];
 
 try {
-  posts = await getInstagramPosts(6);
+  posts = await getInstagramPosts(10);
 } catch (error) {
   console.warn('No se pudieron obtener las publicaciones de Instagram:', error);
 }
@@ -214,7 +214,7 @@ try {
           </a>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
           {posts.map((post) => (
             <a
               href={post.permalink}
