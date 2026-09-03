@@ -81,20 +81,17 @@ const links = [
 
             <div class="h-px bg-white/[0.08]"></div>
 
-            {/* Las dos primeras entradas quedan inertes hasta que existan
-                /perfil y /configuracion: enlazarlas ahora seria mandar a un 404. */}
-            <span
+            <a
+              href="/perfil"
               role="menuitem"
-              aria-disabled="true"
-              class="flex cursor-not-allowed items-center gap-3 px-4 py-2.5 text-sm text-neutral-500"
+              class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-neutral-200 transition hover:bg-white/5"
             >
               <User class="size-4 shrink-0" stroke-width={1.75} />
               Ver perfil
-              <span class="ml-auto rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-500">
-                Pronto
-              </span>
-            </span>
+            </a>
 
+            {/* Sigue inerte hasta que exista /configuracion: enlazarla ahora
+                seria mandar a un 404. */}
             <span
               role="menuitem"
               aria-disabled="true"

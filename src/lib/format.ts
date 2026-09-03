@@ -54,6 +54,15 @@ export function formatEventMonthYear(date: Date, timezone?: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+// Sin capitalizar, porque se incrusta a media frase: "Se unió en julio de 2026".
+export function formatMonthYear(date: Date, timezone?: string): string {
+  return new Intl.DateTimeFormat('es', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: timezone || DEFAULT_TIMEZONE,
+  }).format(date);
+}
+
 export function getEventLocationLabel(event: NodoEvent): string {
   if (event.modality === 'virtual') {
     return 'En línea';

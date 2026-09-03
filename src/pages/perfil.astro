@@ -1,0 +1,178 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import EmptyState from '../components/events/EmptyState.astro';
+import { getAccountCreatedAt, getCurrentUser } from '../lib/auth';
+import { getEvents } from '../lib/firebase/events';
+import { getAttendedEventIds } from '../lib/firebase/rsvps';
+import { formatEventDate, formatEventTime, formatMonthYear } from '../lib/format';
+import { CalendarDays } from '@lucide/astro';
+import type { NodoEvent } from '../types/event';
+
+const user = await getCurrentUser(Astro.cookies);
+
+if (!user) {
+  return Astro.redirect('/?login=required');
+}
+
+let allEvents: NodoEvent[] = [];
+
+try {
+  allEvents = await getEvents();
+} catch (error) {
+  console.warn('No se pudo obtener el catálogo de eventos desde Firebase:', error);
+}
+
+// Una sola lectura de eventos y todo lo demás se deriva en memoria, igual que
+// hacen el resto de páginas.
+const organized = allEvents.filter((event) => event.organizer.uid === user.uid);
+
+let attendedIds = new Set<string>();
+
+try {
+  attendedIds = await getAttendedEventIds(
+    user.uid,
+    allEvents.map((event) => event.id),
+  );
+} catch (error) {
+  console.warn('No se pudo obtener la asistencia del usuario:', error);
+}
+
+const attended = allEvents.filter((event) => attendedIds.has(event.id));
+
+// Un evento propio al que además dijiste que asistes no debe listarse dos
+// veces, pero sí cuenta en ambas cifras.
+const timeline = allEvents.filter(
+  (event) => event.organizer.uid === user.uid || attendedIds.has(event.id),
+);
+
+const now = Date.now();
+const upcoming = timeline.filter((event) => event.endDate.getTime() >= now);
+const past = timeline
+  .filter((event) => event.endDate.getTime() < now)
+  .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+
+const createdAt = await getAccountCreatedAt(user.uid);
+---
+
+<BaseLayout title={`${user.name} — Nodo`} description="Tu perfil en Nodo.">
+  <div class="mx-auto max-w-3xl px-6 pb-24 pt-16">
+    <header class="flex flex-col gap-6 sm:flex-row sm:items-center">
+      {user.avatarUrl ? (
+        <img
+          src={user.avatarUrl}
+          alt=""
+          class="size-28 shrink-0 rounded-full object-cover sm:size-32"
+        />
+      ) : (
+        <div class="flex size-28 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-4xl font-semibold text-neutral-300 sm:size-32">
+          {user.name.charAt(0).toUpperCase()}
+        </div>
+      )}
+
+      <div class="min-w-0">
+        <h1 class="text-3xl font-bold tracking-tight text-neutral-100 sm:text-4xl">
+          {user.name}
+        </h1>
+
+        {createdAt && (
+          <p class="mt-2 flex items-center gap-2 text-sm text-neutral-400">
+            <CalendarDays class="size-4 shrink-0" stroke-width={1.75} />
+            Se unió en {formatMonthYear(createdAt)}
+          </p>
+        )}
+
+        <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-neutral-400">
+          <span>
+            <strong class="font-semibold text-neutral-100">{organized.length}</strong>
+            {organized.length === 1 ? ' Organizado' : ' Organizados'}
+          </span>
+          <span>
+            <strong class="font-semibold text-neutral-100">{attended.length}</strong>
+            {attended.length === 1 ? ' Asistido' : ' Asistidos'}
+          </span>
+        </div>
+      </div>
+    </header>
+
+    {timeline.length === 0 ? (
+      <div class="mt-12 border-t border-white/[0.08] pt-12">
+        <EmptyState
+          title="Todavía no tienes eventos"
+          description="Cuando publiques uno o digas que asistes, aparecerá aquí."
+        />
+      </div>
+    ) : (
+      <div class="mt-12 space-y-12 border-t border-white/[0.08] pt-10">
+        {upcoming.length > 0 && (
+          <section>
+            <h2 class="mb-5 text-lg font-semibold text-neutral-100">Próximos eventos</h2>
+            <div class="space-y-1">
+              {upcoming.map((event) => (
+                <a
+                  href={`/eventos/${event.slug}`}
+                  class="group -mx-2 flex items-center gap-4 rounded-2xl px-2 py-3 transition active:scale-[0.99] hover:bg-neutral-900/50"
+                >
+                  <div class="size-16 shrink-0 overflow-hidden rounded-xl">
+                    {event.bannerUrl ? (
+                      <img src={event.bannerUrl} alt="" loading="lazy" class="h-full w-full object-cover" />
+                    ) : (
+                      <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 text-sm font-semibold text-neutral-700">
+                        {event.title.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm text-neutral-500">
+                      {formatEventDate(event.startDate, event.timezone)}, {formatEventTime(event.startDate, event.timezone)}
+                    </p>
+                    <p class="mt-0.5 truncate font-medium text-neutral-100 transition group-hover:text-white">
+                      {event.title}
+                    </p>
+                    <p class="mt-1 truncate text-sm text-neutral-500">
+                      Por {event.organizer.name}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {past.length > 0 && (
+          <section>
+            <h2 class="mb-5 text-lg font-semibold text-neutral-100">Eventos pasados</h2>
+            <div class="space-y-1">
+              {past.map((event) => (
+                <a
+                  href={`/eventos/${event.slug}`}
+                  class="group -mx-2 flex items-center gap-4 rounded-2xl px-2 py-3 transition active:scale-[0.99] hover:bg-neutral-900/50"
+                >
+                  <div class="size-16 shrink-0 overflow-hidden rounded-xl">
+                    {event.bannerUrl ? (
+                      <img src={event.bannerUrl} alt="" loading="lazy" class="h-full w-full object-cover" />
+                    ) : (
+                      <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 text-sm font-semibold text-neutral-700">
+                        {event.title.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm text-neutral-500">
+                      {formatEventDate(event.startDate, event.timezone)}, {formatEventTime(event.startDate, event.timezone)}
+                    </p>
+                    <p class="mt-0.5 truncate font-medium text-neutral-100 transition group-hover:text-white">
+                      {event.title}
+                    </p>
+                    <p class="mt-1 truncate text-sm text-neutral-500">
+                      Por {event.organizer.name}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    )}
+  </div>
+</BaseLayout>
