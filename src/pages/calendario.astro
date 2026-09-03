@@ -1,10 +1,20 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import EmptyState from '../components/events/EmptyState.astro';
+import { getCurrentUser } from '../lib/auth';
 import { filterEvents, getEvents } from '../lib/firebase/events';
-import { formatEventDay, formatEventMonthShort, formatEventMonthYear, formatEventTime } from '../lib/format';
-import { MapPin, Video } from '@lucide/astro';
+import { getRsvpInfo } from '../lib/firebase/rsvps';
+import {
+  formatEventDay,
+  formatEventMonthShort,
+  formatEventMonthYear,
+  formatEventTime,
+  getEventLocationLabel,
+} from '../lib/format';
+import { MapPin, Users, Video } from '@lucide/astro';
 import type { EventModality, NodoEvent } from '../types/event';
+
+const user = await getCurrentUser(Astro.cookies);
 
 let allEvents: NodoEvent[] = [];
 
@@ -15,6 +25,22 @@ try {
 }
 
 const upcomingEvents = filterEvents(allEvents, { timeframe: 'upcoming' });
+
+// Asistencia por evento. Es una agregación por evento (un N+1): aceptable con
+// el volumen actual, pero si la agenda crece conviene desnormalizar el
+// contador dentro del propio documento del evento.
+const rsvpCounts = new Map<string, number>();
+
+await Promise.all(
+  upcomingEvents.map(async (event) => {
+    try {
+      const info = await getRsvpInfo(event.id, user?.uid);
+      rsvpCounts.set(event.id, info.count);
+    } catch {
+      rsvpCounts.set(event.id, 0);
+    }
+  }),
+);
 
 interface MonthGroup {
   label: string;
@@ -66,36 +92,89 @@ const modalityLabel: Record<EventModality, string> = {
           {groups.map((group) => (
             <div>
               <h2 class="mb-5 text-lg font-semibold text-neutral-100">{group.label}</h2>
-              <div class="space-y-6 border-l border-white/[0.08] pl-6">
-                {group.events.map((event) => (
-                  <a href={`/eventos/${event.slug}`} class="group flex items-start gap-4 transition active:scale-[0.98]">
-                    <div class="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl border border-white/[0.08] bg-neutral-900/60 leading-none">
-                      <span class="text-[10px] uppercase text-emerald-400">
-                        {formatEventMonthShort(event.startDate, event.timezone)}
-                      </span>
-                      <span class="text-base font-semibold text-neutral-100">
-                        {formatEventDay(event.startDate, event.timezone)}
-                      </span>
-                    </div>
-                    <div class="min-w-0 flex-1 pt-1">
-                      <p class="truncate font-medium text-neutral-100 transition group-hover:text-white">
-                        {event.title}
-                      </p>
-                      <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-500">
-                        <span>{formatEventTime(event.startDate, event.timezone)}</span>
-                        <span>·</span>
-                        <span class="inline-flex items-center gap-1">
-                          {event.modality === 'virtual' ? (
-                            <Video class="size-3.5" stroke-width={1.75} />
-                          ) : (
-                            <MapPin class="size-3.5" stroke-width={1.75} />
-                          )}
-                          {modalityLabel[event.modality]}
+
+              <div class="border-l border-white/[0.08] pl-6">
+                {group.events.map((event) => {
+                  const count = rsvpCounts.get(event.id) ?? 0;
+                  const location = getEventLocationLabel(event);
+
+                  return (
+                    <a
+                      href={`/eventos/${event.slug}`}
+                      class="group -ml-2 flex items-start gap-4 rounded-2xl px-2 py-4 transition active:scale-[0.99] hover:bg-neutral-900/50"
+                    >
+                      <div class="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl border border-white/[0.08] bg-neutral-900/60 leading-none transition group-hover:border-emerald-500/40">
+                        <span class="text-[10px] uppercase text-emerald-400">
+                          {formatEventMonthShort(event.startDate, event.timezone)}
+                        </span>
+                        <span class="text-base font-semibold text-neutral-100">
+                          {formatEventDay(event.startDate, event.timezone)}
                         </span>
                       </div>
-                    </div>
-                  </a>
-                ))}
+
+                      <div class="min-w-0 flex-1">
+                        <p class="font-medium text-neutral-100 transition group-hover:text-white">
+                          {event.title}
+                        </p>
+
+                        {/* En móvil hora y ubicación se apilan: en línea, el "·"
+                            quedaba colgando al final del renglón cuando la
+                            ubicación saltaba de línea. */}
+                        <div class="mt-1 flex flex-col gap-y-0.5 text-sm text-neutral-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2">
+                          <span>{formatEventTime(event.startDate, event.timezone)}</span>
+                          <span class="hidden sm:inline">·</span>
+                          <span class="inline-flex items-center gap-1">
+                            {event.modality === 'virtual' ? (
+                              <Video class="size-3.5 shrink-0" stroke-width={1.75} />
+                            ) : (
+                              <MapPin class="size-3.5 shrink-0" stroke-width={1.75} />
+                            )}
+                            {location || modalityLabel[event.modality]}
+                          </span>
+                        </div>
+
+                        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                          <span class="flex min-w-0 items-center gap-1.5 text-xs text-neutral-500">
+                            {event.organizer.avatarUrl ? (
+                              <img
+                                src={event.organizer.avatarUrl}
+                                alt=""
+                                class="size-4 shrink-0 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span class="flex size-4 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-[8px] font-medium text-neutral-400">
+                                {event.organizer.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                            <span class="truncate">{event.organizer.name}</span>
+                          </span>
+
+                          {count > 0 && (
+                            <span class="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-neutral-950/60 px-2 py-0.5 text-xs font-medium text-neutral-300">
+                              <Users class="size-3" stroke-width={2} />
+                              {count}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div class="size-12 shrink-0 overflow-hidden rounded-xl sm:size-16">
+                        {event.bannerUrl ? (
+                          <img
+                            src={event.bannerUrl}
+                            alt=""
+                            loading="lazy"
+                            class="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 text-sm font-semibold text-neutral-700">
+                            {event.title.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                    </a>
+                  );
+                })}
               </div>
             </div>
           ))}
