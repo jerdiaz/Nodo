@@ -4,9 +4,12 @@ import EmptyState from '../components/events/EmptyState.astro';
 import { getAccountCreatedAt, getCurrentUser } from '../lib/auth';
 import { getEvents } from '../lib/firebase/events';
 import { getAttendedEventIds } from '../lib/firebase/rsvps';
+import { getUserProfile } from '../lib/firebase/users';
 import { formatEventDate, formatEventTime, formatMonthYear } from '../lib/format';
-import { CalendarDays } from '@lucide/astro';
+import { SOCIAL_FIELDS } from '../types/profile';
+import { CalendarDays, Globe } from '@lucide/astro';
 import type { NodoEvent } from '../types/event';
+import type { UserProfile } from '../types/profile';
 
 const user = await getCurrentUser(Astro.cookies);
 
@@ -52,27 +55,49 @@ const past = timeline
   .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
 
 const createdAt = await getAccountCreatedAt(user.uid);
+
+let profile: UserProfile | null = null;
+
+try {
+  profile = await getUserProfile(user.uid);
+} catch (error) {
+  console.warn('No se pudo obtener el perfil desde Firebase:', error);
+}
+
+// Lo guardado en /configuracion manda sobre lo que trae el token de Firebase
+// Auth, que es solo el punto de partida de quien nunca ha tocado el formulario.
+const displayName = profile
+  ? [profile.firstName, profile.lastName].filter(Boolean).join(' ')
+  : user.name;
+const displayAvatar = profile?.avatarUrl ?? user.avatarUrl;
+
+const socialLinks = SOCIAL_FIELDS.flatMap((field) => {
+  const handle = profile?.socials?.[field.key];
+  return handle ? [{ label: field.label, href: `${field.baseUrl}${handle}`, text: `@${handle}` }] : [];
+});
 ---
 
-<BaseLayout title={`${user.name} — Nodo`} description="Tu perfil en Nodo.">
+<BaseLayout title={`${displayName} — Nodo`} description="Tu perfil en Nodo.">
   <div class="mx-auto max-w-3xl px-6 pb-24 pt-16">
     <header class="flex flex-col gap-6 sm:flex-row sm:items-center">
-      {user.avatarUrl ? (
+      {displayAvatar ? (
         <img
-          src={user.avatarUrl}
+          src={displayAvatar}
           alt=""
           class="size-28 shrink-0 rounded-full object-cover sm:size-32"
         />
       ) : (
         <div class="flex size-28 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-4xl font-semibold text-neutral-300 sm:size-32">
-          {user.name.charAt(0).toUpperCase()}
+          {displayName.charAt(0).toUpperCase()}
         </div>
       )}
 
       <div class="min-w-0">
         <h1 class="text-3xl font-bold tracking-tight text-neutral-100 sm:text-4xl">
-          {user.name}
+          {displayName}
         </h1>
+
+        {profile?.username && <p class="mt-1 text-sm text-neutral-500">@{profile.username}</p>}
 
         {createdAt && (
           <p class="mt-2 flex items-center gap-2 text-sm text-neutral-400">
@@ -93,6 +118,37 @@ const createdAt = await getAccountCreatedAt(user.uid);
         </div>
       </div>
     </header>
+
+    {profile?.bio && (
+      <p class="mt-6 max-w-2xl whitespace-pre-line text-neutral-300">{profile.bio}</p>
+    )}
+
+    {(socialLinks.length > 0 || profile?.socials?.website) && (
+      <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+        {socialLinks.map((link) => (
+          <a
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer me"
+            class="text-neutral-400 transition hover:text-emerald-400"
+          >
+            <span class="sr-only">{link.label}: </span>
+            {link.text}
+          </a>
+        ))}
+        {profile?.socials?.website && (
+          <a
+            href={profile.socials.website}
+            target="_blank"
+            rel="noopener noreferrer me"
+            class="inline-flex items-center gap-1.5 text-neutral-400 transition hover:text-emerald-400"
+          >
+            <Globe class="size-3.5 shrink-0" stroke-width={1.75} />
+            {profile.socials.website.replace(/^https?:\/\//, '')}
+          </a>
+        )}
+      </div>
+    )}
 
     {timeline.length === 0 ? (
       <div class="mt-12 border-t border-white/[0.08] pt-12">
