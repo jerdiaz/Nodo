@@ -1,5 +1,5 @@
 ---
-import { ChevronDown, Plus } from '@lucide/astro';
+import { ChevronDown, LogOut, Plus, Settings, User } from '@lucide/astro';
 import { getCurrentUser } from '../../lib/auth';
 
 const user = await getCurrentUser(Astro.cookies);
@@ -39,24 +39,89 @@ const links = [
       </a>
 
       {user ? (
-        <div class="flex items-center gap-2.5">
-          {user.avatarUrl ? (
-            <img src={user.avatarUrl} alt={user.name} class="size-8 rounded-full object-cover" />
-          ) : (
-            <div class="flex size-8 items-center justify-center rounded-full bg-neutral-800 text-xs font-medium text-neutral-300">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-          )}
+        <div class="relative" data-menu>
           <button
-            id="nodo-logout-button"
+            id="nodo-user-trigger"
             type="button"
-            class="text-sm text-neutral-400 transition active:scale-[0.97] hover:text-neutral-100"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-label={`Cuenta de ${user.name}`}
+            class="block rounded-full ring-2 ring-transparent transition active:scale-[0.97] hover:ring-white/20 aria-expanded:ring-emerald-400/60"
           >
-            Cerrar sesión
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt="" class="size-8 rounded-full object-cover" />
+            ) : (
+              <span class="flex size-8 items-center justify-center rounded-full bg-neutral-800 text-xs font-medium text-neutral-300">
+                {user.name.charAt(0).toUpperCase()}
+              </span>
+            )}
           </button>
+
+          <div
+            id="nodo-user-panel"
+            role="menu"
+            aria-labelledby="nodo-user-trigger"
+            class="absolute right-0 top-full z-50 mt-2 hidden w-64 overflow-hidden rounded-2xl border border-white/[0.08] bg-neutral-900/90 shadow-[0_1px_1px_rgba(0,0,0,0.3),0_16px_32px_-8px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+          >
+            <div class="flex items-center gap-3 px-4 py-3.5">
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt="" class="size-10 shrink-0 rounded-full object-cover" />
+              ) : (
+                <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-sm font-medium text-neutral-300">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+              {/* min-w-0 es lo que permite que truncate funcione dentro de un
+                  flex: sin el, el nombre largo estira la caja en vez de cortarse. */}
+              <div class="min-w-0">
+                <p class="truncate text-sm font-medium text-neutral-100">{user.name}</p>
+                {user.email && <p class="truncate text-xs text-neutral-500">{user.email}</p>}
+              </div>
+            </div>
+
+            <div class="h-px bg-white/[0.08]"></div>
+
+            {/* Las dos primeras entradas quedan inertes hasta que existan
+                /perfil y /configuracion: enlazarlas ahora seria mandar a un 404. */}
+            <span
+              role="menuitem"
+              aria-disabled="true"
+              class="flex cursor-not-allowed items-center gap-3 px-4 py-2.5 text-sm text-neutral-500"
+            >
+              <User class="size-4 shrink-0" stroke-width={1.75} />
+              Ver perfil
+              <span class="ml-auto rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-500">
+                Pronto
+              </span>
+            </span>
+
+            <span
+              role="menuitem"
+              aria-disabled="true"
+              class="flex cursor-not-allowed items-center gap-3 px-4 py-2.5 text-sm text-neutral-500"
+            >
+              <Settings class="size-4 shrink-0" stroke-width={1.75} />
+              Configuración
+              <span class="ml-auto rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-500">
+                Pronto
+              </span>
+            </span>
+
+            <div class="h-px bg-white/[0.08]"></div>
+
+            <button
+              id="nodo-logout-button"
+              type="button"
+              role="menuitem"
+              class="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-neutral-200 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <LogOut class="size-4 shrink-0" stroke-width={1.75} />
+              Cerrar sesión
+            </button>
+          </div>
         </div>
       ) : (
-        <div class="relative" data-login-menu>
+        <div class="relative" data-menu>
           <button
             id="nodo-login-trigger"
             type="button"
@@ -123,38 +188,74 @@ const links = [
 <script>
   import { loginWithGoogle, loginWithMicrosoft, logout } from '../../lib/firebase/client';
 
-  const loginMenu = document.querySelector('[data-login-menu]');
-  const loginTrigger = document.getElementById('nodo-login-trigger') as HTMLButtonElement | null;
-  const loginPanel = document.getElementById('nodo-login-panel');
-  const loginChevron = document.getElementById('nodo-login-chevron');
+  // Solo uno de los dos menus existe en cada render (segun haya sesion o no),
+  // pero la mecanica -abrir, cerrar al pulsar fuera, cerrar con Escape- es la
+  // misma, asi que se declara una vez y se aplica a los que esten presentes.
+  interface Menu {
+    root: Element;
+    trigger: HTMLButtonElement;
+    setOpen: (open: boolean) => void;
+    isOpen: () => boolean;
+  }
+
+  function createMenu(triggerId: string, panelId: string, chevronId?: string): Menu | null {
+    const trigger = document.getElementById(triggerId) as HTMLButtonElement | null;
+    const panel = document.getElementById(panelId);
+    const root = trigger?.closest('[data-menu]');
+
+    if (!trigger || !panel || !root) {
+      return null;
+    }
+
+    const chevron = chevronId ? document.getElementById(chevronId) : null;
+
+    const setOpen = (open: boolean): void => {
+      panel.classList.toggle('hidden', !open);
+      trigger.setAttribute('aria-expanded', String(open));
+      chevron?.classList.toggle('rotate-180', open);
+    };
+
+    const isOpen = () => trigger.getAttribute('aria-expanded') === 'true';
+
+    trigger.addEventListener('click', () => setOpen(!isOpen()));
+
+    return { root, trigger, setOpen, isOpen };
+  }
+
+  const menus = [
+    createMenu('nodo-login-trigger', 'nodo-login-panel', 'nodo-login-chevron'),
+    createMenu('nodo-user-trigger', 'nodo-user-panel'),
+  ].filter((menu): menu is Menu => menu !== null);
+
+  document.addEventListener('click', (event) => {
+    for (const menu of menus) {
+      if (!menu.root.contains(event.target as Node)) {
+        menu.setOpen(false);
+      }
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') {
+      return;
+    }
+    for (const menu of menus) {
+      // Devolver el foco al disparador: si el menu se cierra y el foco se
+      // queda en un elemento oculto, la navegacion por teclado se pierde.
+      if (menu.isOpen()) {
+        menu.setOpen(false);
+        menu.trigger.focus();
+      }
+    }
+  });
+
   const googleButton = document.getElementById('nodo-login-google') as HTMLButtonElement | null;
   const microsoftButton = document.getElementById('nodo-login-microsoft') as HTMLButtonElement | null;
   const logoutButton = document.getElementById('nodo-logout-button') as HTMLButtonElement | null;
 
   function setLoginMenuOpen(open: boolean): void {
-    if (!loginTrigger || !loginPanel) {
-      return;
-    }
-    loginPanel.classList.toggle('hidden', !open);
-    loginTrigger.setAttribute('aria-expanded', String(open));
-    loginChevron?.classList.toggle('rotate-180', open);
+    menus.find((menu) => menu.trigger.id === 'nodo-login-trigger')?.setOpen(open);
   }
-
-  loginTrigger?.addEventListener('click', () => {
-    setLoginMenuOpen(loginTrigger.getAttribute('aria-expanded') !== 'true');
-  });
-
-  document.addEventListener('click', (event) => {
-    if (loginMenu && !loginMenu.contains(event.target as Node)) {
-      setLoginMenuOpen(false);
-    }
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      setLoginMenuOpen(false);
-    }
-  });
 
   async function handleLogin(button: HTMLButtonElement, login: () => Promise<void>): Promise<void> {
     button.disabled = true;
