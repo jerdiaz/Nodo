@@ -7,6 +7,7 @@ import Badge from '../../components/ui/Badge.astro';
 import Button from '../../components/ui/Button.astro';
 import { getCurrentUser } from '../../lib/auth';
 import { getEventBySlug } from '../../lib/firebase/events';
+import { getRsvpInfo } from '../../lib/firebase/rsvps';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
 import { formatEventDateLong, formatEventTime } from '../../lib/format';
 import { CalendarDays, MapPin, Video } from '@lucide/astro';
@@ -20,6 +21,17 @@ if (!event) {
 
 const user = await getCurrentUser(Astro.cookies);
 const isOwner = user?.uid === event.organizer.uid;
+
+let rsvpCount = 0;
+let isAttending = false;
+
+try {
+  const rsvpInfo = await getRsvpInfo(event.id, user?.uid);
+  rsvpCount = rsvpInfo.count;
+  isAttending = rsvpInfo.attending;
+} catch (error) {
+  console.warn('No se pudo obtener la asistencia del evento:', error);
+}
 
 const physicalLocation = [event.venue, event.address, event.city].filter(Boolean).join(', ');
 
@@ -142,6 +154,36 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
               )}
             </div>
 
+            <div class="border-t border-white/[0.08] pt-6">
+              {user ? (
+                <button
+                  id="rsvp-button"
+                  type="button"
+                  data-event-id={event.id}
+                  data-attending={isAttending ? 'true' : 'false'}
+                  class={`w-full rounded-2xl border px-4 py-2.5 text-sm font-medium transition active:scale-[0.97] ${
+                    isAttending
+                      ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-400'
+                      : 'border-white/[0.08] bg-neutral-900/60 text-neutral-200 hover:border-white/20'
+                  }`}
+                >
+                  {isAttending ? '✓ Asistes' : 'Me interesa'}
+                </button>
+              ) : (
+                <a
+                  href="/?login=required"
+                  class="block w-full rounded-2xl border border-white/[0.08] bg-neutral-900/60 px-4 py-2.5 text-center text-sm font-medium text-neutral-200 transition active:scale-[0.97] hover:border-white/20"
+                >
+                  Inicia sesión para decir que asistes
+                </a>
+              )}
+              <p id="rsvp-count" class="mt-2 text-center text-sm text-neutral-500">
+                {rsvpCount === 0
+                  ? 'Sé el primero en decir que asistes'
+                  : `${rsvpCount} ${rsvpCount === 1 ? 'persona interesada' : 'personas interesadas'}`}
+              </p>
+            </div>
+
             <Button
               variant="primary"
               href={googleCalendarUrl}
@@ -199,6 +241,60 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
     }
   }
 </script>
+
+{user && (
+  <script>
+    const rsvpButton = document.getElementById('rsvp-button') as HTMLButtonElement | null;
+    const rsvpCountLabel = document.getElementById('rsvp-count') as HTMLParagraphElement | null;
+
+    function rsvpCountText(count: number): string {
+      if (count === 0) {
+        return 'Sé el primero en decir que asistes';
+      }
+      return `${count} ${count === 1 ? 'persona interesada' : 'personas interesadas'}`;
+    }
+
+    function setRsvpButtonState(attending: boolean): void {
+      if (!rsvpButton) {
+        return;
+      }
+      rsvpButton.dataset.attending = String(attending);
+      rsvpButton.textContent = attending ? '✓ Asistes' : 'Me interesa';
+      rsvpButton.classList.toggle('border-emerald-500/30', attending);
+      rsvpButton.classList.toggle('bg-emerald-500/15', attending);
+      rsvpButton.classList.toggle('text-emerald-400', attending);
+      rsvpButton.classList.toggle('border-white/[0.08]', !attending);
+      rsvpButton.classList.toggle('bg-neutral-900/60', !attending);
+      rsvpButton.classList.toggle('text-neutral-200', !attending);
+    }
+
+    rsvpButton?.addEventListener('click', async () => {
+      const attending = rsvpButton.dataset.attending === 'true';
+      rsvpButton.disabled = true;
+
+      try {
+        const response = await fetch(`/api/events/${rsvpButton.dataset.eventId}/rsvp`, {
+          method: attending ? 'DELETE' : 'POST',
+        });
+
+        if (!response.ok) {
+          throw new Error('No se pudo actualizar tu asistencia.');
+        }
+
+        const result = await response.json();
+        setRsvpButtonState(result.attending);
+
+        if (rsvpCountLabel) {
+          rsvpCountLabel.textContent = rsvpCountText(result.count);
+        }
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : 'No se pudo actualizar tu asistencia.');
+      } finally {
+        rsvpButton.disabled = false;
+      }
+    });
+  </script>
+)}
 
 {isOwner && (
   <script>
