@@ -65,11 +65,11 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
   <div class="mx-auto max-w-6xl px-6 pb-24 pt-10">
     <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
       <article class="lg:col-span-7">
-        <div class="aspect-[16/9] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950">
+        <div class="aspect-[16/9] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave">
           {event.bannerUrl && <img src={event.bannerUrl} alt={event.title} class="h-full w-full object-cover" />}
         </div>
 
-        <h1 class="mt-6 text-3xl font-bold tracking-tight text-neutral-100 sm:text-4xl">
+        <h1 class="mt-6 text-3xl font-bold tracking-tight text-texto sm:text-4xl">
           {event.title}
         </h1>
 
@@ -82,13 +82,13 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
                 class="size-10 rounded-full object-cover"
               />
             ) : (
-              <div class="flex size-10 items-center justify-center rounded-full bg-neutral-900 text-sm font-medium text-neutral-400">
+              <div class="flex size-10 items-center justify-center rounded-full bg-superficie text-sm font-medium text-suave">
                 {event.organizer.name.charAt(0).toUpperCase()}
               </div>
             )}
             <div>
-              <p class="text-xs text-neutral-500">Organiza</p>
-              <p class="font-medium text-neutral-100">{event.organizer.name}</p>
+              <p class="text-xs text-suave">Organiza</p>
+              <p class="font-medium text-texto">{event.organizer.name}</p>
             </div>
           </div>
 
@@ -99,7 +99,7 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
           )}
         </div>
 
-        <div class="mt-8 max-w-none whitespace-pre-line text-base leading-relaxed text-neutral-300">
+        <div class="mt-8 max-w-none whitespace-pre-line text-base leading-relaxed text-texto">
           {event.description}
         </div>
       </article>
@@ -108,28 +108,28 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
         <div class="lg:sticky lg:top-24">
           <Card blur class="space-y-6 p-6">
             <div>
-              <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-suave">
                 <CalendarDays class="size-3.5" stroke-width={2} />
                 Fecha y hora
               </div>
-              <p class="mt-2 font-semibold capitalize text-neutral-100">
+              <p class="mt-2 font-semibold capitalize text-texto">
                 {formatEventDateLong(event.startDate, event.timezone)}
               </p>
-              <p class="text-sm text-neutral-400">
+              <p class="text-sm text-suave">
                 {formatEventTime(event.startDate, event.timezone)} – {formatEventTime(event.endDate, event.timezone)}
                 {tzAbbreviation && ` (${tzAbbreviation})`}
               </p>
               <p
                 id="local-time-hint"
-                class="mt-1 hidden text-xs text-neutral-600"
+                class="mt-1 hidden text-xs text-tenue"
                 data-event-timezone={event.timezone}
                 data-start-iso={event.startDate.toISOString()}
                 data-end-iso={event.endDate.toISOString()}
               />
             </div>
 
-            <div class="border-t border-white/[0.08] pt-6">
-              <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            <div class="border-t border-linea pt-6">
+              <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-suave">
                 {event.modality === 'virtual' ? (
                   <Video class="size-3.5" stroke-width={2} />
                 ) : (
@@ -139,13 +139,13 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
               </div>
 
               {event.modality === 'virtual' ? (
-                <p class="mt-2 font-medium text-neutral-100">Evento en línea</p>
+                <p class="mt-2 font-medium text-texto">Evento en línea</p>
               ) : (
-                <p class="mt-2 font-medium text-neutral-100">{physicalLocation}</p>
+                <p class="mt-2 font-medium text-texto">{physicalLocation}</p>
               )}
 
               {event.modality === 'hibrido' && event.meetingUrl && (
-                <p class="mt-1 text-sm text-neutral-500">También disponible en línea</p>
+                <p class="mt-1 text-sm text-suave">También disponible en línea</p>
               )}
 
               {event.meetingUrl && event.modality !== 'presencial' && (
@@ -153,14 +153,14 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
                   href={event.meetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="mt-1 block break-all text-sm text-emerald-400 hover:underline"
+                  class="mt-1 block break-all text-sm text-acento-texto hover:underline"
                 >
                   {event.meetingUrl}
                 </a>
               )}
             </div>
 
-            <div class="border-t border-white/[0.08] pt-6">
+            <div class="border-t border-linea pt-6">
               {user ? (
                 <button
                   id="rsvp-button"
@@ -169,8 +169,8 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
                   data-attending={isAttending ? 'true' : 'false'}
                   class={`w-full rounded-2xl border px-4 py-2.5 text-sm font-medium transition active:scale-[0.97] ${
                     isAttending
-                      ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-400'
-                      : 'border-white/[0.08] bg-neutral-900/60 text-neutral-200 hover:border-white/20'
+                      ? 'border-acento bg-acento-suave text-acento-texto'
+                      : 'border-linea bg-superficie text-texto hover:border-acento'
                   }`}
                 >
                   {isAttending ? '✓ Asistes' : 'Me interesa'}
@@ -178,12 +178,12 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
               ) : (
                 <a
                   href="/?login=required"
-                  class="block w-full rounded-2xl border border-white/[0.08] bg-neutral-900/60 px-4 py-2.5 text-center text-sm font-medium text-neutral-200 transition active:scale-[0.97] hover:border-white/20"
+                  class="block w-full rounded-2xl border border-linea bg-superficie px-4 py-2.5 text-center text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento"
                 >
                   Inicia sesión para decir que asistes
                 </a>
               )}
-              <p id="rsvp-count" class="mt-2 text-center text-sm text-neutral-500">
+              <p id="rsvp-count" class="mt-2 text-center text-sm text-suave">
                 {rsvpCount === 0
                   ? 'Sé el primero en decir que asistes'
                   : `${rsvpCount} ${rsvpCount === 1 ? 'persona interesada' : 'personas interesadas'}`}
@@ -203,15 +203,15 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
             <ShareButtons event={event} url={pageUrl} icsUrl={icsDataUrl} />
 
             {isOwner && (
-              <div class="flex items-center justify-between border-t border-white/[0.08] pt-4">
-                <a href={`/eventos/${event.slug}/editar`} class="text-sm font-medium text-neutral-400 transition hover:text-neutral-200">
+              <div class="flex items-center justify-between border-t border-linea pt-4">
+                <a href={`/eventos/${event.slug}/editar`} class="text-sm font-medium text-suave transition hover:text-texto">
                   Editar evento
                 </a>
                 <button
                   id="delete-event-button"
                   type="button"
                   data-event-id={event.id}
-                  class="text-sm font-medium text-red-400/80 transition active:scale-[0.97] hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  class="text-sm font-medium text-acento-texto transition active:scale-[0.97] hover:text-acento-texto disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Eliminar evento
                 </button>
@@ -266,12 +266,12 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
       }
       rsvpButton.dataset.attending = String(attending);
       rsvpButton.textContent = attending ? '✓ Asistes' : 'Me interesa';
-      rsvpButton.classList.toggle('border-emerald-500/30', attending);
-      rsvpButton.classList.toggle('bg-emerald-500/15', attending);
-      rsvpButton.classList.toggle('text-emerald-400', attending);
-      rsvpButton.classList.toggle('border-white/[0.08]', !attending);
-      rsvpButton.classList.toggle('bg-neutral-900/60', !attending);
-      rsvpButton.classList.toggle('text-neutral-200', !attending);
+      rsvpButton.classList.toggle('border-acento', attending);
+      rsvpButton.classList.toggle('bg-acento-suave', attending);
+      rsvpButton.classList.toggle('text-acento-texto', attending);
+      rsvpButton.classList.toggle('border-linea', !attending);
+      rsvpButton.classList.toggle('bg-superficie', !attending);
+      rsvpButton.classList.toggle('text-texto', !attending);
     }
 
     rsvpButton?.addEventListener('click', async () => {

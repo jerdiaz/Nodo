@@ -18,7 +18,7 @@ const modalities: { label: string; value?: string }[] = [
 ];
 ---
 
-<div class="inline-flex flex-wrap justify-center gap-1 rounded-full border border-white/[0.08] bg-neutral-900/60 p-1 backdrop-blur-xl">
+<div class="inline-flex flex-wrap justify-center gap-1 rounded-full border border-linea bg-superficie p-1 backdrop-blur-xl">
   {modalities.map((modality) => {
     const isActive = selectedModality === modality.value || (!selectedModality && !modality.value);
     const nextCity = modality.value === 'virtual' ? undefined : selectedCity;
@@ -34,8 +34,8 @@ const modalities: { label: string; value?: string }[] = [
         class={cn(
           'rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-[0.97]',
           isActive
-            ? 'bg-neutral-100 text-neutral-950 shadow-sm'
-            : 'text-neutral-400 hover:text-neutral-100',
+            ? 'bg-acento text-acento-contraste shadow-sm'
+            : 'text-suave hover:text-texto',
         )}
       >
         {modality.label}

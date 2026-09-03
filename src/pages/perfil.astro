@@ -112,33 +112,33 @@ if (profile?.socials?.website) {
           class="size-28 shrink-0 rounded-full object-cover sm:size-32"
         />
       ) : (
-        <div class="flex size-28 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-4xl font-semibold text-neutral-300 sm:size-32">
+        <div class="flex size-28 shrink-0 items-center justify-center rounded-full bg-fondo-alt text-4xl font-semibold text-texto sm:size-32">
           {displayName.charAt(0).toUpperCase()}
         </div>
       )}
 
       <div class="min-w-0">
-        <h1 class="flex flex-wrap items-center gap-x-2 text-3xl font-bold tracking-tight text-neutral-100 sm:text-4xl">
+        <h1 class="flex flex-wrap items-center gap-x-2 text-3xl font-bold tracking-tight text-texto sm:text-4xl">
           {displayName}
           {profile?.verification && <VerifiedBadge type={profile.verification} class="size-6 sm:size-7" />}
         </h1>
 
-        {profile?.username && <p class="mt-1 text-sm text-neutral-500">@{profile.username}</p>}
+        {profile?.username && <p class="mt-1 text-sm text-suave">@{profile.username}</p>}
 
         {createdAt && (
-          <p class="mt-2 flex items-center gap-2 text-sm text-neutral-400">
+          <p class="mt-2 flex items-center gap-2 text-sm text-suave">
             <CalendarDays class="size-4 shrink-0" stroke-width={1.75} />
             Se unió en {formatMonthYear(createdAt)}
           </p>
         )}
 
-        <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-neutral-400">
+        <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-suave">
           <span>
-            <strong class="font-semibold text-neutral-100">{organized.length}</strong>
+            <strong class="font-semibold text-texto">{organized.length}</strong>
             {organized.length === 1 ? ' Organizado' : ' Organizados'}
           </span>
           <span>
-            <strong class="font-semibold text-neutral-100">{attended.length}</strong>
+            <strong class="font-semibold text-texto">{attended.length}</strong>
             {attended.length === 1 ? ' Asistido' : ' Asistidos'}
           </span>
         </div>
@@ -146,7 +146,7 @@ if (profile?.socials?.website) {
     </header>
 
     {profile?.bio && (
-      <p class="mt-6 max-w-2xl whitespace-pre-line text-neutral-300">{profile.bio}</p>
+      <p class="mt-6 max-w-2xl whitespace-pre-line text-texto">{profile.bio}</p>
     )}
 
     {socialLinks.length > 0 && (
@@ -157,7 +157,7 @@ if (profile?.socials?.website) {
             target="_blank"
             rel="noopener noreferrer me"
             aria-label={link.tooltip}
-            class="group relative flex size-9 items-center justify-center rounded-xl border border-white/[0.08] bg-neutral-900/60 text-neutral-400 transition active:scale-[0.95] hover:border-white/20 hover:text-neutral-100"
+            class="group relative flex size-9 items-center justify-center rounded-xl border border-linea bg-superficie text-suave transition active:scale-[0.95] hover:border-acento hover:text-texto"
           >
             <SocialIcon name={link.key} class="size-4" />
 
@@ -165,10 +165,10 @@ if (profile?.socials?.website) {
                 que quien navega con tabulador vea la misma informacion. */}
             <span
               role="tooltip"
-              class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 shadow-lg group-hover:block group-focus-visible:block"
+              class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-full bg-acento px-3 py-1.5 text-xs font-medium text-texto shadow-lg group-hover:block group-focus-visible:block"
             >
               {link.tooltip}
-              <span class="absolute left-1/2 top-full size-2 -translate-x-1/2 -translate-y-1 rotate-45 bg-neutral-100"></span>
+              <span class="absolute left-1/2 top-full size-2 -translate-x-1/2 -translate-y-1 rotate-45 bg-acento"></span>
             </span>
           </a>
         ))}
@@ -176,40 +176,40 @@ if (profile?.socials?.website) {
     )}
 
     {timeline.length === 0 ? (
-      <div class="mt-12 border-t border-white/[0.08] pt-12">
+      <div class="mt-12 border-t border-linea pt-12">
         <EmptyState
           title="Todavía no tienes eventos"
           description="Cuando publiques uno o digas que asistes, aparecerá aquí."
         />
       </div>
     ) : (
-      <div class="mt-12 space-y-12 border-t border-white/[0.08] pt-10">
+      <div class="mt-12 space-y-12 border-t border-linea pt-10">
         {upcoming.length > 0 && (
           <section>
-            <h2 class="mb-5 text-lg font-semibold text-neutral-100">Próximos eventos</h2>
+            <h2 class="mb-5 text-lg font-semibold text-texto">Próximos eventos</h2>
             <div class="space-y-1">
               {upcoming.map((event) => (
                 <a
                   href={`/eventos/${event.slug}`}
-                  class="group -mx-2 flex items-center gap-4 rounded-2xl px-2 py-3 transition active:scale-[0.99] hover:bg-neutral-900/50"
+                  class="group -mx-2 flex items-center gap-4 rounded-2xl px-2 py-3 transition active:scale-[0.99] hover:bg-fondo-alt"
                 >
                   <div class="size-16 shrink-0 overflow-hidden rounded-xl">
                     {event.bannerUrl ? (
                       <img src={event.bannerUrl} alt="" loading="lazy" class="h-full w-full object-cover" />
                     ) : (
-                      <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 text-sm font-semibold text-neutral-700">
+                      <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave text-sm font-semibold text-tenue">
                         {event.title.charAt(0).toUpperCase()}
                       </div>
                     )}
                   </div>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm text-neutral-500">
+                    <p class="text-sm text-suave">
                       {formatEventDate(event.startDate, event.timezone)}, {formatEventTime(event.startDate, event.timezone)}
                     </p>
-                    <p class="mt-0.5 truncate font-medium text-neutral-100 transition group-hover:text-white">
+                    <p class="mt-0.5 truncate font-medium text-texto transition group-hover:text-texto">
                       {event.title}
                     </p>
-                    <p class="mt-1 truncate text-sm text-neutral-500">
+                    <p class="mt-1 truncate text-sm text-suave">
                       Por {event.organizer.name}
                     </p>
                   </div>
@@ -221,30 +221,30 @@ if (profile?.socials?.website) {
 
         {past.length > 0 && (
           <section>
-            <h2 class="mb-5 text-lg font-semibold text-neutral-100">Eventos pasados</h2>
+            <h2 class="mb-5 text-lg font-semibold text-texto">Eventos pasados</h2>
             <div class="space-y-1">
               {past.map((event) => (
                 <a
                   href={`/eventos/${event.slug}`}
-                  class="group -mx-2 flex items-center gap-4 rounded-2xl px-2 py-3 transition active:scale-[0.99] hover:bg-neutral-900/50"
+                  class="group -mx-2 flex items-center gap-4 rounded-2xl px-2 py-3 transition active:scale-[0.99] hover:bg-fondo-alt"
                 >
                   <div class="size-16 shrink-0 overflow-hidden rounded-xl">
                     {event.bannerUrl ? (
                       <img src={event.bannerUrl} alt="" loading="lazy" class="h-full w-full object-cover" />
                     ) : (
-                      <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 text-sm font-semibold text-neutral-700">
+                      <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave text-sm font-semibold text-tenue">
                         {event.title.charAt(0).toUpperCase()}
                       </div>
                     )}
                   </div>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm text-neutral-500">
+                    <p class="text-sm text-suave">
                       {formatEventDate(event.startDate, event.timezone)}, {formatEventTime(event.startDate, event.timezone)}
                     </p>
-                    <p class="mt-0.5 truncate font-medium text-neutral-100 transition group-hover:text-white">
+                    <p class="mt-0.5 truncate font-medium text-texto transition group-hover:text-texto">
                       {event.title}
                     </p>
-                    <p class="mt-1 truncate text-sm text-neutral-500">
+                    <p class="mt-1 truncate text-sm text-suave">
                       Por {event.organizer.name}
                     </p>
                   </div>

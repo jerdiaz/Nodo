@@ -33,12 +33,12 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
   <div class="mx-auto max-w-6xl px-6 pb-24 pt-16">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-neutral-100">Mis eventos</h1>
-        <p class="mt-2 text-sm text-neutral-400">Los eventos que has publicado en Nodo.</p>
+        <h1 class="text-3xl font-bold tracking-tight text-texto">Mis eventos</h1>
+        <p class="mt-2 text-sm text-suave">Los eventos que has publicado en Nodo.</p>
       </div>
       <a
         href="/eventos/nuevo"
-        class="inline-flex items-center rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950 transition active:scale-[0.97] hover:bg-emerald-400"
+        class="inline-flex items-center rounded-full bg-acento px-4 py-2 text-sm font-medium text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
       >
         Publicar evento
       </a>
@@ -56,11 +56,11 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
         <div class="mt-10 space-y-12">
           <section>
             <div class="mb-5 flex items-center gap-3">
-              <h2 class="text-lg font-semibold text-neutral-100">Próximos</h2>
-              <span class="text-sm text-neutral-500">{upcomingEvents.length} eventos</span>
+              <h2 class="text-lg font-semibold text-texto">Próximos</h2>
+              <span class="text-sm text-suave">{upcomingEvents.length} eventos</span>
             </div>
             {upcomingEvents.length === 0 ? (
-              <p class="text-sm text-neutral-500">No tienes eventos próximos.</p>
+              <p class="text-sm text-suave">No tienes eventos próximos.</p>
             ) : (
               <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {upcomingEvents.map((event) => (
@@ -72,11 +72,11 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 
           <section>
             <div class="mb-5 flex items-center gap-3">
-              <h2 class="text-lg font-semibold text-neutral-100">Pasados</h2>
-              <span class="text-sm text-neutral-500">{pastEvents.length} eventos</span>
+              <h2 class="text-lg font-semibold text-texto">Pasados</h2>
+              <span class="text-sm text-suave">{pastEvents.length} eventos</span>
             </div>
             {pastEvents.length === 0 ? (
-              <p class="text-sm text-neutral-500">No tienes eventos pasados.</p>
+              <p class="text-sm text-suave">No tienes eventos pasados.</p>
             ) : (
               <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {pastEvents.map((event) => (

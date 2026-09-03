@@ -21,15 +21,21 @@ const columns = [
 ];
 ---
 
-<footer class="border-t border-white/[0.08]">
+{/*
+  El pie es oscuro en los dos temas, no sigue a los tokens: el logotipo de
+  Sentra Labs solo existe en su variante para fondo oscuro (el texto "SENTRA
+  LABS" es blanco) y sobre el fondo claro del sitio desapareceria. Es la misma
+  solucion que usa funconceptos, que tambien es un sitio claro con pie oscuro.
+*/}
+<footer class="mt-auto bg-[#111113] text-[#c9c9d0]">
   <div class="mx-auto max-w-6xl px-6 py-12">
     <div class="flex flex-col justify-between gap-10 md:flex-row">
       <div>
-        <a href="/" class="flex items-center gap-2 text-lg font-bold tracking-tight text-neutral-100">
+        <a href="/" class="flex items-center gap-2 text-lg font-bold tracking-tight text-white">
           <img src="/logo-icon.png" alt="" class="size-6" />
-          Nodo<span class="text-emerald-400">.</span>
+          Nodo<span class="text-[#ff4d4d]">.</span>
         </a>
-        <p class="mt-2 max-w-xs text-sm text-neutral-500">
+        <p class="mt-2 max-w-xs text-sm text-[#8b8b93]">
           La cartelera comunitaria para descubrir y organizar eventos locales.
         </p>
       </div>
@@ -37,11 +43,11 @@ const columns = [
       <div class="flex gap-16">
         {columns.map((column) => (
           <div>
-            <h3 class="text-sm font-medium text-neutral-200">{column.title}</h3>
+            <h3 class="text-sm font-medium text-white">{column.title}</h3>
             <ul class="mt-3 space-y-2">
               {column.links.map((link) => (
                 <li>
-                  <a href={link.href} class="text-sm text-neutral-500 transition hover:text-neutral-100">
+                  <a href={link.href} class="text-sm text-[#8b8b93] transition hover:text-white">
                     {link.label}
                   </a>
                 </li>
@@ -52,8 +58,19 @@ const columns = [
       </div>
     </div>
 
-    <div class="mt-12 border-t border-white/[0.08] pt-6 text-sm text-neutral-600">
-      © {year} Nodo. Todos los derechos reservados.
+    <div class="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm text-[#8b8b93] sm:flex-row sm:items-center sm:justify-between">
+      <p>© {year} Nodo. Todos los derechos reservados.</p>
+
+      <a
+        href="https://sentralabs.co"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Sitio desarrollado por Sentra Labs, abre sentralabs.co"
+        class="inline-flex items-center gap-2 text-[#8b8b93] transition hover:text-white"
+      >
+        Desarrollado por
+        <img src="/logo/sentralabs.png" alt="Sentra Labs" width="1458" height="513" class="h-5 w-auto" />
+      </a>
     </div>
   </div>
 </footer>

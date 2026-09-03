@@ -23,8 +23,8 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
         class={cn(
           'rounded-full px-3 py-1 text-xs font-medium transition active:scale-[0.97]',
           !selectedCity
-            ? 'bg-neutral-100 text-neutral-950'
-            : 'bg-neutral-900/60 text-neutral-400 hover:text-neutral-200',
+            ? 'bg-acento text-acento-contraste'
+            : 'bg-superficie text-suave hover:text-texto',
         )}
       >
         Todas las ciudades
@@ -40,8 +40,8 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
           class={cn(
             'rounded-full px-3 py-1 text-xs font-medium transition active:scale-[0.97]',
             selectedCity === city
-              ? 'bg-neutral-100 text-neutral-950'
-              : 'bg-neutral-900/60 text-neutral-400 hover:text-neutral-200',
+              ? 'bg-acento text-acento-contraste'
+              : 'bg-superficie text-suave hover:text-texto',
           )}
         >
           {city}
@@ -56,7 +56,7 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
         ? buildFilterHref({ modality: selectedModality, city: selectedCity, search: selectedSearch })
         : buildFilterHref({ modality: selectedModality, city: selectedCity, timeframe: 'past', search: selectedSearch })
     }
-    class="text-xs text-neutral-600 underline-offset-2 transition hover:text-neutral-400 hover:underline"
+    class="text-xs text-tenue underline-offset-2 transition hover:text-suave hover:underline"
   >
     {selectedTimeframe === 'past' ? 'Ver próximos eventos' : 'Ver eventos pasados'}
   </a>

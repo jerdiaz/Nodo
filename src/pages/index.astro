@@ -36,7 +36,7 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 <BaseLayout>
   {loginRequired && (
     <div class="mx-auto max-w-6xl px-6 pt-6">
-      <div class="rounded-2xl border border-amber-500/20 bg-amber-950/30 px-4 py-3 text-sm text-amber-200 backdrop-blur-xl">
+      <div class="rounded-2xl border border-marca-amarillo bg-fondo-alt px-4 py-3 text-sm text-texto backdrop-blur-xl">
         Inicia sesión para publicar un evento.
       </div>
     </div>
@@ -45,11 +45,11 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
   {eventDeleted && <StatusToast paramKey="deleted" message="Evento eliminado correctamente." />}
 
   <section class="mx-auto max-w-3xl px-6 pb-12 pt-20 text-center">
-    <p class="text-sm font-medium text-emerald-400">Cartelera comunitaria</p>
-    <h1 class="mt-3 text-4xl font-bold tracking-tight text-neutral-100 sm:text-5xl">
+    <p class="text-sm font-medium text-acento-texto">Cartelera comunitaria</p>
+    <h1 class="mt-3 text-4xl font-bold tracking-tight text-texto sm:text-5xl">
       Encuentra tu próximo evento
     </h1>
-    <p class="mx-auto mt-4 max-w-xl text-base text-neutral-400">
+    <p class="mx-auto mt-4 max-w-xl text-base text-suave">
       Nodo conecta a tu comunidad con talleres, encuentros y actividades locales.
       Descubre lo que está pasando cerca de ti.
     </p>
@@ -60,7 +60,7 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
       {timeframe === 'past' && <input type="hidden" name="tiempo" value="pasados" />}
       <div class="relative">
         <Search
-          class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-neutral-600"
+          class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-tenue"
           stroke-width={1.75}
         />
         <input
@@ -68,7 +68,7 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
           name="q"
           value={query ?? ''}
           placeholder="Buscar por nombre, tema o tag..."
-          class="w-full rounded-full bg-neutral-900/70 py-3 pl-11 pr-4 text-sm text-neutral-100 placeholder:text-neutral-600 backdrop-blur-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+          class="w-full rounded-full bg-superficie py-3 pl-11 pr-4 text-sm text-texto ring-1 ring-inset ring-linea placeholder:text-tenue focus:outline-none focus:ring-2 focus:ring-acento"
         />
       </div>
     </form>
@@ -86,10 +86,10 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
   <section class="mx-auto max-w-6xl px-6 pb-24">
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="flex items-center gap-3">
-        <h2 class="text-lg font-semibold text-neutral-100">
+        <h2 class="text-lg font-semibold text-texto">
           {timeframe === 'past' ? 'Eventos pasados' : 'Próximos eventos'}
         </h2>
-        <span class="text-sm text-neutral-500">{events.length} eventos</span>
+        <span class="text-sm text-suave">{events.length} eventos</span>
       </div>
       <SecondaryFilters
         cities={cities}

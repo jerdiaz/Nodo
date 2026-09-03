@@ -25,10 +25,34 @@ const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
 <html lang="es">
   <head>
     <meta charset="utf-8" />
+    <!--
+      Va aqui, en linea y antes de cualquier estilo, a proposito: si el tema se
+      aplicara despues de pintar, quien tenga el modo oscuro veria un destello
+      blanco en cada carga. Por eso es un script sincrono y no un modulo.
+    -->
+    <script is:inline>
+      (function () {
+        try {
+          // Sin eleccion guardada el tema es CLARO, no el del sistema: el
+          // fondo blanco es el predeterminado del producto. Seguir al
+          // dispositivo solo ocurre si se elige "sistema" a proposito.
+          var guardado = localStorage.getItem('nodo-tema');
+          var tema = 'claro';
+          if (guardado === 'oscuro') tema = 'oscuro';
+          else if (guardado === 'sistema') {
+            tema = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+          }
+          document.documentElement.dataset.theme = tema;
+        } catch (e) {
+          document.documentElement.dataset.theme = 'claro';
+        }
+      })();
+    </script>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <link rel="canonical" href={canonicalUrl} />
@@ -45,9 +69,9 @@ const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
   </head>
-  <body class="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
+  <body class="flex min-h-screen flex-col bg-fondo text-texto antialiased">
     <Navbar />
-    <main>
+    <main class="flex-1">
       <slot />
     </main>
     <Footer />

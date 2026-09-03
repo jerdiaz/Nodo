@@ -1,1 +1,125 @@
 @import "tailwindcss";
+
+/* =========================================================
+   Nodo — sistema de color
+   Paleta muestreada del isotipo de Red Global (GEN Colombia):
+   el anillo multicolor de @redglobalcol.
+
+   El isotipo tiene 16 colores; eso no es una paleta de interfaz.
+   Se toman cuatro anclas y, para cada una, un hermano oscurecido
+   para texto, porque casi ninguna pasa contraste sobre blanco:
+   el amarillo da 1.21 y el celeste 1.62 sobre fondo claro.
+
+   La relacion se invierte entre temas: el magenta es el unico
+   legible sobre blanco (7.21) y el peor sobre negro (2.62); el
+   amarillo justo al reves. Por eso cada token tiene valor por
+   tema y no uno solo.
+   ========================================================= */
+
+:root {
+  /* --- Marca, valores puros del isotipo --- */
+  --marca-rojo: #ed2727;
+  --marca-amarillo: #f3f029;
+  --marca-azul: #029ec7;
+  --marca-magenta: #a80370;
+  --marca-naranja: #da881d;
+  --marca-celeste: #92d6e7;
+
+  /* --- Hermanos para texto sobre fondo claro (todos >= 4.5:1) --- */
+  --rojo-texto: #c41818;      /* 6.02 */
+  --amarillo-texto: #7a7500;  /* 4.80 */
+  --azul-texto: #0a7fa3;      /* 4.59 */
+
+  /* --- Semanticos: tema claro (por defecto) --- */
+  --c-fondo: #ffffff;
+  --c-fondo-alt: #f7f6f3;      /* hueso, no gris puro */
+  --c-superficie: #ffffff;
+  --c-linea: #e3e3e6;
+  --c-linea-suave: #eeeef0;
+
+  --c-texto: #111113;          /* casi negro, nunca #000 */
+  --c-texto-suave: #58585d;    /* 6.9:1 */
+  --c-texto-tenue: #8e8e96;    /* 3.0:1, solo texto grande o decorativo */
+
+  --c-acento: var(--marca-rojo);
+  --c-acento-texto: var(--rojo-texto);
+  --c-acento-contraste: #ffffff;   /* sobre el acento */
+  --c-acento-suave: #fdeaea;       /* fondo tenue del acento */
+
+  --c-sombra: 0 1px 2px rgb(17 17 19 / 0.06), 0 12px 28px -12px rgb(17 17 19 / 0.14);
+
+  color-scheme: light;
+}
+
+/* --- Tema oscuro --- */
+[data-theme='oscuro'] {
+  --c-fondo: #111113;
+  --c-fondo-alt: #17171a;
+  --c-superficie: #1a1a1e;
+  --c-linea: #2b2b30;
+  --c-linea-suave: #232327;
+
+  --c-texto: #f4f4f5;
+  --c-texto-suave: #a1a1aa;
+  --c-texto-tenue: #71717a;
+
+  /* El rojo de marca da 4.42 sobre este fondo: suficiente para texto
+     grande y botones, no para parrafos. Se aclara para lo demas. */
+  --c-acento: #ff4d4d;
+  --c-acento-texto: #ff7a7a;
+  --c-acento-contraste: #14090a;
+  --c-acento-suave: #2a1416;
+
+  --c-sombra: 0 1px 1px rgb(0 0 0 / 0.3), 0 12px 28px -10px rgb(0 0 0 / 0.55);
+
+  color-scheme: dark;
+}
+
+/* Utilidades Tailwind atadas a las variables. `inline` es lo que hace que
+   emitan var(--c-*) en vez de congelar el valor: sin eso el cambio de tema
+   en caliente no funcionaria. */
+@theme inline {
+  --color-fondo: var(--c-fondo);
+  --color-fondo-alt: var(--c-fondo-alt);
+  --color-superficie: var(--c-superficie);
+  --color-linea: var(--c-linea);
+  --color-linea-suave: var(--c-linea-suave);
+
+  --color-texto: var(--c-texto);
+  --color-suave: var(--c-texto-suave);
+  --color-tenue: var(--c-texto-tenue);
+
+  --color-acento: var(--c-acento);
+  --color-acento-texto: var(--c-acento-texto);
+  --color-acento-contraste: var(--c-acento-contraste);
+  --color-acento-suave: var(--c-acento-suave);
+
+  --color-marca-amarillo: var(--marca-amarillo);
+  --color-marca-azul: var(--marca-azul);
+  --color-marca-magenta: var(--marca-magenta);
+  --color-marca-naranja: var(--marca-naranja);
+  --color-marca-celeste: var(--marca-celeste);
+}
+
+/* Sin esto, cambiar de tema hace parpadear toda la pagina. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  background: var(--c-fondo);
+  color: var(--c-texto);
+}
+
+::selection {
+  background: var(--c-acento);
+  color: var(--c-acento-contraste);
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-acento);
+  outline-offset: 2px;
+}

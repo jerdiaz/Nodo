@@ -12,17 +12,17 @@ const {
 } = Astro.props;
 ---
 
-<div class="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-white/[0.12] px-6 py-24 text-center">
-  <div class="flex size-12 items-center justify-center rounded-full bg-neutral-900/80 text-neutral-500">
+<div class="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-linea px-6 py-24 text-center">
+  <div class="flex size-12 items-center justify-center rounded-full bg-superficie text-suave">
     <CalendarSearch class="size-6" stroke-width={1.75} />
   </div>
   <div class="space-y-1">
-    <p class="text-base font-medium text-neutral-200">{title}</p>
-    <p class="text-sm text-neutral-500">{description}</p>
+    <p class="text-base font-medium text-texto">{title}</p>
+    <p class="text-sm text-suave">{description}</p>
   </div>
   <a
     href="/eventos/nuevo"
-    class="mt-2 inline-flex items-center rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950 transition active:scale-[0.97] hover:bg-emerald-400"
+    class="mt-2 inline-flex items-center rounded-full bg-acento px-4 py-2 text-sm font-medium text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
   >
     Publicar el primer evento
   </a>

@@ -36,7 +36,7 @@ const submitLabel = isEdit ? 'Guardar cambios' : 'Publicar evento';
 const cancelHref = isEdit ? `/eventos/${event!.slug}` : '/';
 
 const inputClass =
-  'mt-1.5 w-full rounded-xl bg-neutral-900/70 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 ring-1 ring-inset ring-white/[0.08] focus:outline-none focus:ring-2 focus:ring-emerald-500/60';
+  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus:outline-none focus:ring-2 focus:ring-acento';
 ---
 
 <Card class="mt-8 p-8">
@@ -51,17 +51,17 @@ const inputClass =
     <input type="hidden" id="timezone" name="timezone" />
 
     <div>
-      <label for="bannerFile" class="block text-sm font-medium text-neutral-300">
-        Banner <span class="text-neutral-600">(opcional)</span>
+      <label for="bannerFile" class="block text-sm font-medium text-texto">
+        Banner <span class="text-tenue">(opcional)</span>
       </label>
       <label
         for="bannerFile"
         id="banner-dropzone"
-        class="mt-1.5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 bg-neutral-950/40 px-6 py-10 text-center transition hover:border-emerald-500/50"
+        class="mt-1.5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-acento bg-fondo-alt px-6 py-10 text-center transition hover:border-acento"
       >
-        <Upload class="size-5 text-neutral-500" stroke-width={1.75} />
-        <span class="text-sm text-neutral-300">Sube la imagen de portada (16:9 recomendado)</span>
-        <span class="text-xs text-neutral-600">Arrastra y suelta, o haz clic para elegir. JPG, PNG o WEBP, máx. 5 MB.</span>
+        <Upload class="size-5 text-suave" stroke-width={1.75} />
+        <span class="text-sm text-texto">Sube la imagen de portada (16:9 recomendado)</span>
+        <span class="text-xs text-tenue">Arrastra y suelta, o haz clic para elegir. JPG, PNG o WEBP, máx. 5 MB.</span>
         <input id="bannerFile" name="bannerFile" type="file" accept="image/*" class="sr-only" />
       </label>
       <img
@@ -73,7 +73,7 @@ const inputClass =
     </div>
 
     <div>
-      <label for="title" class="block text-sm font-medium text-neutral-300">Título</label>
+      <label for="title" class="block text-sm font-medium text-texto">Título</label>
       <input
         id="title"
         name="title"
@@ -87,8 +87,8 @@ const inputClass =
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-neutral-300">Modalidad</label>
-      <div class="mt-1.5 grid grid-cols-3 gap-1 rounded-2xl border border-white/[0.08] bg-neutral-950/40 p-1">
+      <label class="block text-sm font-medium text-texto">Modalidad</label>
+      <div class="mt-1.5 grid grid-cols-3 gap-1 rounded-2xl border border-linea bg-fondo-alt p-1">
         <button type="button" data-modality-option="presencial" class="modality-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
           Presencial
         </button>
@@ -104,11 +104,11 @@ const inputClass =
 
     <div data-field-group="location" class="space-y-4">
       <div>
-        <label for="city" class="block text-sm font-medium text-neutral-300">Ciudad</label>
+        <label for="city" class="block text-sm font-medium text-texto">Ciudad</label>
         <input id="city" name="city" type="text" class={inputClass} placeholder="Bogotá" value={event?.city ?? ''} />
       </div>
       <div>
-        <label for="venue" class="block text-sm font-medium text-neutral-300">Lugar</label>
+        <label for="venue" class="block text-sm font-medium text-texto">Lugar</label>
         <input
           id="venue"
           name="venue"
@@ -119,7 +119,7 @@ const inputClass =
         />
       </div>
       <div>
-        <label for="address" class="block text-sm font-medium text-neutral-300">Dirección</label>
+        <label for="address" class="block text-sm font-medium text-texto">Dirección</label>
         <input
           id="address"
           name="address"
@@ -132,7 +132,7 @@ const inputClass =
     </div>
 
     <div data-field-group="online" class="hidden">
-      <label for="meetingUrl" class="block text-sm font-medium text-neutral-300">Enlace de reunión</label>
+      <label for="meetingUrl" class="block text-sm font-medium text-texto">Enlace de reunión</label>
       <input
         id="meetingUrl"
         name="meetingUrl"
@@ -145,7 +145,7 @@ const inputClass =
 
     <div class="grid gap-4 sm:grid-cols-2">
       <div>
-        <label for="startDate" class="block text-sm font-medium text-neutral-300">Inicio</label>
+        <label for="startDate" class="block text-sm font-medium text-texto">Inicio</label>
         <input
           id="startDate"
           name="startDate"
@@ -156,13 +156,13 @@ const inputClass =
         />
       </div>
       <div>
-        <label for="endDate" class="block text-sm font-medium text-neutral-300">Fin</label>
+        <label for="endDate" class="block text-sm font-medium text-texto">Fin</label>
         <input id="endDate" name="endDate" type="datetime-local" required class={inputClass} value={endValue} />
       </div>
     </div>
 
     <div>
-      <label for="description" class="block text-sm font-medium text-neutral-300">Descripción</label>
+      <label for="description" class="block text-sm font-medium text-texto">Descripción</label>
       <textarea
         id="description"
         name="description"
@@ -174,25 +174,25 @@ const inputClass =
     </div>
 
     <div>
-      <label for="tag-input-field" class="block text-sm font-medium text-neutral-300">
+      <label for="tag-input-field" class="block text-sm font-medium text-texto">
         Categoría / Etiquetas
       </label>
       <div
         id="tags-editor"
-        class="mt-1.5 flex flex-wrap items-center gap-2 rounded-xl bg-neutral-900/70 px-3 py-2 ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60"
+        class="mt-1.5 flex flex-wrap items-center gap-2 rounded-xl bg-superficie px-3 py-2 ring-1 ring-inset ring-linea focus-within:ring-2 focus-within:ring-acento"
       >
         <div id="tag-chips" class="flex flex-wrap gap-2"></div>
         <input
           id="tag-input-field"
           type="text"
           placeholder="Agregar etiqueta y presiona Enter..."
-          class="min-w-32 flex-1 bg-transparent py-1 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+          class="min-w-32 flex-1 bg-transparent py-1 text-sm text-texto placeholder:text-tenue focus:outline-none"
         />
       </div>
       <input type="hidden" id="tags" name="tags" value={tagsValue} />
     </div>
 
-    <p id="form-error" class="hidden text-sm text-red-400"></p>
+    <p id="form-error" class="hidden text-sm text-acento-texto"></p>
 
     <div class="flex items-center justify-end gap-3 pt-2">
       <Button variant="secondary" href={cancelHref}>Cancelar</Button>
@@ -248,11 +248,11 @@ const inputClass =
   function setActiveModalityTab(value: string): void {
     modalityTabs.forEach((tab) => {
       const isActive = tab.dataset.modalityOption === value;
-      tab.classList.toggle('bg-neutral-100', isActive);
-      tab.classList.toggle('text-neutral-950', isActive);
+      tab.classList.toggle('bg-acento', isActive);
+      tab.classList.toggle('text-acento-contraste', isActive);
       tab.classList.toggle('shadow-sm', isActive);
-      tab.classList.toggle('text-neutral-400', !isActive);
-      tab.classList.toggle('hover:text-neutral-200', !isActive);
+      tab.classList.toggle('text-suave', !isActive);
+      tab.classList.toggle('hover:text-texto', !isActive);
     });
   }
 
@@ -305,16 +305,16 @@ const inputClass =
 
   bannerDropzone.addEventListener('dragover', (event) => {
     event.preventDefault();
-    bannerDropzone.classList.add('border-emerald-500/50');
+    bannerDropzone.classList.add('border-acento');
   });
 
   bannerDropzone.addEventListener('dragleave', () => {
-    bannerDropzone.classList.remove('border-emerald-500/50');
+    bannerDropzone.classList.remove('border-acento');
   });
 
   bannerDropzone.addEventListener('drop', (event) => {
     event.preventDefault();
-    bannerDropzone.classList.remove('border-emerald-500/50');
+    bannerDropzone.classList.remove('border-acento');
 
     const file = event.dataTransfer?.files?.[0];
     if (file) {
@@ -337,7 +337,7 @@ const inputClass =
     tags.forEach((tag, index) => {
       const chip = document.createElement('span');
       chip.className =
-        'inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400';
+        'inline-flex items-center gap-1.5 rounded-full border border-acento bg-acento-suave px-2.5 py-1 text-xs font-medium text-acento-texto';
 
       const label = document.createElement('span');
       label.textContent = tag;
@@ -346,7 +346,7 @@ const inputClass =
       removeButton.type = 'button';
       removeButton.textContent = '×';
       removeButton.setAttribute('aria-label', `Quitar etiqueta ${tag}`);
-      removeButton.className = 'leading-none text-emerald-400/70 hover:text-emerald-200';
+      removeButton.className = 'leading-none text-acento-texto hover:text-acento-texto';
       removeButton.addEventListener('click', () => {
         tags.splice(index, 1);
         renderTags();

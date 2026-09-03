@@ -49,27 +49,71 @@ const calendarUrl = profile?.calendarToken
   : '';
 
 const inputClass =
-  'mt-1.5 w-full rounded-xl bg-neutral-900/70 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 ring-1 ring-inset ring-white/[0.08] focus:outline-none focus:ring-2 focus:ring-emerald-500/60';
+  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus:outline-none focus:ring-2 focus:ring-acento';
 ---
 
 <BaseLayout title="Configuración — Nodo" description="Ajusta tu perfil en Nodo.">
   <div class="mx-auto max-w-3xl px-6 pb-24 pt-16">
-    <h1 class="text-3xl font-bold tracking-tight text-neutral-100">Configuración</h1>
+    <h1 class="text-3xl font-bold tracking-tight text-texto">Configuración</h1>
 
-    <div class="mt-6 border-b border-white/[0.08]">
-      <span class="inline-block border-b-2 border-neutral-100 pb-3 text-sm font-medium text-neutral-100">
-        Cuenta
-      </span>
+    <div class="mt-6 border-b border-linea">
+      <div class="flex gap-6" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          data-tab="cuenta"
+          aria-selected="true"
+          class="tab border-b-2 pb-3 text-sm font-medium transition"
+        >
+          Cuenta
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-tab="preferencias"
+          aria-selected="false"
+          class="tab border-b-2 pb-3 text-sm font-medium transition"
+        >
+          Preferencias
+        </button>
+      </div>
     </div>
 
+    <section id="panel-preferencias" class="mt-10 hidden">
+      <h2 class="text-lg font-semibold text-texto">Apariencia</h2>
+      <p class="mt-2 text-sm text-suave">Cómo se ve Nodo en este dispositivo.</p>
+
+      <fieldset class="mt-5 space-y-2">
+        <legend class="sr-only">Tema</legend>
+        {[
+          { valor: 'claro', titulo: 'Claro', detalle: 'Fondo blanco. Es lo predeterminado.' },
+          { valor: 'oscuro', titulo: 'Oscuro', detalle: 'Fondo oscuro, para leer de noche.' },
+          { valor: 'sistema', titulo: 'Según el sistema', detalle: 'Sigue la preferencia de tu dispositivo.' },
+        ].map((opcion) => (
+          <label class="flex cursor-pointer gap-3 rounded-2xl border border-linea p-4 transition hover:border-acento">
+            <input type="radio" name="tema" value={opcion.valor} class="mt-1 accent-acento" />
+            <span>
+              <span class="block text-sm font-medium text-texto">{opcion.titulo}</span>
+              <span class="mt-0.5 block text-sm text-suave">{opcion.detalle}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+
+      <p class="mt-4 text-xs text-tenue">
+        La preferencia se guarda en este navegador. Todavía no viaja contigo a otros dispositivos.
+      </p>
+    </section>
+
+    <div id="panel-cuenta">
     <form id="profile-form" novalidate class="mt-10">
-      <h2 class="text-lg font-semibold text-neutral-100">Tu perfil</h2>
+      <h2 class="text-lg font-semibold text-texto">Tu perfil</h2>
 
       <div class="mt-6 grid gap-8 sm:grid-cols-[1fr_auto]">
         <div class="space-y-5">
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
-              <label for="firstName" class="block text-sm font-medium text-neutral-300">Nombre</label>
+              <label for="firstName" class="block text-sm font-medium text-texto">Nombre</label>
               <input
                 id="firstName"
                 name="firstName"
@@ -81,7 +125,7 @@ const inputClass =
               />
             </div>
             <div>
-              <label for="lastName" class="block text-sm font-medium text-neutral-300">Apellido</label>
+              <label for="lastName" class="block text-sm font-medium text-texto">Apellido</label>
               <input
                 id="lastName"
                 name="lastName"
@@ -94,9 +138,9 @@ const inputClass =
           </div>
 
           <div>
-            <label for="username" class="block text-sm font-medium text-neutral-300">Nombre de usuario</label>
-            <div class="mt-1.5 flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
-              <span class="flex items-center bg-neutral-800/80 px-3.5 text-sm text-neutral-400">@</span>
+            <label for="username" class="block text-sm font-medium text-texto">Nombre de usuario</label>
+            <div class="mt-1.5 flex overflow-hidden rounded-xl ring-1 ring-inset ring-linea focus-within:ring-2 focus-within:ring-acento">
+              <span class="flex items-center bg-fondo-alt px-3.5 text-sm text-suave">@</span>
               <input
                 id="username"
                 name="username"
@@ -104,14 +148,14 @@ const inputClass =
                 maxlength="30"
                 autocomplete="off"
                 placeholder="tunombre"
-                class="w-full bg-neutral-900/70 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+                class="w-full bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue focus:outline-none"
                 value={profile?.username ?? ''}
               />
             </div>
           </div>
 
           <div>
-            <label for="bio" class="block text-sm font-medium text-neutral-300">Biografía</label>
+            <label for="bio" class="block text-sm font-medium text-texto">Biografía</label>
             <textarea
               id="bio"
               name="bio"
@@ -120,23 +164,23 @@ const inputClass =
               class={inputClass}
               placeholder="Comparte un poco sobre tu experiencia e intereses."
             >{profile?.bio ?? ''}</textarea>
-            <p class="mt-1 text-xs text-neutral-600"><span id="bio-count">0</span>/280</p>
+            <p class="mt-1 text-xs text-tenue"><span id="bio-count">0</span>/280</p>
           </div>
         </div>
 
         <div class="sm:w-40">
-          <span class="block text-sm font-medium text-neutral-300">Foto de perfil</span>
+          <span class="block text-sm font-medium text-texto">Foto de perfil</span>
           <div class="relative mt-1.5 w-fit">
             <img
               id="avatar-preview"
               src={avatarUrl || undefined}
               alt=""
-              class:list={['size-28 rounded-full bg-neutral-800 object-cover', !avatarUrl && 'hidden']}
+              class:list={['size-28 rounded-full bg-fondo-alt object-cover', !avatarUrl && 'hidden']}
             />
             <div
               id="avatar-fallback"
               class:list={[
-                'flex size-28 items-center justify-center rounded-full bg-neutral-800 text-3xl font-semibold text-neutral-300',
+                'flex size-28 items-center justify-center rounded-full bg-fondo-alt text-3xl font-semibold text-texto',
                 avatarUrl && 'hidden',
               ]}
             >
@@ -144,7 +188,7 @@ const inputClass =
             </div>
             <label
               for="avatarFile"
-              class="absolute bottom-0 right-0 flex size-9 cursor-pointer items-center justify-center rounded-full bg-neutral-100 text-neutral-950 shadow-lg transition hover:bg-emerald-400"
+              class="absolute bottom-0 right-0 flex size-9 cursor-pointer items-center justify-center rounded-full bg-acento text-acento-contraste shadow-lg transition hover:opacity-90"
               title="Cambiar foto de perfil"
             >
               <Upload class="size-4" stroke-width={2.5} />
@@ -152,17 +196,17 @@ const inputClass =
               <input id="avatarFile" name="avatarFile" type="file" accept="image/*" class="sr-only" />
             </label>
           </div>
-          <p class="mt-2 text-xs text-neutral-600">JPG, PNG o WEBP, máx. 2 MB.</p>
+          <p class="mt-2 text-xs text-tenue">JPG, PNG o WEBP, máx. 2 MB.</p>
           <input type="hidden" id="avatarUrl" name="avatarUrl" value={avatarUrl} />
         </div>
       </div>
 
       <div class="mt-8">
-        <span class="block text-sm font-medium text-neutral-300">Enlaces sociales</span>
+        <span class="block text-sm font-medium text-texto">Enlaces sociales</span>
         <div class="mt-2 grid gap-3 sm:grid-cols-2">
           {SOCIAL_FIELDS.map((field) => (
-            <div class="flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
-              <span class="flex shrink-0 items-center bg-neutral-800/80 px-3 text-xs text-neutral-400">
+            <div class="flex overflow-hidden rounded-xl ring-1 ring-inset ring-linea focus-within:ring-2 focus-within:ring-acento">
+              <span class="flex shrink-0 items-center bg-fondo-alt px-3 text-xs text-suave">
                 {field.prefix}
               </span>
               <input
@@ -172,14 +216,14 @@ const inputClass =
                 autocomplete="off"
                 aria-label={field.label}
                 placeholder="nombre de usuario"
-                class="w-full min-w-0 bg-neutral-900/70 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+                class="w-full min-w-0 bg-superficie px-3 py-2.5 text-sm text-texto placeholder:text-tenue focus:outline-none"
                 value={profile?.socials?.[field.key] ?? ''}
               />
             </div>
           ))}
 
-          <div class="flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
-            <span class="flex shrink-0 items-center bg-neutral-800/80 px-3 text-xs text-neutral-400">Web</span>
+          <div class="flex overflow-hidden rounded-xl ring-1 ring-inset ring-linea focus-within:ring-2 focus-within:ring-acento">
+            <span class="flex shrink-0 items-center bg-fondo-alt px-3 text-xs text-suave">Web</span>
             <input
               type="text"
               name="social-website"
@@ -187,31 +231,31 @@ const inputClass =
               autocomplete="off"
               aria-label="Sitio web"
               placeholder="tu sitio web"
-              class="w-full min-w-0 bg-neutral-900/70 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+              class="w-full min-w-0 bg-superficie px-3 py-2.5 text-sm text-texto placeholder:text-tenue focus:outline-none"
               value={profile?.socials?.website ?? ''}
             />
           </div>
         </div>
       </div>
 
-      <p id="form-error" class="mt-6 hidden text-sm text-red-400"></p>
-      <p id="form-success" class="mt-6 hidden text-sm text-emerald-400"></p>
+      <p id="form-error" class="mt-6 hidden text-sm text-acento-texto"></p>
+      <p id="form-success" class="mt-6 hidden text-sm text-acento-texto"></p>
 
-      <div class="mt-8 border-t border-white/[0.08] pt-6">
+      <div class="mt-8 border-t border-linea pt-6">
         <Button variant="primary" type="submit" id="submit-button">Guardar cambios</Button>
       </div>
     </form>
 
-    <section class="mt-14 border-t border-white/[0.08] pt-10">
-      <h2 class="text-lg font-semibold text-neutral-100">Sincronización de cuenta</h2>
+    <section class="mt-14 border-t border-linea pt-10">
+      <h2 class="text-lg font-semibold text-texto">Sincronización de cuenta</h2>
 
-      <div class="mt-4 rounded-2xl border border-white/[0.08] bg-neutral-900/40 p-5">
+      <div class="mt-4 rounded-2xl border border-linea bg-superficie p-5">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div class="flex min-w-0 gap-3">
-            <Rss class="mt-0.5 size-4 shrink-0 text-neutral-500" stroke-width={1.75} />
+            <Rss class="mt-0.5 size-4 shrink-0 text-suave" stroke-width={1.75} />
             <div class="min-w-0">
-              <p class="font-medium text-neutral-100">Sincronización de calendario</p>
-              <p class="mt-1 text-sm text-neutral-400">
+              <p class="font-medium text-texto">Sincronización de calendario</p>
+              <p class="mt-1 text-sm text-suave">
                 Suscribe tus eventos de Nodo a Google Calendar, Outlook o Apple. Se actualiza solo.
               </p>
             </div>
@@ -220,14 +264,14 @@ const inputClass =
           <button
             id="ical-button"
             type="button"
-            class="shrink-0 rounded-full border border-white/[0.08] bg-neutral-900/60 px-4 py-2 text-sm font-medium text-neutral-200 transition active:scale-[0.97] hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+            class="shrink-0 rounded-full border border-linea bg-superficie px-4 py-2 text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
           >
             {calendarUrl ? 'Regenerar enlace' : 'Agregar suscripción a iCal'}
           </button>
         </div>
 
         <div id="ical-result" class:list={['mt-4', !calendarUrl && 'hidden']}>
-          <label for="ical-url" class="text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <label for="ical-url" class="text-xs font-medium uppercase tracking-wide text-suave">
             Tu enlace de suscripción
           </label>
           <div class="mt-1.5 flex gap-2">
@@ -236,36 +280,36 @@ const inputClass =
               type="text"
               readonly
               value={calendarUrl}
-              class="w-full min-w-0 rounded-xl bg-neutral-950/60 px-3 py-2 font-mono text-xs text-neutral-300 ring-1 ring-inset ring-white/[0.08] focus:outline-none"
+              class="w-full min-w-0 rounded-xl bg-fondo-alt px-3 py-2 font-mono text-xs text-texto ring-1 ring-inset ring-linea focus:outline-none"
             />
             <button
               id="ical-copy"
               type="button"
-              class="shrink-0 rounded-xl border border-white/[0.08] bg-neutral-900/60 px-3 py-2 text-xs font-medium text-neutral-200 transition active:scale-[0.97] hover:border-white/20"
+              class="shrink-0 rounded-xl border border-linea bg-superficie px-3 py-2 text-xs font-medium text-texto transition active:scale-[0.97] hover:border-acento"
             >
               Copiar
             </button>
           </div>
-          <p class="mt-2 text-xs text-neutral-600">
+          <p class="mt-2 text-xs text-tenue">
             Quien tenga este enlace puede ver tu agenda. Si se te escapa, regenéralo: el anterior deja de
             funcionar.
           </p>
         </div>
 
-        <p id="ical-error" class="mt-3 hidden text-sm text-red-400"></p>
+        <p id="ical-error" class="mt-3 hidden text-sm text-acento-texto"></p>
       </div>
     </section>
 
-    <section class="mt-14 border-t border-white/[0.08] pt-10">
-      <h2 class="text-lg font-semibold text-neutral-100">Eliminar cuenta</h2>
-      <p class="mt-2 text-sm text-neutral-400">
+    <section class="mt-14 border-t border-linea pt-10">
+      <h2 class="text-lg font-semibold text-texto">Eliminar cuenta</h2>
+      <p class="mt-2 text-sm text-suave">
         Si ya no quieres usar Nodo, puedes eliminar tu cuenta de forma permanente. No se puede deshacer.
       </p>
 
       <button
         id="delete-open"
         type="button"
-        class="mt-4 inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white transition active:scale-[0.97] hover:bg-red-500"
+        class="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-acento px-4 py-2 text-sm font-medium text-acento-texto transition active:scale-[0.97] hover:bg-acento-suave"
       >
         <TriangleAlert class="size-4" stroke-width={2} />
         Eliminar mi cuenta
@@ -273,10 +317,10 @@ const inputClass =
 
       <div
         id="delete-panel"
-        class="mt-4 hidden rounded-2xl border border-red-500/20 bg-red-950/20 p-5"
+        class="mt-4 hidden rounded-2xl border border-acento/30 bg-acento-suave p-5"
         data-upcoming={upcomingOwn.length}
       >
-        <p class="text-sm text-neutral-300">
+        <p class="text-sm text-texto">
           {upcomingOwn.length === 0
             ? 'No tienes eventos próximos publicados.'
             : `Organizas ${upcomingOwn.length} ${upcomingOwn.length === 1 ? 'evento próximo' : 'eventos próximos'}. Decide qué hacer con ${upcomingOwn.length === 1 ? 'él' : 'ellos'}.`}
@@ -285,31 +329,31 @@ const inputClass =
         <fieldset class="mt-4 space-y-3">
           <legend class="sr-only">Qué hacer con tus eventos</legend>
 
-          <label class="flex cursor-pointer gap-3 text-sm text-neutral-300">
-            <input type="radio" name="delete-mode" value="transfer" class="mt-1 accent-emerald-500" checked />
+          <label class="flex cursor-pointer gap-3 text-sm text-texto">
+            <input type="radio" name="delete-mode" value="transfer" class="mt-1 accent-acento" checked />
             <span>
-              <span class="font-medium text-neutral-100">Transferir mis eventos próximos</span>
-              <span class="mt-1 block text-neutral-500">
+              <span class="font-medium text-texto">Transferir mis eventos próximos</span>
+              <span class="mt-1 block text-suave">
                 Pasan a la cuenta que indiques. Los pasados conservan tu nombre como organizador.
               </span>
-              <span class="mt-2 flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
-                <span class="flex items-center bg-neutral-800/80 px-3 text-sm text-neutral-400">@</span>
+              <span class="mt-2 flex overflow-hidden rounded-xl ring-1 ring-inset ring-linea focus-within:ring-2 focus-within:ring-acento">
+                <span class="flex items-center bg-fondo-alt px-3 text-sm text-suave">@</span>
                 <input
                   id="transfer-to"
                   type="text"
                   autocomplete="off"
                   placeholder="usuario que los recibe"
-                  class="w-full bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+                  class="w-full bg-superficie px-3 py-2 text-sm text-texto placeholder:text-tenue focus:outline-none"
                 />
               </span>
             </span>
           </label>
 
-          <label class="flex cursor-pointer gap-3 text-sm text-neutral-300">
-            <input type="radio" name="delete-mode" value="cascade" class="mt-1 accent-red-500" />
+          <label class="flex cursor-pointer gap-3 text-sm text-texto">
+            <input type="radio" name="delete-mode" value="cascade" class="mt-1 accent-acento" />
             <span>
-              <span class="font-medium text-neutral-100">Borrar todos mis eventos</span>
-              <span class="mt-1 block text-neutral-500">
+              <span class="font-medium text-texto">Borrar todos mis eventos</span>
+              <span class="mt-1 block text-suave">
                 Se eliminan todos, pasados y futuros, junto con sus asistencias. Quienes dijeron que asistían
                 los perderán.
               </span>
@@ -317,21 +361,21 @@ const inputClass =
           </label>
         </fieldset>
 
-        <div class="mt-5 border-t border-red-500/20 pt-5">
+        <div class="mt-5 border-t border-acento/30 pt-5">
           <button
             id="delete-code-button"
             type="button"
-            class="rounded-full border border-white/[0.08] bg-neutral-900/60 px-4 py-2 text-sm font-medium text-neutral-200 transition active:scale-[0.97] hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+            class="rounded-full border border-linea bg-superficie px-4 py-2 text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
           >
             Generar código de confirmación
           </button>
 
           <div id="delete-code-box" class="mt-4 hidden">
-            <p class="text-sm text-neutral-400">
+            <p class="text-sm text-suave">
               Escribe este código para confirmar:
-              <strong id="delete-code-value" class="ml-1 font-mono text-base tracking-[0.3em] text-neutral-100"></strong>
+              <strong id="delete-code-value" class="ml-1 font-mono text-base tracking-[0.3em] text-texto"></strong>
             </p>
-            <p class="mt-1 text-xs text-neutral-600">
+            <p class="mt-1 text-xs text-tenue">
               Caduca en 10 minutos. Más adelante se enviará a tu correo en vez de mostrarse aquí.
             </p>
             <div class="mt-3 flex flex-wrap gap-2">
@@ -341,22 +385,24 @@ const inputClass =
                 maxlength="6"
                 autocomplete="off"
                 placeholder="Código"
-                class="w-32 rounded-xl bg-neutral-950/60 px-3 py-2 font-mono text-sm uppercase tracking-widest text-neutral-100 placeholder:tracking-normal placeholder:text-neutral-600 ring-1 ring-inset ring-white/[0.08] focus:outline-none focus:ring-2 focus:ring-red-500/60"
+                class="w-32 rounded-xl bg-fondo-alt px-3 py-2 font-mono text-sm uppercase tracking-widest text-texto placeholder:tracking-normal placeholder:text-tenue ring-1 ring-inset ring-linea focus:outline-none focus:ring-2 focus:ring-acento"
               />
               <button
                 id="delete-confirm"
                 type="button"
-                class="rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white transition active:scale-[0.97] hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                class="inline-flex items-center gap-2 rounded-full border-2 border-acento px-4 py-2 text-sm font-medium text-acento-texto transition active:scale-[0.97] hover:bg-acento-suave disabled:cursor-not-allowed disabled:opacity-60"
               >
+                <TriangleAlert class="size-4" stroke-width={2} />
                 Eliminar definitivamente
               </button>
             </div>
           </div>
 
-          <p id="delete-error" class="mt-3 hidden text-sm text-red-400"></p>
+          <p id="delete-error" class="mt-3 hidden text-sm text-acento-texto"></p>
         </div>
       </div>
     </section>
+    </div>
   </div>
 </BaseLayout>
 
@@ -375,6 +421,76 @@ const inputClass =
   const submitButton = document.getElementById('submit-button') as HTMLButtonElement;
 
   const originalButtonText = submitButton.textContent ?? 'Guardar cambios';
+
+  // --- Pestanas ---
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('.tab')];
+  const paneles: Record<string, HTMLElement | null> = {
+    cuenta: document.getElementById('panel-cuenta'),
+    preferencias: document.getElementById('panel-preferencias'),
+  };
+
+  function abrirPestana(nombre: string): void {
+    tabs.forEach((t) => {
+      const activa = t.dataset.tab === nombre;
+      t.setAttribute('aria-selected', String(activa));
+      t.classList.toggle('border-acento', activa);
+      t.classList.toggle('text-texto', activa);
+      t.classList.toggle('border-transparent', !activa);
+      t.classList.toggle('text-suave', !activa);
+    });
+    Object.entries(paneles).forEach(([clave, el]) => el?.classList.toggle('hidden', clave !== nombre));
+  }
+
+  tabs.forEach((t) => t.addEventListener('click', () => abrirPestana(t.dataset.tab ?? 'cuenta')));
+  abrirPestana('cuenta');
+
+  // --- Tema ---
+  // "sistema" no se guarda como tema resuelto sino como ausencia de eleccion:
+  // asi sigue a la preferencia del dispositivo si esta cambia mas adelante.
+  const radiosTema = [...document.querySelectorAll<HTMLInputElement>('input[name="tema"]')];
+
+  function temaDelSistema(): 'claro' | 'oscuro' {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+  }
+
+  function aplicarTema(valor: string): void {
+    const resuelto = valor === 'sistema' ? temaDelSistema() : valor;
+    document.documentElement.dataset.theme = resuelto;
+  }
+
+  let guardado: string | null = null;
+  try {
+    guardado = localStorage.getItem('nodo-tema');
+  } catch {
+    guardado = null;
+  }
+
+  // Ausencia de valor significa "claro", que es el predeterminado del producto.
+  const elegido = guardado === 'oscuro' || guardado === 'sistema' ? guardado : 'claro';
+  radiosTema.forEach((r) => {
+    r.checked = r.value === elegido;
+    r.addEventListener('change', () => {
+      if (!r.checked) return;
+      try {
+        if (r.value === 'claro') localStorage.removeItem('nodo-tema');
+        else localStorage.setItem('nodo-tema', r.value);
+      } catch {
+        // Almacenamiento bloqueado: el cambio vale para esta pagina y ya.
+      }
+      aplicarTema(r.value);
+    });
+  });
+
+  // Si esta en "sistema", seguir al dispositivo cuando cambie en caliente.
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    let actual: string | null = null;
+    try {
+      actual = localStorage.getItem('nodo-tema');
+    } catch {
+      actual = null;
+    }
+    if (actual === 'sistema') aplicarTema('sistema');
+  });
 
   // La imagen va al servidor, que la modera y la recorta antes de guardarla.
   async function subirImagen(file: File, kind: 'avatar' | 'banner'): Promise<string> {

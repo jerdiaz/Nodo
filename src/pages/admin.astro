@@ -21,46 +21,46 @@ if (!(await isAdmin(user.uid))) {
 
 <BaseLayout title="Administración — Nodo" description="Panel de administración de Nodo.">
   <div class="mx-auto max-w-2xl px-6 pb-24 pt-16">
-    <h1 class="text-3xl font-bold tracking-tight text-neutral-100">Administración</h1>
-    <p class="mt-2 text-sm text-neutral-400">Concede o retira la verificación de una cuenta.</p>
+    <h1 class="text-3xl font-bold tracking-tight text-texto">Administración</h1>
+    <p class="mt-2 text-sm text-suave">Concede o retira la verificación de una cuenta.</p>
 
-    <div class="mt-8 rounded-3xl border border-white/[0.08] bg-neutral-900/40 p-6">
-      <label for="username" class="block text-sm font-medium text-neutral-300">Nombre de usuario</label>
-      <div class="mt-1.5 flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
-        <span class="flex items-center bg-neutral-800/80 px-3.5 text-sm text-neutral-400">@</span>
+    <div class="mt-8 rounded-3xl border border-linea bg-superficie p-6">
+      <label for="username" class="block text-sm font-medium text-texto">Nombre de usuario</label>
+      <div class="mt-1.5 flex overflow-hidden rounded-xl ring-1 ring-inset ring-linea focus-within:ring-2 focus-within:ring-acento">
+        <span class="flex items-center bg-fondo-alt px-3.5 text-sm text-suave">@</span>
         <input
           id="username"
           type="text"
           autocomplete="off"
           placeholder="usuario"
-          class="w-full bg-neutral-900/70 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+          class="w-full bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue focus:outline-none"
         />
       </div>
 
       <fieldset class="mt-5 space-y-2">
-        <legend class="text-sm font-medium text-neutral-300">Verificación</legend>
+        <legend class="text-sm font-medium text-texto">Verificación</legend>
 
-        <label class="flex cursor-pointer items-center gap-3 text-sm text-neutral-300">
-          <input type="radio" name="verification" value="persona" class="accent-sky-500" checked />
+        <label class="flex cursor-pointer items-center gap-3 text-sm text-texto">
+          <input type="radio" name="verification" value="persona" class="accent-marca-azul" checked />
           <VerifiedBadge type="persona" class="size-4" />
           {VERIFICATION_LABEL.persona}
         </label>
 
-        <label class="flex cursor-pointer items-center gap-3 text-sm text-neutral-300">
-          <input type="radio" name="verification" value="comunidad" class="accent-sky-500" />
+        <label class="flex cursor-pointer items-center gap-3 text-sm text-texto">
+          <input type="radio" name="verification" value="comunidad" class="accent-marca-azul" />
           <VerifiedBadge type="comunidad" class="size-4" />
           {VERIFICATION_LABEL.comunidad}
         </label>
 
-        <label class="flex cursor-pointer items-center gap-3 text-sm text-neutral-300">
-          <input type="radio" name="verification" value="" class="accent-neutral-500" />
+        <label class="flex cursor-pointer items-center gap-3 text-sm text-texto">
+          <input type="radio" name="verification" value="" class="accent-suave" />
           <span class="size-4" aria-hidden="true"></span>
           Retirar la verificación
         </label>
       </fieldset>
 
-      <p id="admin-error" class="mt-4 hidden text-sm text-red-400"></p>
-      <p id="admin-success" class="mt-4 hidden text-sm text-emerald-400"></p>
+      <p id="admin-error" class="mt-4 hidden text-sm text-acento-texto"></p>
+      <p id="admin-success" class="mt-4 hidden text-sm text-acento-texto"></p>
 
       <div class="mt-6">
         <Button variant="primary" type="button" id="admin-submit">Aplicar</Button>
