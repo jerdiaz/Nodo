@@ -94,7 +94,7 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
 
           {event.tags.length > 0 && (
             <div class="flex flex-wrap gap-2">
-              {event.tags.map((tag) => <Badge variant="emerald">{tag}</Badge>)}
+              {event.tags.map((tag) => <Badge variant="auto" seed={tag}>{tag}</Badge>)}
             </div>
           )}
         </div>

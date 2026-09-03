@@ -123,3 +123,61 @@ body {
   outline: 2px solid var(--c-acento);
   outline-offset: 2px;
 }
+
+/* =========================================================
+   Escala categorica: el anillo de GEN, usable
+   ---------------------------------------------------------
+   La identidad de GEN no es "rojo": son muchos colores a la vez.
+   Pero pintar seis colores dentro del mismo bloque no da identidad,
+   da ruido. La salida es asignar UN color por elemento y que el
+   conjunto de la pagina recorra el anillo: cada etiqueta y cada
+   evento reciben el suyo de forma estable, derivado de su texto.
+
+   Cada color trae tres valores porque uno solo no alcanza:
+     --gen-X          relleno y filos (sin requisito de contraste)
+     --gen-X-texto    tipografia (AA sobre blanco y sobre su propio suave)
+     --gen-X-suave    fondo tenue del chip
+   ========================================================= */
+
+:root {
+  --gen-rojo: #ed2727;      --gen-rojo-texto: #b81616;      --gen-rojo-suave: #fdecec;
+  --gen-naranja: #da881d;   --gen-naranja-texto: #8a5200;   --gen-naranja-suave: #fdf1e0;
+  --gen-amarillo: #f3f029;  --gen-amarillo-texto: #6e6a00;  --gen-amarillo-suave: #fbfad9;
+  --gen-azul: #029ec7;      --gen-azul-texto: #0a6e8c;      --gen-azul-suave: #e4f5fa;
+  --gen-celeste: #92d6e7;   --gen-celeste-texto: #12707f;   --gen-celeste-suave: #eaf7fa;
+  --gen-magenta: #a80370;   --gen-magenta-texto: #93035f;   --gen-magenta-suave: #fbe7f2;
+}
+
+[data-theme='oscuro'] {
+  --gen-rojo: #ff6b6b;      --gen-rojo-texto: #ff6b6b;      --gen-rojo-suave: #3a1315;
+  --gen-naranja: #f0a94a;   --gen-naranja-texto: #f0a94a;   --gen-naranja-suave: #33230c;
+  --gen-amarillo: #ede84a;  --gen-amarillo-texto: #ede84a;  --gen-amarillo-suave: #2e2d0a;
+  --gen-azul: #4fc7e8;      --gen-azul-texto: #4fc7e8;      --gen-azul-suave: #0c2a33;
+  --gen-celeste: #8fe3f2;   --gen-celeste-texto: #8fe3f2;   --gen-celeste-suave: #12303a;
+  --gen-magenta: #f06bb8;   --gen-magenta-texto: #f06bb8;   --gen-magenta-suave: #330a22;
+}
+
+/* Un elemento con data-gen expone su color en --g / --g-texto / --g-suave,
+   asi el componente no necesita saber cual le toco. */
+[data-gen='rojo']     { --g: var(--gen-rojo);     --g-texto: var(--gen-rojo-texto);     --g-suave: var(--gen-rojo-suave); }
+[data-gen='naranja']  { --g: var(--gen-naranja);  --g-texto: var(--gen-naranja-texto);  --g-suave: var(--gen-naranja-suave); }
+[data-gen='amarillo'] { --g: var(--gen-amarillo); --g-texto: var(--gen-amarillo-texto); --g-suave: var(--gen-amarillo-suave); }
+[data-gen='azul']     { --g: var(--gen-azul);     --g-texto: var(--gen-azul-texto);     --g-suave: var(--gen-azul-suave); }
+[data-gen='celeste']  { --g: var(--gen-celeste);  --g-texto: var(--gen-celeste-texto);  --g-suave: var(--gen-celeste-suave); }
+[data-gen='magenta']  { --g: var(--gen-magenta);  --g-texto: var(--gen-magenta-texto);  --g-suave: var(--gen-magenta-suave); }
+
+/* La cinta: el anillo de GEN desenrollado en linea recta. Es la firma
+   de la marca y el unico sitio donde los seis colores conviven. Va como
+   degradado con paradas duras para que sea un solo elemento sin markup. */
+.cinta-gen {
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--gen-rojo) 0 16.666%,
+    var(--gen-naranja) 16.666% 33.333%,
+    var(--gen-amarillo) 33.333% 50%,
+    var(--gen-celeste) 50% 66.666%,
+    var(--gen-azul) 66.666% 83.333%,
+    var(--gen-magenta) 83.333% 100%
+  );
+}

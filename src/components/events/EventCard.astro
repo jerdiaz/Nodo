@@ -2,6 +2,7 @@
 import { MapPin, Video } from '@lucide/astro';
 import Badge from '../ui/Badge.astro';
 import { formatEventDay, formatEventMonthShort, getEventLocationLabel } from '../../lib/format';
+import { genColorForEvent } from '../../lib/genColor';
 import type { EventModality, NodoEvent } from '../../types/event';
 
 interface Props {
@@ -19,9 +20,16 @@ const modalityLabel: Record<EventModality, string> = {
 const ModalityIcon = event.modality === 'virtual' ? Video : MapPin;
 const locationLabel = getEventLocationLabel(event);
 const firstTag = event.tags[0];
+// El filo de color dice de que va el evento: sale de su primera etiqueta, no
+// de su posicion, asi que no cambia al filtrar ni al reordenar.
+const color = genColorForEvent(event);
 ---
 
-<article class="group overflow-hidden rounded-3xl border border-linea bg-superficie shadow-[var(--c-sombra)] transition duration-200 active:scale-[0.98] hover:border-acento">
+<article
+  data-gen={color}
+  class="group overflow-hidden rounded-3xl border border-linea bg-superficie shadow-[var(--c-sombra)] transition duration-200 active:scale-[0.98] hover:border-[var(--g)]"
+>
+  <div class="h-1 w-full bg-[var(--g)]" aria-hidden="true"></div>
   <a href={`/eventos/${event.slug}`} class="block">
     <div class="relative aspect-[16/9] w-full overflow-hidden">
       {event.bannerUrl ? (
@@ -65,7 +73,7 @@ const firstTag = event.tags[0];
         </div>
 
         {firstTag && (
-          <Badge variant="emerald" class="shrink-0">
+          <Badge variant="auto" seed={firstTag} class="shrink-0">
             {firstTag}
           </Badge>
         )}

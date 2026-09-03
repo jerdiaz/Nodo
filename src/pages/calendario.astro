@@ -12,6 +12,7 @@ import {
   formatEventTime,
   getEventLocationLabel,
 } from '../lib/format';
+import { genColorForEvent } from '../lib/genColor';
 import { MapPin, Users, Video } from '@lucide/astro';
 import type { EventModality, NodoEvent } from '../types/event';
 
@@ -130,6 +131,7 @@ const modalityLabel: Record<EventModality, string> = {
                   const count = rsvpCounts.get(event.id) ?? 0;
                   const location = getEventLocationLabel(event);
                   const badge = dayBadge(event);
+                  const color = genColorForEvent(event);
 
                   return (
                     <a
@@ -139,8 +141,11 @@ const modalityLabel: Record<EventModality, string> = {
                         !startsNewDay(group.events, index) && 'border-t border-linea-suave',
                       ]}
                     >
-                      <div class="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl border border-linea bg-superficie leading-none transition group-hover:border-acento">
-                        <span class="text-[10px] uppercase text-acento-texto">
+                      <div
+                        data-gen={color}
+                        class="flex size-11 shrink-0 flex-col items-center justify-center rounded-xl border border-[var(--g)]/40 bg-[var(--g-suave)] leading-none transition group-hover:border-[var(--g)]"
+                      >
+                        <span class="text-[10px] uppercase text-[var(--g-texto)]">
                           {formatEventMonthShort(event.startDate, event.timezone)}
                         </span>
                         <span class="text-base font-semibold text-texto">
@@ -153,7 +158,7 @@ const modalityLabel: Record<EventModality, string> = {
                           <p class="font-medium text-texto transition group-hover:text-texto">
                             {event.title}
                           </p>
-                          {badge && <Badge variant="emerald">{badge}</Badge>}
+                          {badge && <Badge variant="acento">{badge}</Badge>}
                         </div>
 
                         {/* En móvil hora y ubicación se apilan: en línea, el "·"

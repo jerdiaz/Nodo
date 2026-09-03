@@ -1,19 +1,45 @@
 ---
 import { cn } from '../../lib/utils';
+import { genColor, type GenColor } from '../../lib/genColor';
 
 interface Props {
-  variant?: 'emerald' | 'neutral';
+  /** 'auto' deriva el color del contenido, para que una misma etiqueta se vea
+      siempre igual en toda la aplicacion. */
+  variant?: 'auto' | 'acento' | 'neutral' | GenColor;
+  /** Texto del que derivar el color cuando variant es 'auto'. */
+  seed?: string;
   class?: string;
 }
 
-const { variant = 'neutral', class: className } = Astro.props;
+const { variant = 'neutral', seed, class: className } = Astro.props;
 
-const variants = {
-  emerald: 'border border-acento bg-acento-suave text-acento-texto',
-  neutral: 'border border-linea bg-fondo-alt text-texto',
-};
+const resolved = variant === 'auto' ? genColor(seed ?? '') : variant;
+const isGen = resolved !== 'acento' && resolved !== 'neutral';
 ---
 
-<span class={cn('inline-flex items-center rounded-full px-3 py-1 text-xs font-medium', variants[variant], className)}>
-  <slot />
-</span>
+{
+  isGen ? (
+    <span
+      data-gen={resolved}
+      class={cn(
+        'inline-flex items-center rounded-full px-3 py-1 text-xs font-medium',
+        'bg-[var(--g-suave)] text-[var(--g-texto)] ring-1 ring-inset ring-[var(--g)]/30',
+        className,
+      )}
+    >
+      <slot />
+    </span>
+  ) : (
+    <span
+      class={cn(
+        'inline-flex items-center rounded-full px-3 py-1 text-xs font-medium',
+        resolved === 'acento'
+          ? 'border border-acento bg-acento-suave text-acento-texto'
+          : 'border border-linea bg-fondo-alt text-texto',
+        className,
+      )}
+    >
+      <slot />
+    </span>
+  )
+}
