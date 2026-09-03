@@ -30,7 +30,13 @@ export default defineConfig({
       // mover Firestore ni Storage de sitio.
       VISION_PROJECT_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
       VISION_CLIENT_EMAIL: envField.string({ context: 'server', access: 'secret', optional: true }),
-      VISION_PRIVATE_KEY: envField.string({ context: 'server', access: 'secret', optional: true })
+      VISION_PRIVATE_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+
+      // Instagram: token de larga duracion de la Graph API, id de la cuenta y
+      // el secreto que autoriza a disparar la sincronizacion.
+      INSTAGRAM_TOKEN: envField.string({ context: 'server', access: 'secret', optional: true }),
+      INSTAGRAM_USER_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
+      SYNC_SECRET: envField.string({ context: 'server', access: 'secret', optional: true })
     }
   }
 });

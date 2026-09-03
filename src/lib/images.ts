@@ -7,13 +7,14 @@ import { getAdminDb, getAdminStorage } from './firebase/server';
 // Mismos umbrales que usa TransCar en su trigger de moderacion.
 const UNSAFE = ['LIKELY', 'VERY_LIKELY'];
 
-export type ImageKind = 'avatar' | 'banner';
+export type ImageKind = 'avatar' | 'banner' | 'publicacion';
 
 const SPECS: Record<ImageKind, { prefix: string; width: number; height: number; maxBytes: number }> = {
   // El recorte se hace en el servidor: asi el tamano final no depende de lo
   // que el navegador quiera subir y las miniaturas siempre cuadran.
   avatar: { prefix: 'avatars', width: 512, height: 512, maxBytes: 2 * 1024 * 1024 },
   banner: { prefix: 'event-banners', width: 1600, height: 900, maxBytes: 5 * 1024 * 1024 },
+  publicacion: { prefix: 'instagram', width: 1080, height: 1080, maxBytes: 8 * 1024 * 1024 },
 };
 
 let visionClient: ImageAnnotatorClient | null = null;
@@ -214,4 +215,25 @@ export async function deleteUserImages(
       }
     }),
   );
+}
+
+// Rehospeda una imagen ajena en Storage. Las URLs de Instagram van firmadas y
+// caducan, asi que guardar el enlace y pintarlo semanas despues no funciona.
+// Devuelve null si no se pudo, para que quien llame decida si cae al original.
+export async function rehostImage(sourceUrl: string, kind: ImageKind, id: string): Promise<string | null> {
+  try {
+    const response = await fetch(sourceUrl);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const original = Buffer.from(await response.arrayBuffer());
+    const processed = await processImage(original, kind);
+
+    return await uploadImage(id, kind, processed);
+  } catch (error) {
+    console.warn('No se pudo rehospedar la imagen:', sourceUrl.slice(0, 60), error);
+    return null;
+  }
 }

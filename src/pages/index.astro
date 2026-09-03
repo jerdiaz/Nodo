@@ -5,8 +5,12 @@ import EventCard from '../components/events/EventCard.astro';
 import EventFilter from '../components/events/EventFilter.astro';
 import SecondaryFilters from '../components/events/SecondaryFilters.astro';
 import StatusToast from '../components/common/StatusToast.astro';
+import Franja from '../components/common/Franja.astro';
 import { Search } from '@lucide/astro';
 import { filterEvents, getEvents } from '../lib/firebase/events';
+import { getInstagramPosts } from '../lib/firebase/instagram';
+import type { InstagramPost } from '../lib/firebase/instagram';
+import SocialIcon from '../components/ui/SocialIcon.astro';
 import type { NodoEvent } from '../types/event';
 
 const modalidad = Astro.url.searchParams.get('modalidad') ?? undefined;
@@ -29,8 +33,31 @@ const cities = [
 
 const events = filterEvents(allEvents, { modality: modalidad, city: ciudad, timeframe, search: query });
 const hasActiveFilters = Boolean(modalidad || ciudad || query);
+
+// Cifras de la seccion de presentacion. Salen de la lectura de eventos que ya
+// se hizo arriba: ninguna es inventada ni requiere una consulta extra.
+const upcomingAll = filterEvents(allEvents, { timeframe: 'upcoming' });
+const totalCiudades = new Set(upcomingAll.filter((e) => e.city).map((e) => e.city)).size;
+const totalComunidades = new Set(allEvents.map((e) => e.organizer.uid)).size;
+
+const cifras = [
+  { valor: upcomingAll.length, etiqueta: upcomingAll.length === 1 ? 'evento próximo' : 'eventos próximos', color: 'rojo' as const },
+  { valor: totalCiudades, etiqueta: totalCiudades === 1 ? 'ciudad' : 'ciudades', color: 'azul' as const },
+  { valor: totalComunidades, etiqueta: totalComunidades === 1 ? 'comunidad' : 'comunidades', color: 'magenta' as const },
+];
 const loginRequired = Astro.url.searchParams.get('login') === 'required';
 const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
+
+// Publicaciones de Instagram, cacheadas en Firestore por /api/instagram/sync.
+// Se lee de ahi y no de Instagram: consultar en cada visita gastaria cuota y
+// ataria el tiempo de respuesta de la home a un servicio ajeno.
+let posts: InstagramPost[] = [];
+
+try {
+  posts = await getInstagramPosts(6);
+} catch (error) {
+  console.warn('No se pudieron obtener las publicaciones de Instagram:', error);
+}
 ---
 
 <BaseLayout>
@@ -83,7 +110,45 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
     </div>
   </section>
 
-  <section class="mx-auto max-w-6xl px-6 pb-24">
+  <!--
+    Presentacion antes del listado. Las cifras son reales: cualquier afirmacion
+    sobre la organizacion tendria que escribirla alguien de la casa, no yo.
+  -->
+  <section class="border-y border-linea bg-fondo-alt">
+    <div class="mx-auto grid max-w-6xl gap-10 px-6 py-14 md:grid-cols-[1.1fr_1fr] md:items-center">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">Qué es Nodo</p>
+        <h2 class="mt-3 text-2xl font-bold tracking-tight text-texto sm:text-3xl">
+          La cartelera del ecosistema, en un solo sitio
+        </h2>
+        <p class="mt-4 max-w-prose text-suave">
+          Talleres, encuentros y convocatorias que organizan las comunidades de la red. Publicados por
+          quienes los hacen, abiertos a quien quiera llegar.
+        </p>
+      </div>
+
+      <dl class="grid grid-cols-3 gap-4">
+        {cifras.map((cifra) => (
+          <div data-gen={cifra.color} class="border-t-4 border-[var(--g)] pt-4">
+            <dt class="sr-only">{cifra.etiqueta}</dt>
+            <dd class="text-3xl font-bold tracking-tight text-texto sm:text-4xl">
+              {String(cifra.valor).padStart(2, '0')}
+            </dd>
+            <p class="mt-1 text-xs uppercase tracking-wide text-suave">{cifra.etiqueta}</p>
+          </div>
+        ))}
+      </dl>
+    </div>
+  </section>
+
+  <Franja
+    titulo="¿Tu comunidad organiza algo?"
+    cta="Publicar evento"
+    href="/eventos/nuevo"
+    color="azul"
+  />
+
+  <section class="mx-auto max-w-6xl px-6 pb-24 pt-16">
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="flex items-center gap-3">
         <h2 class="text-lg font-semibold text-texto">
@@ -124,4 +189,54 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
       )
     }
   </section>
+  <!--
+    Solo aparece si hay publicaciones sincronizadas: una seccion vacia con un
+    "proximamente" es peor que no tener seccion.
+  -->
+  {posts.length > 0 && (
+    <>
+      <Franja titulo="Lo que se cuenta en la red" color="magenta" />
+
+      <section class="mx-auto max-w-6xl px-6 py-16">
+        <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">Publicaciones</p>
+            <h2 class="mt-2 text-2xl font-bold tracking-tight text-texto">Desde Instagram</h2>
+          </div>
+          <a
+            href="https://www.instagram.com/redglobalcol/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 text-sm font-medium text-suave transition hover:text-acento-texto"
+          >
+            <SocialIcon name="instagram" class="size-4" />
+            @redglobalcol
+          </a>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+          {posts.map((post) => (
+            <a
+              href={post.permalink}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group relative aspect-square overflow-hidden rounded-2xl border border-linea bg-fondo-alt"
+            >
+              <img
+                src={post.imageUrl}
+                alt={post.caption.slice(0, 120) || 'Publicación de Instagram'}
+                loading="lazy"
+                class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              />
+              {post.caption && (
+                <span class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#111113]/85 to-transparent p-3 pt-10 text-xs leading-snug text-white opacity-0 transition group-hover:opacity-100">
+                  <span class="line-clamp-3 block">{post.caption}</span>
+                </span>
+              )}
+            </a>
+          ))}
+        </div>
+      </section>
+    </>
+  )}
 </BaseLayout>

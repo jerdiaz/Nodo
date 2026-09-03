@@ -172,6 +172,55 @@ volver a la consola.
 
 ---
 
+## 5. Publicaciones de Instagram en la home (opcional)
+
+La home tiene una sección que muestra las últimas publicaciones de
+[@redglobalcol](https://www.instagram.com/redglobalcol/). **Mientras no se
+configure, la sección no aparece** — no hay hueco vacío ni "próximamente".
+
+### Cómo funciona
+
+`POST /api/instagram/sync` consulta la Graph API y guarda las publicaciones en
+la colección `instagram_posts` de Firestore. La página lee de ahí, no de
+Instagram: consultar en cada visita gastaría cuota, ataría el tiempo de
+respuesta de la home a un servicio ajeno y expondría el token.
+
+Las URLs de imagen de Instagram van firmadas y **caducan**, así que la
+sincronización rehospeda cada imagen en Storage. Si Storage no está activo
+(tarea 1), guarda la URL original, que funciona un tiempo y luego deja de
+cargar.
+
+### Qué hace falta
+
+1. La cuenta de Instagram debe ser **Business o Creator** (no personal).
+2. Crear una app en <https://developers.facebook.com> con *Instagram Login for
+   Business* y obtener un **token de larga duración** y el **id de la cuenta**.
+3. Añadir a `/opt/nodo/.env` en el VPS:
+
+   ```
+   INSTAGRAM_TOKEN=...
+   INSTAGRAM_USER_ID=...
+   SYNC_SECRET=<una cadena larga y aleatoria, inventada por vosotros>
+   ```
+
+4. Reiniciar el contenedor: `docker compose up -d`.
+5. Programar la sincronización, por ejemplo en el cron del VPS cada 6 horas:
+
+   ```bash
+   curl -s -X POST -H "Authorization: Bearer $SYNC_SECRET" \
+     https://nodo-eventos.duckdns.org/api/instagram/sync
+   ```
+
+> ⚠️ **El token de larga duración caduca a los 60 días.** Hay que renovarlo, o
+> la sección se quedará congelada en las últimas publicaciones sincronizadas.
+> El endpoint devuelve el mensaje de error de Instagram cuando eso pasa.
+
+No se usa scraping: va contra las condiciones de Instagram y se rompe cada vez
+que cambian el HTML. La Basic Display API, que era la vía sencilla, fue
+retirada por Meta.
+
+---
+
 ## Pendiente de decisión (no es una tarea)
 
 Las reglas de Firestore (`firestore.rules`) permiten hoy que **cualquier usuario

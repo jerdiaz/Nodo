@@ -1,0 +1,41 @@
+---
+import type { GenColor } from '../../lib/genColor';
+
+interface Props {
+  titulo: string;
+  cta?: string;
+  href?: string;
+  color?: GenColor;
+}
+
+const { titulo, cta, href, color = 'magenta' } = Astro.props;
+
+// El amarillo y el celeste son demasiado claros para llevar texto blanco
+// encima: sobre ellos la tipografia va oscura. Con los otros cuatro, al reves.
+const claros: GenColor[] = ['amarillo', 'celeste'];
+const textoOscuro = claros.includes(color);
+---
+
+<section
+  data-gen={color}
+  class:list={[
+    'bg-[var(--g)]',
+    textoOscuro ? 'text-[#111113]' : 'text-white',
+  ]}
+>
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-5 px-6 py-7 sm:py-9">
+    <p class="text-xl font-bold tracking-tight sm:text-2xl">{titulo}</p>
+
+    {cta && href && (
+      <a
+        href={href}
+        class:list={[
+          'inline-flex shrink-0 items-center rounded-full border-2 border-current px-6 py-3 text-xs font-semibold uppercase tracking-wider transition',
+          textoOscuro ? 'hover:bg-[#111113] hover:text-white' : 'hover:bg-white hover:text-[#111113]',
+        ]}
+      >
+        {cta}
+      </a>
+    )}
+  </div>
+</section>
