@@ -22,7 +22,21 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     bio: data.bio,
     avatarUrl: data.avatarUrl,
     socials: data.socials ?? {},
+    calendarToken: data.calendarToken,
   };
+}
+
+export async function getUidByCalendarToken(token: string): Promise<string | null> {
+  const snapshot = await usersCollection().where('calendarToken', '==', token).limit(1).get();
+  return snapshot.docs[0]?.id ?? null;
+}
+
+// Va aparte de saveUserProfile porque el token no lo edita nadie a mano: se
+// genera y se revoca solo. El merge de saveUserProfile ya lo conserva, pero
+// mezclarlo en el payload del formulario lo dejaria expuesto a que un cliente
+// lo mandara en el cuerpo de PUT /api/perfil.
+export async function setCalendarToken(uid: string, token: string): Promise<void> {
+  await usersCollection().doc(uid).set({ calendarToken: token }, { merge: true });
 }
 
 // Consulta de igualdad sobre un campo suelto de una coleccion normal, que

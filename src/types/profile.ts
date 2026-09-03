@@ -15,6 +15,10 @@ export interface UserProfile {
   bio?: string;
   avatarUrl?: string;
   socials: ProfileSocials;
+  // Secreto que autoriza el feed iCal. Va en la URL porque los clientes de
+  // calendario no mandan cookies, asi que quien tenga el enlace ve la agenda:
+  // por eso se genera aparte y se puede revocar sin tocar la sesion.
+  calendarToken?: string;
 }
 
 // Clave de red social -> como se muestra y como se convierte en enlace.
