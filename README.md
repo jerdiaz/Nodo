@@ -81,26 +81,36 @@ El [`Dockerfile`](Dockerfile) es multi-stage (`deps` → `build` → `prod-deps`
 
 ### Build de la imagen
 
+Las variables `PUBLIC_FIREBASE_*` se incrustan en el JavaScript del navegador **en el momento del build** (no al arrancar el contenedor), así que hay que pasarlas como `--build-arg`. Con un `.env` local ya completado, este comando las toma automáticamente:
+
 ```bash
-docker build -t nodo:latest .
+docker build $(grep '^PUBLIC_' .env | sed 's/^/--build-arg /') -t nodo:latest .
 ```
+
+(Si prefieres no depender de `grep`/`sed`, pasa cada `--build-arg PUBLIC_FIREBASE_X=valor` a mano — son las mismas seis variables `PUBLIC_*` de [`.env.example`](.env.example).)
 
 ### Ejecutar el contenedor
 
+Los secretos del Admin SDK (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`), en cambio, se leen en tiempo de ejecución — nunca se hornean en la imagen, se pasan al arrancar el contenedor:
+
 ```bash
-docker run -d --name nodo -p 4321:4321 nodo:latest
+docker run -d --name nodo -p 4321:4321 \
+  -e FIREBASE_PROJECT_ID=... \
+  -e FIREBASE_CLIENT_EMAIL=... \
+  -e FIREBASE_PRIVATE_KEY='...' \
+  nodo:latest
 ```
 
-La app queda disponible en `http://localhost:4321`.
+La app queda disponible en `http://localhost:4321`. Ojo con `FIREBASE_PRIVATE_KEY`: si usas `docker run --env-file` en vez de `-e`, ese mecanismo de Docker no quita comillas como sí hace `dotenv` — pasa el valor sin comillas envolventes en ese caso, o usa `-e` con comillas de shell simples como en el ejemplo.
 
 ### Variables de entorno relevantes
 
-| Variable | Default (Dockerfile) | Descripción                          |
-| :------- | :-------------------- | :------------------------------------ |
-| `HOST`   | `0.0.0.0`              | Host donde escucha el servidor Node   |
-| `PORT`   | `4321`                 | Puerto donde escucha el servidor Node |
-
-Además, para que el catálogo lea datos reales de Firestore en producción, pasa las variables de [`.env.example`](.env.example) al contenedor en tiempo de ejecución (`docker run -e ...` o `--env-file`), nunca horneadas en la imagen.
+| Variable | Default (Dockerfile) | Cuándo se usa | Descripción                          |
+| :------- | :-------------------- | :--- | :------------------------------------ |
+| `HOST`   | `0.0.0.0`              | runtime | Host donde escucha el servidor Node   |
+| `PORT`   | `4321`                 | runtime | Puerto donde escucha el servidor Node |
+| `PUBLIC_FIREBASE_*` (6 variables) | — | **build** (`--build-arg`) | Config del SDK cliente de Firebase, incrustada en el bundle del navegador |
+| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | — | runtime (`-e`) | Credenciales del Admin SDK, nunca en la imagen |
 
 Para desplegar en un proveedor (Fly.io, Railway, Render, un VPS, etc.), construye y publica la imagen con `docker build`/`docker push` y expón el puerto `4321` (o el que definas vía `PORT`).
 

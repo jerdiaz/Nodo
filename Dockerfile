@@ -14,7 +14,26 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # ---- Build ----
+# Las variables PUBLIC_* de Astro/Vite se incrustan en el bundle del
+# navegador en tiempo de build, no de arranque -a diferencia de los
+# secretos del servidor (FIREBASE_PROJECT_ID, etc.), que se leen en
+# runtime vía astro:env-. Por eso .dockerignore excluye .env (para no
+# filtrar los secretos en las capas de la imagen) pero estas SÍ deben
+# pasarse explícitamente como --build-arg al construir la imagen; no
+# son sensibles, están pensadas para exponerse al cliente.
 FROM base AS build
+ARG PUBLIC_FIREBASE_API_KEY
+ARG PUBLIC_FIREBASE_AUTH_DOMAIN
+ARG PUBLIC_FIREBASE_PROJECT_ID
+ARG PUBLIC_FIREBASE_STORAGE_BUCKET
+ARG PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+ARG PUBLIC_FIREBASE_APP_ID
+ENV PUBLIC_FIREBASE_API_KEY=$PUBLIC_FIREBASE_API_KEY \
+    PUBLIC_FIREBASE_AUTH_DOMAIN=$PUBLIC_FIREBASE_AUTH_DOMAIN \
+    PUBLIC_FIREBASE_PROJECT_ID=$PUBLIC_FIREBASE_PROJECT_ID \
+    PUBLIC_FIREBASE_STORAGE_BUCKET=$PUBLIC_FIREBASE_STORAGE_BUCKET \
+    PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$PUBLIC_FIREBASE_MESSAGING_SENDER_ID \
+    PUBLIC_FIREBASE_APP_ID=$PUBLIC_FIREBASE_APP_ID
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
