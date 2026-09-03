@@ -3,6 +3,9 @@ Disallow: /api/
 Disallow: /mis-eventos
 Disallow: /eventos/nuevo
 Disallow: /eventos/*/editar
+Disallow: /admin
+Disallow: /configuracion
+Disallow: /perfil
 
 User-agent: Googlebot
 User-agent: Bingbot

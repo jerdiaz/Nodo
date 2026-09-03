@@ -7,6 +7,7 @@ import { getAttendedEventIds } from '../lib/firebase/rsvps';
 import { getUserProfile } from '../lib/firebase/users';
 import { formatEventDate, formatEventTime, formatMonthYear } from '../lib/format';
 import SocialIcon from '../components/ui/SocialIcon.astro';
+import VerifiedBadge from '../components/ui/VerifiedBadge.astro';
 import { SOCIAL_FIELDS } from '../types/profile';
 import { CalendarDays } from '@lucide/astro';
 import type { NodoEvent } from '../types/event';
@@ -117,8 +118,9 @@ if (profile?.socials?.website) {
       )}
 
       <div class="min-w-0">
-        <h1 class="text-3xl font-bold tracking-tight text-neutral-100 sm:text-4xl">
+        <h1 class="flex flex-wrap items-center gap-x-2 text-3xl font-bold tracking-tight text-neutral-100 sm:text-4xl">
           {displayName}
+          {profile?.verification && <VerifiedBadge type={profile.verification} class="size-6 sm:size-7" />}
         </h1>
 
         {profile?.username && <p class="mt-1 text-sm text-neutral-500">@{profile.username}</p>}

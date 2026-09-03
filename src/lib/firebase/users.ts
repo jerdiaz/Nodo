@@ -1,5 +1,6 @@
+import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb } from './server';
-import type { UserProfile } from '../../types/profile';
+import type { UserProfile, VerificationType } from '../../types/profile';
 
 function usersCollection() {
   return getAdminDb().collection('users');
@@ -23,7 +24,23 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     avatarUrl: data.avatarUrl,
     socials: data.socials ?? {},
     calendarToken: data.calendarToken,
+    verification: data.verification,
+    admin: data.admin === true,
   };
+}
+
+// La condicion de administrador se lee siempre de Firestore, nunca de nada que
+// mande el cliente. El primer administrador se marca a mano desde la consola
+// de Firebase: es el unico eslabon manual de la cadena.
+export async function isAdmin(uid: string): Promise<boolean> {
+  const doc = await usersCollection().doc(uid).get();
+  return doc.data()?.admin === true;
+}
+
+export async function setVerification(uid: string, verification: VerificationType | null): Promise<void> {
+  await usersCollection()
+    .doc(uid)
+    .set({ verification: verification ?? FieldValue.delete() }, { merge: true });
 }
 
 export async function getUidByCalendarToken(token: string): Promise<string | null> {

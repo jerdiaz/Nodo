@@ -1,0 +1,110 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/ui/Button.astro';
+import VerifiedBadge from '../components/ui/VerifiedBadge.astro';
+import { getCurrentUser } from '../lib/auth';
+import { isAdmin } from '../lib/firebase/users';
+import { VERIFICATION_LABEL } from '../types/profile';
+
+const user = await getCurrentUser(Astro.cookies);
+
+if (!user) {
+  return Astro.redirect('/?login=required');
+}
+
+// Un 404 y no un 403: quien no es administrador no tiene por que enterarse de
+// que esta pagina existe.
+if (!(await isAdmin(user.uid))) {
+  return new Response(null, { status: 404, statusText: 'No encontrado' });
+}
+---
+
+<BaseLayout title="Administración — Nodo" description="Panel de administración de Nodo.">
+  <div class="mx-auto max-w-2xl px-6 pb-24 pt-16">
+    <h1 class="text-3xl font-bold tracking-tight text-neutral-100">Administración</h1>
+    <p class="mt-2 text-sm text-neutral-400">Concede o retira la verificación de una cuenta.</p>
+
+    <div class="mt-8 rounded-3xl border border-white/[0.08] bg-neutral-900/40 p-6">
+      <label for="username" class="block text-sm font-medium text-neutral-300">Nombre de usuario</label>
+      <div class="mt-1.5 flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
+        <span class="flex items-center bg-neutral-800/80 px-3.5 text-sm text-neutral-400">@</span>
+        <input
+          id="username"
+          type="text"
+          autocomplete="off"
+          placeholder="usuario"
+          class="w-full bg-neutral-900/70 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+        />
+      </div>
+
+      <fieldset class="mt-5 space-y-2">
+        <legend class="text-sm font-medium text-neutral-300">Verificación</legend>
+
+        <label class="flex cursor-pointer items-center gap-3 text-sm text-neutral-300">
+          <input type="radio" name="verification" value="persona" class="accent-sky-500" checked />
+          <VerifiedBadge type="persona" class="size-4" />
+          {VERIFICATION_LABEL.persona}
+        </label>
+
+        <label class="flex cursor-pointer items-center gap-3 text-sm text-neutral-300">
+          <input type="radio" name="verification" value="comunidad" class="accent-sky-500" />
+          <VerifiedBadge type="comunidad" class="size-4" />
+          {VERIFICATION_LABEL.comunidad}
+        </label>
+
+        <label class="flex cursor-pointer items-center gap-3 text-sm text-neutral-300">
+          <input type="radio" name="verification" value="" class="accent-neutral-500" />
+          <span class="size-4" aria-hidden="true"></span>
+          Retirar la verificación
+        </label>
+      </fieldset>
+
+      <p id="admin-error" class="mt-4 hidden text-sm text-red-400"></p>
+      <p id="admin-success" class="mt-4 hidden text-sm text-emerald-400"></p>
+
+      <div class="mt-6">
+        <Button variant="primary" type="button" id="admin-submit">Aplicar</Button>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const usernameField = document.getElementById('username') as HTMLInputElement;
+  const submit = document.getElementById('admin-submit') as HTMLButtonElement;
+  const errorBox = document.getElementById('admin-error') as HTMLParagraphElement;
+  const successBox = document.getElementById('admin-success') as HTMLParagraphElement;
+
+  submit.addEventListener('click', async () => {
+    errorBox.classList.add('hidden');
+    successBox.classList.add('hidden');
+    submit.disabled = true;
+
+    const choice = document.querySelector<HTMLInputElement>('input[name="verification"]:checked');
+    const verification = choice?.value ? choice.value : null;
+
+    try {
+      const response = await fetch('/api/admin/verificacion', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: usernameField.value.trim(), verification }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? 'No se pudo aplicar el cambio.');
+      }
+
+      successBox.textContent = verification
+        ? `@${result.username} verificada como ${verification}.`
+        : `Se retiró la verificación de @${result.username}.`;
+      successBox.classList.remove('hidden');
+    } catch (error) {
+      errorBox.textContent = error instanceof Error ? error.message : 'No se pudo aplicar el cambio.';
+      errorBox.classList.remove('hidden');
+    } finally {
+      submit.disabled = false;
+    }
+  });
+</script>

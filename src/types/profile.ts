@@ -7,6 +7,15 @@ export interface ProfileSocials {
   website?: string;
 }
 
+// Dos criterios distintos, misma palomita: una certifica que la persona es
+// quien dice ser, la otra que el colectivo esta reconocido por Nodo.
+export type VerificationType = 'persona' | 'comunidad';
+
+export const VERIFICATION_LABEL: Record<VerificationType, string> = {
+  persona: 'Identidad confirmada',
+  comunidad: 'Comunidad oficial',
+};
+
 export interface UserProfile {
   uid: string;
   firstName: string;
@@ -19,6 +28,11 @@ export interface UserProfile {
   // calendario no mandan cookies, asi que quien tenga el enlace ve la agenda:
   // por eso se genera aparte y se puede revocar sin tocar la sesion.
   calendarToken?: string;
+  // Ninguno de estos dos viaja por el formulario de configuracion:
+  // validateProfilePayload construye el objeto campo a campo y descarta lo que
+  // no conoce, asi que un PUT /api/perfil no puede autoconcederselos.
+  verification?: VerificationType;
+  admin?: boolean;
 }
 
 // Clave de red social -> como se muestra y como se convierte en enlace.
