@@ -46,7 +46,7 @@ export function loginWithMicrosoft(): Promise<void> {
 
 export async function logout(): Promise<void> {
   await signOut(auth).catch(() => {});
-  await fetch('/api/auth/logout', { method: 'POST' });
+  await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
   window.location.href = '/';
 }
 

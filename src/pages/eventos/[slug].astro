@@ -275,10 +275,12 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
       try {
         const response = await fetch(`/api/events/${rsvpButton.dataset.eventId}/rsvp`, {
           method: attending ? 'DELETE' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
         });
 
         if (!response.ok) {
-          throw new Error('No se pudo actualizar tu asistencia.');
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error ?? 'No se pudo actualizar tu asistencia.');
         }
 
         const result = await response.json();
@@ -310,7 +312,10 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
       deleteButton.disabled = true;
 
       try {
-        const response = await fetch(`/api/events/${deleteButton.dataset.eventId}`, { method: 'DELETE' });
+        const response = await fetch(`/api/events/${deleteButton.dataset.eventId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        });
 
         if (!response.ok) {
           const result = await response.json().catch(() => ({}));
