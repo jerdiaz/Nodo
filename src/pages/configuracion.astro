@@ -4,7 +4,8 @@ import Button from '../components/ui/Button.astro';
 import { getCurrentUser } from '../lib/auth';
 import { getUserProfile } from '../lib/firebase/users';
 import { SOCIAL_FIELDS } from '../types/profile';
-import { Rss, Upload } from '@lucide/astro';
+import { Rss, TriangleAlert, Upload } from '@lucide/astro';
+import { getEvents } from '../lib/firebase/events';
 import type { UserProfile } from '../types/profile';
 
 const user = await getCurrentUser(Astro.cookies);
@@ -28,6 +29,20 @@ const [authFirst = '', ...authRest] = user.name.split(' ');
 const firstName = profile?.firstName || authFirst;
 const lastName = profile?.lastName ?? authRest.join(' ');
 const avatarUrl = profile?.avatarUrl ?? user.avatarUrl ?? '';
+
+// Cuantos eventos propios seguirian vivos si borrara la cuenta: es el dato
+// que decide si la transferencia tiene sentido o no.
+let upcomingOwn: { id: string }[] = [];
+
+try {
+  const allEvents = await getEvents();
+  const now = Date.now();
+  upcomingOwn = allEvents.filter(
+    (event) => event.organizer.uid === user.uid && event.endDate.getTime() >= now,
+  );
+} catch (error) {
+  console.warn('No se pudieron contar los eventos propios:', error);
+}
 
 const calendarUrl = profile?.calendarToken
   ? new URL(`/api/calendario/${profile.calendarToken}.ics`, Astro.url.origin).toString()
@@ -240,6 +255,108 @@ const inputClass =
         <p id="ical-error" class="mt-3 hidden text-sm text-red-400"></p>
       </div>
     </section>
+
+    <section class="mt-14 border-t border-white/[0.08] pt-10">
+      <h2 class="text-lg font-semibold text-neutral-100">Eliminar cuenta</h2>
+      <p class="mt-2 text-sm text-neutral-400">
+        Si ya no quieres usar Nodo, puedes eliminar tu cuenta de forma permanente. No se puede deshacer.
+      </p>
+
+      <button
+        id="delete-open"
+        type="button"
+        class="mt-4 inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white transition active:scale-[0.97] hover:bg-red-500"
+      >
+        <TriangleAlert class="size-4" stroke-width={2} />
+        Eliminar mi cuenta
+      </button>
+
+      <div
+        id="delete-panel"
+        class="mt-4 hidden rounded-2xl border border-red-500/20 bg-red-950/20 p-5"
+        data-upcoming={upcomingOwn.length}
+      >
+        <p class="text-sm text-neutral-300">
+          {upcomingOwn.length === 0
+            ? 'No tienes eventos próximos publicados.'
+            : `Organizas ${upcomingOwn.length} ${upcomingOwn.length === 1 ? 'evento próximo' : 'eventos próximos'}. Decide qué hacer con ${upcomingOwn.length === 1 ? 'él' : 'ellos'}.`}
+        </p>
+
+        <fieldset class="mt-4 space-y-3">
+          <legend class="sr-only">Qué hacer con tus eventos</legend>
+
+          <label class="flex cursor-pointer gap-3 text-sm text-neutral-300">
+            <input type="radio" name="delete-mode" value="transfer" class="mt-1 accent-emerald-500" checked />
+            <span>
+              <span class="font-medium text-neutral-100">Transferir mis eventos próximos</span>
+              <span class="mt-1 block text-neutral-500">
+                Pasan a la cuenta que indiques. Los pasados conservan tu nombre como organizador.
+              </span>
+              <span class="mt-2 flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
+                <span class="flex items-center bg-neutral-800/80 px-3 text-sm text-neutral-400">@</span>
+                <input
+                  id="transfer-to"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="usuario que los recibe"
+                  class="w-full bg-neutral-900/70 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+                />
+              </span>
+            </span>
+          </label>
+
+          <label class="flex cursor-pointer gap-3 text-sm text-neutral-300">
+            <input type="radio" name="delete-mode" value="cascade" class="mt-1 accent-red-500" />
+            <span>
+              <span class="font-medium text-neutral-100">Borrar todos mis eventos</span>
+              <span class="mt-1 block text-neutral-500">
+                Se eliminan todos, pasados y futuros, junto con sus asistencias. Quienes dijeron que asistían
+                los perderán.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+
+        <div class="mt-5 border-t border-red-500/20 pt-5">
+          <button
+            id="delete-code-button"
+            type="button"
+            class="rounded-full border border-white/[0.08] bg-neutral-900/60 px-4 py-2 text-sm font-medium text-neutral-200 transition active:scale-[0.97] hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Generar código de confirmación
+          </button>
+
+          <div id="delete-code-box" class="mt-4 hidden">
+            <p class="text-sm text-neutral-400">
+              Escribe este código para confirmar:
+              <strong id="delete-code-value" class="ml-1 font-mono text-base tracking-[0.3em] text-neutral-100"></strong>
+            </p>
+            <p class="mt-1 text-xs text-neutral-600">
+              Caduca en 10 minutos. Más adelante se enviará a tu correo en vez de mostrarse aquí.
+            </p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <input
+                id="delete-code-input"
+                type="text"
+                maxlength="6"
+                autocomplete="off"
+                placeholder="Código"
+                class="w-32 rounded-xl bg-neutral-950/60 px-3 py-2 font-mono text-sm uppercase tracking-widest text-neutral-100 placeholder:tracking-normal placeholder:text-neutral-600 ring-1 ring-inset ring-white/[0.08] focus:outline-none focus:ring-2 focus:ring-red-500/60"
+              />
+              <button
+                id="delete-confirm"
+                type="button"
+                class="rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white transition active:scale-[0.97] hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Eliminar definitivamente
+              </button>
+            </div>
+          </div>
+
+          <p id="delete-error" class="mt-3 hidden text-sm text-red-400"></p>
+        </div>
+      </div>
+    </section>
   </div>
 </BaseLayout>
 
@@ -300,6 +417,94 @@ const inputClass =
       icalError.classList.remove('hidden');
     } finally {
       icalButton.disabled = false;
+    }
+  });
+
+  // --- Eliminar cuenta ---
+  const deleteOpen = document.getElementById('delete-open') as HTMLButtonElement;
+  const deletePanel = document.getElementById('delete-panel') as HTMLElement;
+  const deleteCodeButton = document.getElementById('delete-code-button') as HTMLButtonElement;
+  const deleteCodeBox = document.getElementById('delete-code-box') as HTMLElement;
+  const deleteCodeValue = document.getElementById('delete-code-value') as HTMLElement;
+  const deleteCodeInput = document.getElementById('delete-code-input') as HTMLInputElement;
+  const deleteConfirm = document.getElementById('delete-confirm') as HTMLButtonElement;
+  const deleteError = document.getElementById('delete-error') as HTMLParagraphElement;
+  const transferTo = document.getElementById('transfer-to') as HTMLInputElement;
+
+  function selectedMode(): string {
+    const checked = document.querySelector<HTMLInputElement>('input[name="delete-mode"]:checked');
+    return checked?.value ?? 'transfer';
+  }
+
+  deleteOpen.addEventListener('click', () => {
+    deletePanel.classList.toggle('hidden');
+  });
+
+  deleteCodeButton.addEventListener('click', async () => {
+    deleteCodeButton.disabled = true;
+    deleteError.classList.add('hidden');
+
+    try {
+      const response = await fetch('/api/cuenta/codigo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? 'No se pudo generar el código.');
+      }
+
+      deleteCodeValue.textContent = result.code;
+      deleteCodeBox.classList.remove('hidden');
+      deleteCodeInput.focus();
+    } catch (error) {
+      deleteError.textContent = error instanceof Error ? error.message : 'No se pudo generar el código.';
+      deleteError.classList.remove('hidden');
+    } finally {
+      deleteCodeButton.disabled = false;
+    }
+  });
+
+  deleteConfirm.addEventListener('click', async () => {
+    deleteError.classList.add('hidden');
+
+    const mode = selectedMode();
+    const upcoming = Number(deletePanel.dataset.upcoming ?? '0');
+
+    const aviso =
+      mode === 'cascade'
+        ? 'Se eliminarán tu cuenta y TODOS tus eventos, con sus asistencias. Esto no se puede deshacer.'
+        : `Se eliminará tu cuenta y ${upcoming === 1 ? 'tu evento próximo pasará' : `tus ${upcoming} eventos próximos pasarán`} a @${transferTo.value.trim()}. Esto no se puede deshacer.`;
+
+    if (!window.confirm(aviso)) {
+      return;
+    }
+
+    deleteConfirm.disabled = true;
+
+    try {
+      const response = await fetch('/api/cuenta', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode,
+          code: deleteCodeInput.value.trim(),
+          transferTo: mode === 'transfer' ? transferTo.value.trim() : undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? 'No se pudo eliminar la cuenta.');
+      }
+
+      window.location.href = '/';
+    } catch (error) {
+      deleteError.textContent = error instanceof Error ? error.message : 'No se pudo eliminar la cuenta.';
+      deleteError.classList.remove('hidden');
+      deleteConfirm.disabled = false;
     }
   });
 

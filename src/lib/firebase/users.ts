@@ -49,6 +49,38 @@ export async function isUsernameTaken(username: string, ownUid: string): Promise
   return Boolean(match) && match!.id !== ownUid;
 }
 
+export async function getUidByUsername(username: string): Promise<string | null> {
+  const snapshot = await usersCollection().where('username', '==', username).limit(1).get();
+  return snapshot.docs[0]?.id ?? null;
+}
+
+export interface DeletionCode {
+  code: string;
+  expiresAt: number;
+}
+
+// El codigo lo emite y lo verifica el servidor, aunque hoy se muestre en
+// pantalla. Asi, cuando pase a enviarse por correo, solo cambia el canal de
+// entrega: la comprobacion ya vive donde debe.
+export async function setDeletionCode(uid: string, code: DeletionCode): Promise<void> {
+  await usersCollection().doc(uid).set({ deletionCode: code }, { merge: true });
+}
+
+export async function getDeletionCode(uid: string): Promise<DeletionCode | null> {
+  const doc = await usersCollection().doc(uid).get();
+  const stored = doc.data()?.deletionCode;
+
+  if (!stored || typeof stored.code !== 'string' || typeof stored.expiresAt !== 'number') {
+    return null;
+  }
+
+  return { code: stored.code, expiresAt: stored.expiresAt };
+}
+
+export async function deleteUserProfile(uid: string): Promise<void> {
+  await usersCollection().doc(uid).delete();
+}
+
 export async function saveUserProfile(uid: string, profile: Omit<UserProfile, 'uid'>): Promise<void> {
   // merge para no borrar campos que se añadan al documento mas adelante y que
   // este formulario todavia no conozca.
