@@ -11,6 +11,21 @@ services:
   app:
     build:
       context: .
+      # Las PUBLIC_FIREBASE_* se incrustan en el JS del navegador en el
+      # momento del build, no al arrancar el contenedor -a diferencia de los
+      # secretos del Admin SDK de abajo, que sí se leen en runtime vía
+      # astro:env-. Compose sustituye estas ${...} leyendo el mismo .env de
+      # este directorio automáticamente: es un mecanismo aparte de
+      # "env_file" (que solo inyecta variables al contenedor ya arrancado,
+      # nunca al build). Sin este bloque, el login queda roto en cada
+      # redeploy aunque el Dockerfile ya sepa recibirlas.
+      args:
+        PUBLIC_FIREBASE_API_KEY: ${PUBLIC_FIREBASE_API_KEY}
+        PUBLIC_FIREBASE_AUTH_DOMAIN: ${PUBLIC_FIREBASE_AUTH_DOMAIN}
+        PUBLIC_FIREBASE_PROJECT_ID: ${PUBLIC_FIREBASE_PROJECT_ID}
+        PUBLIC_FIREBASE_STORAGE_BUCKET: ${PUBLIC_FIREBASE_STORAGE_BUCKET}
+        PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        PUBLIC_FIREBASE_APP_ID: ${PUBLIC_FIREBASE_APP_ID}
     image: nodo-app
     container_name: nodo-app
     restart: unless-stopped
