@@ -9,6 +9,12 @@ interface Props {
 const { blur = false, class: className } = Astro.props;
 ---
 
-<div class={cn('rounded-2xl border border-white/10 bg-neutral-900/60', blur && 'backdrop-blur', className)}>
+<div
+  class={cn(
+    'rounded-3xl border border-white/[0.08] bg-neutral-900/60 shadow-[0_1px_1px_rgba(0,0,0,0.3),0_12px_28px_-8px_rgba(0,0,0,0.5)]',
+    blur && 'backdrop-blur-xl',
+    className,
+  )}
+>
   <slot />
 </div>

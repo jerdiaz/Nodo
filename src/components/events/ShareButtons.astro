@@ -33,7 +33,7 @@ const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
     <button
       id="native-share-button"
       type="button"
-      class="hidden items-center gap-1.5 text-xs text-neutral-500 transition-colors hover:text-neutral-300"
+      class="hidden items-center gap-1.5 text-xs text-neutral-500 transition active:scale-[0.95] hover:text-neutral-300"
     >
       <Share2 class="size-3.5" stroke-width={2} />
       Compartir
@@ -41,7 +41,7 @@ const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
     <button
       id="copy-link-button"
       type="button"
-      class="inline-flex items-center gap-1.5 text-xs text-neutral-500 transition-colors hover:text-neutral-300"
+      class="inline-flex items-center gap-1.5 text-xs text-neutral-500 transition active:scale-[0.95] hover:text-neutral-300"
     >
       <Link class="size-3.5" stroke-width={2} />
       <span id="copy-link-label">Copiar enlace</span>

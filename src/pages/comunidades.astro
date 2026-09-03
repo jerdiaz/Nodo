@@ -59,7 +59,7 @@ const communityList = [...communities.values()].sort((a, b) => b.eventCount - a.
       ) : (
         <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {communityList.map((community) => (
-            <div class="rounded-2xl border border-neutral-900 bg-neutral-900/40 p-6">
+            <div class="rounded-3xl border border-white/[0.08] bg-neutral-900/40 p-6 shadow-[0_1px_1px_rgba(0,0,0,0.3),0_12px_28px_-10px_rgba(0,0,0,0.55)]">
               <div class="flex items-center gap-3">
                 {community.organizer.avatarUrl ? (
                   <img
@@ -81,12 +81,12 @@ const communityList = [...communities.values()].sort((a, b) => b.eventCount - a.
               </div>
 
               {community.upcomingEvents.length > 0 && (
-                <div class="mt-5 space-y-2 border-t border-neutral-900 pt-4">
+                <div class="mt-5 space-y-2 border-t border-white/[0.08] pt-4">
                   <p class="text-xs font-medium uppercase tracking-wide text-neutral-600">Próximos eventos</p>
                   {community.upcomingEvents.slice(0, 3).map((event) => (
                     <a
                       href={`/eventos/${event.slug}`}
-                      class="block truncate text-sm text-neutral-300 transition-colors hover:text-emerald-400"
+                      class="block truncate text-sm text-neutral-300 transition hover:text-emerald-400"
                     >
                       {event.title}
                     </a>
