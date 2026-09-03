@@ -50,6 +50,22 @@ export async function logout(): Promise<void> {
   window.location.href = '/';
 }
 
+export async function uploadAvatar(file: File): Promise<string> {
+  const uid = auth.currentUser?.uid;
+
+  if (!uid) {
+    throw new Error('Debes iniciar sesión para subir una imagen.');
+  }
+
+  const extension = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+  const path = `avatars/${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+  const avatarRef = ref(storage, path);
+
+  await uploadBytes(avatarRef, file);
+
+  return getDownloadURL(avatarRef);
+}
+
 export async function uploadEventBanner(file: File): Promise<string> {
   const uid = auth.currentUser?.uid;
 

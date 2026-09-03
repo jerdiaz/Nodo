@@ -1,0 +1,287 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/ui/Button.astro';
+import { getCurrentUser } from '../lib/auth';
+import { getUserProfile } from '../lib/firebase/users';
+import { SOCIAL_FIELDS } from '../types/profile';
+import { Upload } from '@lucide/astro';
+import type { UserProfile } from '../types/profile';
+
+const user = await getCurrentUser(Astro.cookies);
+
+if (!user) {
+  return Astro.redirect('/?login=required');
+}
+
+let profile: UserProfile | null = null;
+
+try {
+  profile = await getUserProfile(user.uid);
+} catch (error) {
+  console.warn('No se pudo obtener el perfil desde Firebase:', error);
+}
+
+// Quien nunca ha guardado el formulario no tiene documento en `users`: se
+// parte del nombre que trae el token de Firebase Auth para que los campos no
+// aparezcan vacios la primera vez.
+const [authFirst = '', ...authRest] = user.name.split(' ');
+const firstName = profile?.firstName || authFirst;
+const lastName = profile?.lastName ?? authRest.join(' ');
+const avatarUrl = profile?.avatarUrl ?? user.avatarUrl ?? '';
+
+const inputClass =
+  'mt-1.5 w-full rounded-xl bg-neutral-900/70 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 ring-1 ring-inset ring-white/[0.08] focus:outline-none focus:ring-2 focus:ring-emerald-500/60';
+---
+
+<BaseLayout title="Configuración — Nodo" description="Ajusta tu perfil en Nodo.">
+  <div class="mx-auto max-w-3xl px-6 pb-24 pt-16">
+    <h1 class="text-3xl font-bold tracking-tight text-neutral-100">Configuración</h1>
+
+    <div class="mt-6 border-b border-white/[0.08]">
+      <span class="inline-block border-b-2 border-neutral-100 pb-3 text-sm font-medium text-neutral-100">
+        Cuenta
+      </span>
+    </div>
+
+    <form id="profile-form" novalidate class="mt-10">
+      <h2 class="text-lg font-semibold text-neutral-100">Tu perfil</h2>
+
+      <div class="mt-6 grid gap-8 sm:grid-cols-[1fr_auto]">
+        <div class="space-y-5">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="firstName" class="block text-sm font-medium text-neutral-300">Nombre</label>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                required
+                maxlength="60"
+                class={inputClass}
+                value={firstName}
+              />
+            </div>
+            <div>
+              <label for="lastName" class="block text-sm font-medium text-neutral-300">Apellido</label>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                maxlength="60"
+                class={inputClass}
+                value={lastName}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label for="username" class="block text-sm font-medium text-neutral-300">Nombre de usuario</label>
+            <div class="mt-1.5 flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
+              <span class="flex items-center bg-neutral-800/80 px-3.5 text-sm text-neutral-400">@</span>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                maxlength="30"
+                autocomplete="off"
+                placeholder="tunombre"
+                class="w-full bg-neutral-900/70 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+                value={profile?.username ?? ''}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label for="bio" class="block text-sm font-medium text-neutral-300">Biografía</label>
+            <textarea
+              id="bio"
+              name="bio"
+              rows="3"
+              maxlength="280"
+              class={inputClass}
+              placeholder="Comparte un poco sobre tu experiencia e intereses."
+            >{profile?.bio ?? ''}</textarea>
+            <p class="mt-1 text-xs text-neutral-600"><span id="bio-count">0</span>/280</p>
+          </div>
+        </div>
+
+        <div class="sm:w-40">
+          <span class="block text-sm font-medium text-neutral-300">Foto de perfil</span>
+          <div class="relative mt-1.5 w-fit">
+            <img
+              id="avatar-preview"
+              src={avatarUrl || undefined}
+              alt=""
+              class:list={['size-28 rounded-full bg-neutral-800 object-cover', !avatarUrl && 'hidden']}
+            />
+            <div
+              id="avatar-fallback"
+              class:list={[
+                'flex size-28 items-center justify-center rounded-full bg-neutral-800 text-3xl font-semibold text-neutral-300',
+                avatarUrl && 'hidden',
+              ]}
+            >
+              {firstName.charAt(0).toUpperCase()}
+            </div>
+            <label
+              for="avatarFile"
+              class="absolute bottom-0 right-0 flex size-9 cursor-pointer items-center justify-center rounded-full bg-neutral-100 text-neutral-950 shadow-lg transition hover:bg-emerald-400"
+              title="Cambiar foto de perfil"
+            >
+              <Upload class="size-4" stroke-width={2.5} />
+              <span class="sr-only">Cambiar foto de perfil</span>
+              <input id="avatarFile" name="avatarFile" type="file" accept="image/*" class="sr-only" />
+            </label>
+          </div>
+          <p class="mt-2 text-xs text-neutral-600">JPG, PNG o WEBP, máx. 2 MB.</p>
+          <input type="hidden" id="avatarUrl" name="avatarUrl" value={avatarUrl} />
+        </div>
+      </div>
+
+      <div class="mt-8">
+        <span class="block text-sm font-medium text-neutral-300">Enlaces sociales</span>
+        <div class="mt-2 grid gap-3 sm:grid-cols-2">
+          {SOCIAL_FIELDS.map((field) => (
+            <div class="flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
+              <span class="flex shrink-0 items-center bg-neutral-800/80 px-3 text-xs text-neutral-400">
+                {field.prefix}
+              </span>
+              <input
+                type="text"
+                name={`social-${field.key}`}
+                maxlength="60"
+                autocomplete="off"
+                aria-label={field.label}
+                placeholder="nombre de usuario"
+                class="w-full min-w-0 bg-neutral-900/70 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+                value={profile?.socials?.[field.key] ?? ''}
+              />
+            </div>
+          ))}
+
+          <div class="flex overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08] focus-within:ring-2 focus-within:ring-emerald-500/60">
+            <span class="flex shrink-0 items-center bg-neutral-800/80 px-3 text-xs text-neutral-400">Web</span>
+            <input
+              type="text"
+              name="social-website"
+              maxlength="200"
+              autocomplete="off"
+              aria-label="Sitio web"
+              placeholder="tu sitio web"
+              class="w-full min-w-0 bg-neutral-900/70 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none"
+              value={profile?.socials?.website ?? ''}
+            />
+          </div>
+        </div>
+      </div>
+
+      <p id="form-error" class="mt-6 hidden text-sm text-red-400"></p>
+      <p id="form-success" class="mt-6 hidden text-sm text-emerald-400"></p>
+
+      <div class="mt-8 border-t border-white/[0.08] pt-6">
+        <Button variant="primary" type="submit" id="submit-button">Guardar cambios</Button>
+      </div>
+    </form>
+  </div>
+</BaseLayout>
+
+<script>
+  import { uploadAvatar } from '../lib/firebase/client';
+
+  const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+
+  const form = document.getElementById('profile-form') as HTMLFormElement;
+  const avatarInput = document.getElementById('avatarFile') as HTMLInputElement;
+  const avatarPreview = document.getElementById('avatar-preview') as HTMLImageElement;
+  const avatarFallback = document.getElementById('avatar-fallback') as HTMLElement;
+  const avatarUrlInput = document.getElementById('avatarUrl') as HTMLInputElement;
+  const bioField = document.getElementById('bio') as HTMLTextAreaElement;
+  const bioCount = document.getElementById('bio-count') as HTMLElement;
+  const errorBox = document.getElementById('form-error') as HTMLParagraphElement;
+  const successBox = document.getElementById('form-success') as HTMLParagraphElement;
+  const submitButton = document.getElementById('submit-button') as HTMLButtonElement;
+
+  const originalButtonText = submitButton.textContent ?? 'Guardar cambios';
+
+  function updateBioCount(): void {
+    bioCount.textContent = String(bioField.value.length);
+  }
+
+  bioField.addEventListener('input', updateBioCount);
+  updateBioCount();
+
+  avatarInput.addEventListener('change', () => {
+    const file = avatarInput.files?.[0];
+    if (!file) {
+      return;
+    }
+    avatarPreview.src = URL.createObjectURL(file);
+    avatarPreview.classList.remove('hidden');
+    avatarFallback.classList.add('hidden');
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorBox.classList.add('hidden');
+    successBox.classList.add('hidden');
+
+    const file = avatarInput.files?.[0];
+
+    if (file && file.size > MAX_AVATAR_SIZE) {
+      errorBox.textContent = 'La imagen no puede superar 2 MB.';
+      errorBox.classList.remove('hidden');
+      return;
+    }
+
+    submitButton.disabled = true;
+
+    try {
+      let avatarUrl = avatarUrlInput.value;
+
+      if (file) {
+        submitButton.textContent = 'Subiendo imagen…';
+        avatarUrl = await uploadAvatar(file);
+        avatarUrlInput.value = avatarUrl;
+      }
+
+      submitButton.textContent = 'Guardando…';
+
+      const data = new FormData(form);
+      const socials: Record<string, string> = {};
+
+      for (const [key, value] of data.entries()) {
+        if (key.startsWith('social-') && typeof value === 'string' && value.trim()) {
+          socials[key.slice('social-'.length)] = value.trim();
+        }
+      }
+
+      const response = await fetch('/api/perfil', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: data.get('firstName'),
+          lastName: data.get('lastName'),
+          username: data.get('username'),
+          bio: data.get('bio'),
+          avatarUrl: avatarUrl || undefined,
+          socials,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? 'No se pudo guardar el perfil.');
+      }
+
+      successBox.textContent = 'Perfil actualizado correctamente.';
+      successBox.classList.remove('hidden');
+    } catch (error) {
+      errorBox.textContent = error instanceof Error ? error.message : 'No se pudo guardar el perfil.';
+      errorBox.classList.remove('hidden');
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = originalButtonText;
+    }
+  });
+</script>
