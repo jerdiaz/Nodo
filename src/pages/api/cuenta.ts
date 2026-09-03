@@ -3,6 +3,7 @@ import { jsonResponse } from '../../lib/api';
 import { getCurrentUser } from '../../lib/auth';
 import { getAdminAuth, getAdminDb } from '../../lib/firebase/server';
 import { getEvents } from '../../lib/firebase/events';
+import { deleteUserImages } from '../../lib/images';
 import { deleteUserProfile, getDeletionCode, getUidByUsername, getUserProfile } from '../../lib/firebase/users';
 
 // Borrar un documento no borra sus subcolecciones: los rsvps de un evento
@@ -85,6 +86,8 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       ),
     );
   } else {
+    // deleteUserImages ya barre event-banners/{uid}/, asi que los banners de
+    // estos eventos se van con ella.
     await Promise.all(own.map((event) => deleteEventWithRsvps(event.id)));
   }
 
@@ -95,6 +98,12 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       db.collection('events').doc(event.id).collection('rsvps').doc(user.uid).delete(),
     ),
   );
+
+  // Los archivos de Storage no cuelgan de ningun documento: si no se barren
+  // aqui, el avatar y los banners sobreviven a la cuenta para siempre. Al
+  // transferir se conservan los banners: los eventos siguen vivos en otra
+  // cuenta y se quedarian sin imagen.
+  await deleteUserImages(user.uid, mode === 'transfer' ? ['avatars'] : ['avatars', 'event-banners']);
 
   await deleteUserProfile(user.uid);
   await getAdminAuth().deleteUser(user.uid);

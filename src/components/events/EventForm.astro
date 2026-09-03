@@ -202,8 +202,6 @@ const inputClass =
 </Card>
 
 <script>
-  import { uploadEventBanner } from '../../lib/firebase/client';
-
   const MAX_BANNER_SIZE = 5 * 1024 * 1024;
 
   const form = document.getElementById('event-form') as HTMLFormElement;
@@ -224,6 +222,25 @@ const inputClass =
   const submitButton = document.getElementById('submit-button') as HTMLButtonElement;
 
   const originalButtonText = submitButton.textContent ?? 'Publicar evento';
+
+  // La imagen va al servidor, que la modera y la recorta antes de guardarla.
+  async function subirImagen(file: File, kind: 'avatar' | 'banner'): Promise<string> {
+    // Cuerpo binario, no FormData: multipart dispara la comprobacion de origen
+    // de Astro y responde 403 detras del proxy de produccion.
+    const response = await fetch(`/api/imagenes?kind=${kind}`, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'image/jpeg' },
+      body: file,
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error ?? 'No se pudo subir la imagen.');
+    }
+
+    return result.url as string;
+  }
+
 
   timezoneInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -406,8 +423,8 @@ const inputClass =
       let bannerUrl: string | undefined;
 
       if (bannerFile) {
-        submitButton.textContent = 'Subiendo imagen…';
-        bannerUrl = await uploadEventBanner(bannerFile);
+        submitButton.textContent = 'Revisando imagen…';
+        bannerUrl = await subirImagen(bannerFile, 'banner');
       }
 
       submitButton.textContent = form.dataset.method === 'PUT' ? 'Guardando…' : 'Publicando…';

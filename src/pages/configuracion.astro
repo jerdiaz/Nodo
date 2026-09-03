@@ -361,8 +361,6 @@ const inputClass =
 </BaseLayout>
 
 <script>
-  import { uploadAvatar } from '../lib/firebase/client';
-
   const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 
   const form = document.getElementById('profile-form') as HTMLFormElement;
@@ -377,6 +375,25 @@ const inputClass =
   const submitButton = document.getElementById('submit-button') as HTMLButtonElement;
 
   const originalButtonText = submitButton.textContent ?? 'Guardar cambios';
+
+  // La imagen va al servidor, que la modera y la recorta antes de guardarla.
+  async function subirImagen(file: File, kind: 'avatar' | 'banner'): Promise<string> {
+    // Cuerpo binario, no FormData: multipart dispara la comprobacion de origen
+    // de Astro y responde 403 detras del proxy de produccion.
+    const response = await fetch(`/api/imagenes?kind=${kind}`, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'image/jpeg' },
+      body: file,
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error ?? 'No se pudo subir la imagen.');
+    }
+
+    return result.url as string;
+  }
+
 
   // --- Suscripcion iCal ---
   const icalButton = document.getElementById('ical-button') as HTMLButtonElement;
@@ -557,8 +574,8 @@ const inputClass =
       let avatarUrl = avatarUrlInput.value;
 
       if (file) {
-        submitButton.textContent = 'Subiendo imagen…';
-        avatarUrl = await uploadAvatar(file);
+        submitButton.textContent = 'Revisando imagen…';
+        avatarUrl = await subirImagen(file, 'avatar');
         avatarUrlInput.value = avatarUrl;
       }
 

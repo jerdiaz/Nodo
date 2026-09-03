@@ -1,6 +1,5 @@
 import { getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
 import { GoogleAuthProvider, OAuthProvider, getAuth, signInWithPopup, signOut, type AuthProvider } from 'firebase/auth';
-import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -14,7 +13,6 @@ const firebaseConfig: FirebaseOptions = {
 export const firebaseApp = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
 
 export const auth = getAuth(firebaseApp);
-export const storage = getStorage(firebaseApp);
 
 async function completeSignIn(provider: AuthProvider): Promise<void> {
   const credential = await signInWithPopup(auth, provider);
@@ -60,34 +58,3 @@ export async function logout(): Promise<void> {
   window.location.href = '/';
 }
 
-export async function uploadAvatar(file: File): Promise<string> {
-  const uid = auth.currentUser?.uid;
-
-  if (!uid) {
-    throw new Error('Debes iniciar sesión para subir una imagen.');
-  }
-
-  const extension = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
-  const path = `avatars/${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
-  const avatarRef = ref(storage, path);
-
-  await uploadBytes(avatarRef, file);
-
-  return getDownloadURL(avatarRef);
-}
-
-export async function uploadEventBanner(file: File): Promise<string> {
-  const uid = auth.currentUser?.uid;
-
-  if (!uid) {
-    throw new Error('Debes iniciar sesión para subir una imagen.');
-  }
-
-  const extension = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
-  const path = `event-banners/${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
-  const bannerRef = ref(storage, path);
-
-  await uploadBytes(bannerRef, file);
-
-  return getDownloadURL(bannerRef);
-}
