@@ -4,6 +4,17 @@ import type { NodoEvent } from '../../types/event';
 export interface EventFilters {
   modality?: string;
   city?: string;
+  timeframe?: 'upcoming' | 'past' | 'all';
+  search?: string;
+}
+
+// Quita tildes/diacríticos antes de comparar, para que "ceramica" encuentre
+// "cerámica" — muy común que la gente busque sin tildes en español.
+function normalizeForSearch(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .toLowerCase();
 }
 
 function mapDocToEvent(doc: FirebaseFirestore.QueryDocumentSnapshot): NodoEvent {
@@ -33,6 +44,8 @@ export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoE
     return events;
   }
 
+  const now = Date.now();
+
   return events.filter((event) => {
     if (filters.modality && event.modality !== filters.modality) {
       return false;
@@ -40,6 +53,23 @@ export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoE
 
     if (filters.city && event.city !== filters.city) {
       return false;
+    }
+
+    if (filters.timeframe === 'upcoming' && event.endDate.getTime() < now) {
+      return false;
+    }
+
+    if (filters.timeframe === 'past' && event.endDate.getTime() >= now) {
+      return false;
+    }
+
+    if (filters.search) {
+      const query = normalizeForSearch(filters.search.trim());
+      const haystack = normalizeForSearch([event.title, event.description, ...event.tags].join(' '));
+
+      if (query && !haystack.includes(query)) {
+        return false;
+      }
     }
 
     return true;

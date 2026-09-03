@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import EmptyState from '../components/events/EmptyState.astro';
-import { getEvents } from '../lib/firebase/events';
+import { filterEvents, getEvents } from '../lib/firebase/events';
 import { formatEventDay, formatEventMonthShort, formatEventMonthYear, formatEventTime } from '../lib/format';
 import { MapPin, Video } from '@lucide/astro';
 import type { EventModality, NodoEvent } from '../types/event';
@@ -14,8 +14,7 @@ try {
   console.warn('No se pudo obtener el catálogo de eventos desde Firebase:', error);
 }
 
-const now = Date.now();
-const upcomingEvents = allEvents.filter((event) => event.endDate.getTime() >= now);
+const upcomingEvents = filterEvents(allEvents, { timeframe: 'upcoming' });
 
 interface MonthGroup {
   label: string;

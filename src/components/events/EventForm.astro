@@ -313,7 +313,8 @@ const inputClass =
         throw new Error(result.error ?? 'No se pudo guardar el evento.');
       }
 
-      window.location.href = `/eventos/${result.slug}`;
+      const statusParam = form.dataset.method === 'PUT' ? 'updated' : 'created';
+      window.location.href = `/eventos/${result.slug}?${statusParam}=true`;
     } catch (error) {
       errorBox.textContent = error instanceof Error ? error.message : 'No se pudo guardar el evento.';
       errorBox.classList.remove('hidden');

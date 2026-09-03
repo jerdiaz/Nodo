@@ -1,0 +1,85 @@
+---
+import { Link, MessageCircle, Share2 } from '@lucide/astro';
+import { formatEventDateLong } from '../../lib/format';
+import type { NodoEvent } from '../../types/event';
+
+interface Props {
+  event: NodoEvent;
+  url: string;
+}
+
+const { event, url } = Astro.props;
+
+const dateLabel = formatEventDateLong(event.startDate, event.timezone);
+const shareText = `${event.title} — ${dateLabel}\n${url}`;
+const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+const buttonClass =
+  'inline-flex items-center gap-2 rounded-full border border-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:border-neutral-600';
+---
+
+<div
+  class="flex flex-wrap items-center gap-3"
+  data-share-title={event.title}
+  data-share-text={shareText}
+  data-share-url={url}
+>
+  <button id="native-share-button" type="button" class={`hidden ${buttonClass}`}>
+    <Share2 class="size-4" stroke-width={2} />
+    Compartir
+  </button>
+
+  <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" class={buttonClass}>
+    <MessageCircle class="size-4" stroke-width={2} />
+    WhatsApp
+  </a>
+
+  <button id="copy-link-button" type="button" class={buttonClass}>
+    <Link class="size-4" stroke-width={2} />
+    <span id="copy-link-label">Copiar enlace</span>
+  </button>
+</div>
+
+<script>
+  const container = document.querySelector<HTMLElement>('[data-share-url]');
+  const nativeShareButton = document.getElementById('native-share-button') as HTMLButtonElement | null;
+  const copyButton = document.getElementById('copy-link-button') as HTMLButtonElement | null;
+  const copyLabel = document.getElementById('copy-link-label') as HTMLSpanElement | null;
+
+  if (container && nativeShareButton && navigator.share) {
+    nativeShareButton.classList.remove('hidden');
+    nativeShareButton.classList.add('inline-flex');
+
+    nativeShareButton.addEventListener('click', async () => {
+      try {
+        await navigator.share({
+          title: container.dataset.shareTitle,
+          text: container.dataset.shareText,
+          url: container.dataset.shareUrl,
+        });
+      } catch {
+        // El usuario cerró el diálogo nativo sin compartir; no es un error real.
+      }
+    });
+  }
+
+  copyButton?.addEventListener('click', async () => {
+    const url = container?.dataset.shareUrl;
+    if (!url || !copyLabel) {
+      return;
+    }
+
+    const original = copyLabel.textContent;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      copyLabel.textContent = '¡Copiado!';
+    } catch {
+      copyLabel.textContent = 'No se pudo copiar';
+    }
+
+    setTimeout(() => {
+      copyLabel.textContent = original;
+    }, 2000);
+  });
+</script>

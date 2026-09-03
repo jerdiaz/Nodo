@@ -5,9 +5,11 @@ interface Props {
   cities: string[];
   selectedModality?: string;
   selectedCity?: string;
+  selectedTimeframe?: 'past';
+  selectedSearch?: string;
 }
 
-const { cities, selectedModality, selectedCity } = Astro.props;
+const { cities, selectedModality, selectedCity, selectedTimeframe, selectedSearch } = Astro.props;
 
 const modalities: { label: string; value?: string }[] = [
   { label: 'Todos', value: undefined },
@@ -15,10 +17,19 @@ const modalities: { label: string; value?: string }[] = [
   { label: 'Virtuales', value: 'virtual' },
 ];
 
-function buildHref(modality?: string, city?: string): string {
+interface HrefOverrides {
+  modality?: string;
+  city?: string;
+  timeframe?: string;
+  search?: string;
+}
+
+function buildHref(overrides: HrefOverrides): string {
   const params = new URLSearchParams();
-  if (modality) params.set('modalidad', modality);
-  if (city) params.set('ciudad', city);
+  if (overrides.modality) params.set('modalidad', overrides.modality);
+  if (overrides.city) params.set('ciudad', overrides.city);
+  if (overrides.timeframe) params.set('tiempo', overrides.timeframe);
+  if (overrides.search) params.set('q', overrides.search);
   const query = params.toString();
   return query ? `/?${query}` : '/';
 }
@@ -34,7 +45,12 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
 
       return (
         <a
-          href={buildHref(modality.value, nextCity)}
+          href={buildHref({
+            modality: modality.value,
+            city: nextCity,
+            timeframe: selectedTimeframe,
+            search: selectedSearch,
+          })}
           class={cn(
             'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
             isActive ? 'bg-neutral-100 text-neutral-950' : 'bg-neutral-900 text-neutral-400 hover:text-neutral-100',
@@ -49,7 +65,7 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
   {showCityFilter && cities.length > 0 && (
     <div class="flex flex-wrap justify-end gap-2">
       <a
-        href={buildHref(selectedModality, undefined)}
+        href={buildHref({ modality: selectedModality, timeframe: selectedTimeframe, search: selectedSearch })}
         class={cn(
           'rounded-full px-3 py-1 text-xs font-medium transition-colors',
           !selectedCity ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-500 hover:text-neutral-200',
@@ -59,7 +75,12 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
       </a>
       {cities.map((city) => (
         <a
-          href={buildHref(selectedModality, city)}
+          href={buildHref({
+            modality: selectedModality,
+            city,
+            timeframe: selectedTimeframe,
+            search: selectedSearch,
+          })}
           class={cn(
             'rounded-full px-3 py-1 text-xs font-medium transition-colors',
             selectedCity === city ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-500 hover:text-neutral-200',
@@ -70,4 +91,15 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
       ))}
     </div>
   )}
+
+  <a
+    href={
+      selectedTimeframe === 'past'
+        ? buildHref({ modality: selectedModality, city: selectedCity, search: selectedSearch })
+        : buildHref({ modality: selectedModality, city: selectedCity, timeframe: 'past', search: selectedSearch })
+    }
+    class="text-xs text-neutral-600 underline-offset-2 transition-colors hover:text-neutral-400 hover:underline"
+  >
+    {selectedTimeframe === 'past' ? 'Ver próximos eventos' : 'Ver eventos pasados'}
+  </a>
 </div>

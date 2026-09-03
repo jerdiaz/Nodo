@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import StatusToast from '../../components/common/StatusToast.astro';
+import ShareButtons from '../../components/events/ShareButtons.astro';
 import { getCurrentUser } from '../../lib/auth';
 import { getEventBySlug } from '../../lib/firebase/events';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
@@ -29,6 +31,10 @@ const dayLabel = formatEventDay(event.startDate, event.timezone);
 
 const googleCalendarUrl = getGoogleCalendarUrl(event);
 const icsDataUrl = getIcsDataUrl(event);
+const pageUrl = new URL(Astro.url.pathname, Astro.url.origin).toString();
+
+const eventCreated = Astro.url.searchParams.get('created') === 'true';
+const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
 ---
 
 <BaseLayout
@@ -37,6 +43,9 @@ const icsDataUrl = getIcsDataUrl(event);
   image={event.bannerUrl}
   type="article"
 >
+  {eventCreated && <StatusToast paramKey="created" message="¡Evento publicado correctamente!" />}
+  {eventUpdated && <StatusToast paramKey="updated" message="Evento actualizado correctamente." />}
+
   <article>
     <div class="relative aspect-[21/9] w-full overflow-hidden bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950">
       {event.bannerUrl && <img src={event.bannerUrl} alt={event.title} class="h-full w-full object-cover" />}
@@ -139,6 +148,10 @@ const icsDataUrl = getIcsDataUrl(event);
         </a>
       </div>
 
+      <div class="mt-4">
+        <ShareButtons event={event} url={pageUrl} />
+      </div>
+
       <div class="mt-10 flex items-center gap-3 border-y border-neutral-900 py-5">
         {event.organizer.avatarUrl ? (
           <img
@@ -193,7 +206,7 @@ const icsDataUrl = getIcsDataUrl(event);
           throw new Error(result.error ?? 'No se pudo eliminar el evento.');
         }
 
-        window.location.href = '/';
+        window.location.href = '/?deleted=true';
       } catch (error) {
         window.alert(error instanceof Error ? error.message : 'No se pudo eliminar el evento.');
         deleteButton.disabled = false;

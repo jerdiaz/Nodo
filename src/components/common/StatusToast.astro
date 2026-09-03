@@ -1,0 +1,42 @@
+---
+interface Props {
+  message: string;
+  paramKey: 'created' | 'updated' | 'deleted';
+}
+
+const { message, paramKey } = Astro.props;
+---
+
+<div
+  class="status-toast fixed right-4 top-20 z-50 flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-950/80 px-4 py-3 text-sm text-emerald-100 shadow-lg backdrop-blur"
+  role="status"
+  data-param-key={paramKey}
+>
+  <p class="pr-2">{message}</p>
+  <button
+    type="button"
+    data-toast-close
+    aria-label="Cerrar notificación"
+    class="text-emerald-300/70 transition-colors hover:text-emerald-100"
+  >
+    ×
+  </button>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.status-toast').forEach((toast) => {
+    const paramKey = toast.dataset.paramKey;
+
+    if (paramKey) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has(paramKey)) {
+        url.searchParams.delete(paramKey);
+        window.history.replaceState(null, '', url.pathname + url.search);
+      }
+    }
+
+    toast.querySelector('[data-toast-close]')?.addEventListener('click', () => {
+      toast.remove();
+    });
+  });
+</script>
