@@ -29,3 +29,7 @@ pnpm-debug.log*
 
 # Mockups de referencia de diseño (imágenes pesadas, no son código del sitio)
 /mockups/
+
+# Propuesta de logo original (imagen pesada de referencia; los assets
+# derivados ya están generados y versionados en public/)
+/logo.jpeg

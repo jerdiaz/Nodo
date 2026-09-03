@@ -18,13 +18,15 @@ const {
 } = Astro.props;
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.url.origin).toString();
-const ogImageUrl = image ? new URL(image, Astro.url.origin).toString() : undefined;
+const ogImageUrl = new URL(image || '/logo-icon.png', Astro.url.origin).toString();
 ---
 
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
@@ -35,12 +37,12 @@ const ogImageUrl = image ? new URL(image, Astro.url.origin).toString() : undefin
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
-    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+    <meta property="og:image" content={ogImageUrl} />
 
-    <meta name="twitter:card" content={ogImageUrl ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}
+    <meta name="twitter:image" content={ogImageUrl} />
   </head>
   <body class="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
     <Navbar />
