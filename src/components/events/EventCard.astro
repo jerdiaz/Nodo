@@ -2,7 +2,7 @@
 import { MapPin, Video } from '@lucide/astro';
 import Badge from '../ui/Badge.astro';
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
-import { formatEventDay, formatEventMonthShort, getEventLocationLabel } from '../../lib/format';
+import { formatEventDay, formatEventMonthShort, formatEventPrice, getEventLocationLabel } from '../../lib/format';
 import { genColorForEvent } from '../../lib/genColor';
 import type { EventModality, NodoEvent } from '../../types/event';
 
@@ -41,6 +41,17 @@ const color = genColorForEvent(event);
         <img src={event.bannerSmallUrl ?? event.bannerUrl} alt="" class="h-full w-full object-cover" loading="lazy" />
       ) : (
         <div class="h-full w-full bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave" />
+      )}
+
+      {/*
+        Solo los de pago llevan chapa. Una que dijera "Gratis" iria en casi
+        todas las tarjetas de la cartelera, y lo que se repite en todas deja
+        de leerse: el precio importa justo cuando lo hay.
+      */}
+      {event.price && (
+        <span class="absolute right-3 top-3 rounded-full bg-superficie px-2.5 py-1 text-xs font-semibold text-texto shadow-[var(--c-sombra)]">
+          {formatEventPrice(event)}
+        </span>
       )}
 
       <div class="absolute left-3 top-3 flex flex-col items-center rounded-xl bg-[#111113]/75 px-2.5 py-1.5 leading-none backdrop-blur-xl">

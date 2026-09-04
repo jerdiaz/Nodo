@@ -11,9 +11,15 @@ import type { NodoEvent } from '../../types/event';
 import { getRsvpInfo, getRsvpUids } from '../../lib/firebase/rsvps';
 import { getEventJsonLd } from '../../lib/eventSchema';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
-import { formatEventDate, formatEventDateLong, formatEventTime } from '../../lib/format';
+import {
+  formatEventDate,
+  formatEventDateLong,
+  formatEventPrice,
+  formatEventTime,
+  getRemainingSpots,
+} from '../../lib/format';
 import { genColorForEvent } from '../../lib/genColor';
-import { CalendarDays, CalendarPlus, Check, ChevronRight, MapPin, Share2, SquareArrowOutUpRight, Users, Video } from '@lucide/astro';
+import { CalendarDays, CalendarPlus, Check, ChevronRight, MapPin, Share2, SquareArrowOutUpRight, Ticket, Users, Video } from '@lucide/astro';
 import VerifiedBadge from '../../components/ui/VerifiedBadge.astro';
 import { getUserProfiles } from '../../lib/firebase/users';
 import type { UserProfile, VerificationType } from '../../types/profile';
@@ -126,7 +132,31 @@ const tarjetasAsistentes = [...asistentes, ...(asistentePropio ? [asistentePropi
 );
 
 
+const precioLabel = formatEventPrice(event);
+
+// null cuando el evento no tiene aforo, que es lo que distingue "sin limite"
+// de "lleno". Se recalcula en el navegador al confirmar, a partir del aforo
+// que viaja en data-capacity.
+const lugaresRestantes = getRemainingSpots(event, rsvpCount);
+const aforoCompleto = lugaresRestantes === 0 && !isAttending;
+
+function textoLugares(restantes: number): string {
+  if (restantes === 0) {
+    return 'Aforo completo';
+  }
+
+  return `Queda${restantes === 1 ? '' : 'n'} ${restantes} ${restantes === 1 ? 'lugar' : 'lugares'}`;
+}
+
 const physicalLocation = [event.venue, event.address, event.city].filter(Boolean).join(', ');
+
+// Con coordenadas se pide el punto y no el texto: quien las eligio al publicar
+// ya dijo exactamente donde es, y buscar la direccion escrita solo acertaba el
+// barrio. Sin ellas se sigue buscando por texto, como los eventos antiguos.
+const mapaConsulta =
+  event.latitude !== undefined && event.longitude !== undefined
+    ? `${event.latitude},${event.longitude}`
+    : physicalLocation;
 
 // El enlace al mapa se arma con la direccion escrita, no con coordenadas: no
 // se guardan. Google resuelve el texto igual que si se hubiera tecleado en su
@@ -139,7 +169,7 @@ const lugarDetalle = [event.venue ? event.address : null, event.venue ? event.ci
   .join(' · ');
 
 const mapsUrl = physicalLocation
-  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(physicalLocation)}`
+  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapaConsulta ?? physicalLocation)}`
   : null;
 
 // Mapa incrustado sin clave de API. El parametro output=embed de maps.google
@@ -152,8 +182,8 @@ const mapsUrl = physicalLocation
 // Se busca por texto porque es lo unico que hay: el evento guarda direccion
 // escrita, no coordenadas.
 const mapaEmbedUrl =
-  physicalLocation && event.modality !== 'virtual'
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(physicalLocation)}&z=15&hl=es&output=embed`
+  mapaConsulta && event.modality !== 'virtual'
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(mapaConsulta)}&z=${event.latitude !== undefined ? 17 : 15}&hl=es&output=embed`
     : null;
 
 const tzAbbreviation = new Intl.DateTimeFormat('es', { timeZone: event.timezone, timeZoneName: 'short' })
@@ -257,7 +287,11 @@ function textoAsistentes(total: number): string {
     acciones, descripcion. El titulo va primero a proposito: es lo que dice si
     vale la pena seguir bajando.
   */}
-  <div data-gen={color} class="mx-auto max-w-6xl px-6 pb-16 pt-10">
+  <div
+    data-gen={color}
+    data-capacity={event.capacity ?? undefined}
+    class="mx-auto max-w-6xl px-6 pb-16 pt-10"
+  >
     <div class="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-12 lg:grid-rows-[auto_1fr]">
       <header class="lg:order-1 lg:col-span-7">
         <h1 class="text-3xl font-bold leading-tight text-texto sm:text-[40px] sm:leading-[46px]">
@@ -414,6 +448,27 @@ function textoAsistentes(total: number): string {
             <div class="mx-5 h-px bg-linea-suave"></div>
 
             {/*
+              La entrada se dice siempre, tambien cuando es gratis: es lo
+              primero que alguien quiere saber antes de decidir, y su ausencia
+              se leeria como un dato que falta y no como que no se cobra.
+            */}
+            <div class="flex items-start gap-4 p-5">
+              <span class="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--g-suave)] text-[var(--g-texto)]">
+                <Ticket class="size-5" stroke-width={2} />
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="font-semibold text-texto">{precioLabel}</p>
+                {event.capacity && (
+                  <p class="text-sm text-suave">
+                    <span data-spots>{textoLugares(lugaresRestantes ?? 0)}</span> de {event.capacity}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div class="mx-5 h-px bg-linea-suave"></div>
+
+            {/*
               El ancla de la barra inferior. Mientras este bloque se vea, la
               barra sobra: el mismo boton ya esta en pantalla.
             */}
@@ -430,6 +485,10 @@ function textoAsistentes(total: number): string {
               {eventEnded ? (
                 <p class="mt-4 w-full rounded-2xl border border-linea bg-fondo-alt px-4 py-2.5 text-center text-sm font-medium text-suave">
                   {isAttending ? 'Asististe a este evento' : 'Este evento ya terminó'}
+                </p>
+              ) : aforoCompleto ? (
+                <p class="mt-4 w-full rounded-2xl border border-linea bg-fondo-alt px-4 py-2.5 text-center text-sm font-medium text-suave">
+                  Aforo completo
                 </p>
               ) : user ? (
                 <button
@@ -666,6 +725,21 @@ function textoAsistentes(total: number): string {
         <p class="truncate text-sm font-semibold text-texto sm:text-base">{event.title}</p>
       </div>
 
+      {event.price && (
+        <span class="shrink-0 rounded-full bg-fondo-alt px-3 py-1.5 text-sm font-semibold text-texto">
+          {precioLabel}
+        </span>
+      )}
+
+      {event.capacity && (
+        <span
+          data-spots
+          class="hidden shrink-0 rounded-full bg-acento-suave px-3 py-1.5 text-sm font-medium text-acento-texto sm:inline"
+        >
+          {textoLugares(lugaresRestantes ?? 0)}
+        </span>
+      )}
+
       <p data-rsvp-count class="hidden shrink-0 text-sm text-suave lg:block">
         {textoAsistentes(rsvpCount)}
       </p>
@@ -675,7 +749,7 @@ function textoAsistentes(total: number): string {
         type="button"
         aria-label="Compartir evento"
         title="Compartir evento"
-        class="grid size-10 shrink-0 place-items-center rounded-full border border-linea text-suave transition active:scale-[0.95] hover:border-acento hover:text-texto"
+        class="hidden size-10 shrink-0 place-items-center rounded-full border border-linea text-suave transition active:scale-[0.95] hover:border-acento hover:text-texto sm:grid"
       >
         <Share2 id="barra-compartir-icono" class="size-4" stroke-width={2} />
         <Check id="barra-compartir-listo" class="hidden size-4 text-acento-texto" stroke-width={2.5} />
@@ -684,6 +758,10 @@ function textoAsistentes(total: number): string {
       {eventEnded ? (
         <span class="shrink-0 rounded-full bg-fondo-alt px-5 py-2.5 text-sm font-semibold text-suave">
           Terminó
+        </span>
+      ) : aforoCompleto ? (
+        <span class="shrink-0 rounded-full bg-fondo-alt px-5 py-2.5 text-sm font-semibold text-suave">
+          Sin lugares
         </span>
       ) : user ? (
         <button
@@ -869,6 +947,23 @@ function textoAsistentes(total: number): string {
           const vacio = document.querySelector<HTMLElement>('[data-attendees-empty]');
           if (vacio) {
             vacio.hidden = result.count > 0;
+          }
+
+          // Los lugares que quedan salen del aforo, que viaja en el HTML, y
+          // del contador que acaba de devolver el servidor: asi no hace falta
+          // que la respuesta lo repita ni que la pagina se recargue.
+          const aforo = Number(document.querySelector<HTMLElement>('[data-capacity]')?.dataset.capacity);
+
+          if (Number.isFinite(aforo) && aforo > 0) {
+            const restantes = Math.max(0, aforo - result.count);
+            const texto =
+              restantes === 0
+                ? 'Aforo completo'
+                : `Queda${restantes === 1 ? '' : 'n'} ${restantes} ${restantes === 1 ? 'lugar' : 'lugares'}`;
+
+            document
+              .querySelectorAll<HTMLElement>('[data-spots]')
+              .forEach((etiqueta) => (etiqueta.textContent = texto));
           }
         } catch (error) {
           window.alert(error instanceof Error ? error.message : 'No se pudo actualizar tu asistencia.');

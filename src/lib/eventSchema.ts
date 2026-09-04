@@ -45,6 +45,21 @@ export function getEventJsonLd(event: NodoEvent, pageUrl: string): Record<string
     url: pageUrl,
   };
 
+  // Google pide offers para mostrar el evento como resultado enriquecido, y
+  // un evento gratis tambien tiene oferta: la suya vale cero. Sin aforo no se
+  // puede afirmar que queden lugares, asi que se declara InStock, que es lo
+  // que significa "abierto".
+  jsonLd.offers = {
+    '@type': 'Offer',
+    price: event.price ?? 0,
+    priceCurrency: event.currency ?? 'COP',
+    availability:
+      event.capacity && (event.rsvpCount ?? 0) >= event.capacity
+        ? 'https://schema.org/SoldOut'
+        : 'https://schema.org/InStock',
+    url: pageUrl,
+  };
+
   if (event.bannerUrl) {
     jsonLd.image = [event.bannerUrl];
   }
