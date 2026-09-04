@@ -2,19 +2,18 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import StatusToast from '../../components/common/StatusToast.astro';
 import ShareButtons from '../../components/events/ShareButtons.astro';
-import Card from '../../components/ui/Card.astro';
 import Badge from '../../components/ui/Badge.astro';
-import Button from '../../components/ui/Button.astro';
 import { getCurrentUser } from '../../lib/auth';
 import { getEventBySlug } from '../../lib/firebase/events';
-import { getRsvpInfo } from '../../lib/firebase/rsvps';
+import { getRsvpInfo, getRsvpUids } from '../../lib/firebase/rsvps';
 import { getEventJsonLd } from '../../lib/eventSchema';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
-import { formatEventDateLong, formatEventTime } from '../../lib/format';
-import { CalendarDays, MapPin, Video } from '@lucide/astro';
+import { formatEventDate, formatEventDateLong, formatEventTime } from '../../lib/format';
+import { genColorForEvent } from '../../lib/genColor';
+import { CalendarDays, CalendarPlus, Check, ChevronRight, MapPin, Share2, SquareArrowOutUpRight, Users, Video } from '@lucide/astro';
 import VerifiedBadge from '../../components/ui/VerifiedBadge.astro';
-import { getUserProfile } from '../../lib/firebase/users';
-import type { UserProfile } from '../../types/profile';
+import { getUserProfiles } from '../../lib/firebase/users';
+import type { UserProfile, VerificationType } from '../../types/profile';
 
 const { slug } = Astro.params;
 const event = slug ? await getEventBySlug(slug).catch(() => null) : null;
@@ -27,32 +26,132 @@ const user = await getCurrentUser(Astro.cookies);
 const isOwner = user?.uid === event.organizer.uid;
 const eventEnded = event.endDate.getTime() < Date.now();
 
-// En la cabecera manda la comunidad si el evento se publico en su nombre.
-const autor = event.community ?? event.organizer;
+// El mismo color que ya lleva la tarjeta en la cartelera, derivado de la
+// primera etiqueta. Aqui tinta el filo del titular, los iconos de la tarjeta
+// de acciones y la barra inferior, para que quien llega desde el listado
+// reconozca el evento por el color antes de leer el nombre.
+const color = genColorForEvent(event);
 
-// La palomita de verificado es del perfil de quien creo el evento, no del
-// evento, asi que hay que leerlo. De paso sale de ahi el nombre de usuario,
-// que es la direccion de su perfil publico.
-let perfilOrganizador: UserProfile | null = null;
-
-try {
-  perfilOrganizador = await getUserProfile(event.organizer.uid);
-} catch (error) {
-  console.warn('No se pudo obtener el perfil del organizador:', error);
-}
+// Cuantas caras caben sin que la seccion se coma la pagina: tres filas de
+// cuatro. Lo que sobra se resume en la burbuja "+N".
+const MAX_ASISTENTES = 12;
 
 let rsvpCount = 0;
 let isAttending = false;
+let uidsAsistentes: string[] = [];
 
 try {
-  const rsvpInfo = await getRsvpInfo(event.id, user?.uid);
-  rsvpCount = rsvpInfo.count;
-  isAttending = rsvpInfo.attending;
+  const [info, uids] = await Promise.all([
+    getRsvpInfo(event.id, user?.uid),
+    getRsvpUids(event.id, MAX_ASISTENTES),
+  ]);
+
+  rsvpCount = info.count;
+  isAttending = info.attending;
+  uidsAsistentes = uids;
 } catch (error) {
   console.warn('No se pudo obtener la asistencia del evento:', error);
 }
 
+// Un solo viaje para todos los perfiles que pinta la ficha: quien organiza
+// -de ahi salen su palomita y su nombre de usuario, que no se guardan en el
+// evento-, quienes han confirmado, y quien mira. El ultimo hace falta para
+// poder colocar su tarjeta al pulsar Asistir sin recargar la pagina.
+// getUserProfiles resuelve la lista entera con un getAll(), asi que anadir
+// asistentes no anade viajes de red.
+let perfiles = new Map<string, UserProfile>();
+
+try {
+  perfiles = await getUserProfiles([
+    event.organizer.uid,
+    ...uidsAsistentes,
+    ...(user ? [user.uid] : []),
+  ]);
+} catch (error) {
+  console.warn('No se pudieron obtener los perfiles del evento:', error);
+}
+
+const perfilOrganizador: UserProfile | null = perfiles.get(event.organizer.uid) ?? null;
+
+interface Asistente {
+  uid: string;
+  nombre: string;
+  username?: string;
+  avatarUrl?: string;
+  verification?: VerificationType;
+  organiza: boolean;
+}
+
+const organizadorUid = event.organizer.uid;
+
+function aAsistente(perfil: UserProfile): Asistente {
+  return {
+    uid: perfil.uid,
+    nombre: [perfil.firstName, perfil.lastName].filter(Boolean).join(' ') || 'Alguien',
+    username: perfil.username,
+    avatarUrl: perfil.avatarUrl,
+    verification: perfil.verification,
+    organiza: perfil.uid === organizadorUid,
+  };
+}
+
+// Quien organiza va primero cuando tambien ha confirmado: es la referencia del
+// grupo. No se anade a la fuerza, porque confirmar es un acto, no un supuesto.
+const asistentes = uidsAsistentes
+  .map((uid) => perfiles.get(uid))
+  .filter((perfil): perfil is UserProfile => perfil !== undefined)
+  .map(aAsistente)
+  .sort((a, b) => Number(b.organiza) - Number(a.organiza));
+
+// La tarjeta de quien mira se pinta siempre, visible u oculta segun su estado:
+// asi entrar o salir de la lista al pulsar Asistir no cuesta una recarga.
+const perfilPropio = user ? perfiles.get(user.uid) : undefined;
+const asistentePropio =
+  perfilPropio && !asistentes.some((asistente) => asistente.uid === perfilPropio.uid)
+    ? aAsistente(perfilPropio)
+    : null;
+
+const asistentesRestantes = Math.max(0, rsvpCount - asistentes.length);
+
+// La lista que se pinta, con la propia marcada: `propio` es lo que el script
+// busca para mostrarla u ocultarla al confirmar, sin volver a pedir la pagina.
+const tarjetasAsistentes = [...asistentes, ...(asistentePropio ? [asistentePropio] : [])].map(
+  (asistente) => {
+    const propio = asistente.uid === user?.uid;
+    return { ...asistente, propio, oculta: propio && !isAttending };
+  },
+);
+
+
 const physicalLocation = [event.venue, event.address, event.city].filter(Boolean).join(', ');
+
+// El enlace al mapa se arma con la direccion escrita, no con coordenadas: no
+// se guardan. Google resuelve el texto igual que si se hubiera tecleado en su
+// buscador, que es lo que haria quien copia la direccion a mano.
+// El rotulo del mapa: el sitio manda si tiene nombre, y debajo va la
+// direccion. Sin nombre de sitio, la direccion sube a titulo y no se repite.
+const lugarTitulo = event.venue || event.city || physicalLocation;
+const lugarDetalle = [event.venue ? event.address : null, event.venue ? event.city : event.address]
+  .filter(Boolean)
+  .join(' · ');
+
+const mapsUrl = physicalLocation
+  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(physicalLocation)}`
+  : null;
+
+// Mapa incrustado sin clave de API. El parametro output=embed de maps.google
+// .com no esta documentado, pero es la unica via a un mapa real sin dar de
+// alta la Maps Embed API y sin pasar una clave publica por el build de Docker
+// (que es donde se inlinean las PUBLIC_*). Si algun dia deja de responder, la
+// ficha no se rompe: el enlace "Ver en Google Maps" de debajo y el del filo de
+// la tarjeta siguen llevando al mismo sitio.
+//
+// Se busca por texto porque es lo unico que hay: el evento guarda direccion
+// escrita, no coordenadas.
+const mapaEmbedUrl =
+  physicalLocation && event.modality !== 'virtual'
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(physicalLocation)}&z=15&hl=es&output=embed`
+    : null;
 
 const tzAbbreviation = new Intl.DateTimeFormat('es', { timeZone: event.timezone, timeZoneName: 'short' })
   .formatToParts(event.startDate)
@@ -67,6 +166,13 @@ const eventJsonLdString = JSON.stringify(getEventJsonLd(event, pageUrl)).replace
 
 const eventCreated = Astro.url.searchParams.get('created') === 'true';
 const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
+
+function textoAsistentes(total: number): string {
+  if (total === 0) {
+    return 'Sé el primero en decir que asistes';
+  }
+  return `${total} ${total === 1 ? 'persona interesada' : 'personas interesadas'}`;
+}
 ---
 
 <BaseLayout
@@ -74,230 +180,460 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
   description={event.description}
   image={event.bannerUrl}
   type="article"
+  barraInferior
 >
   <script type="application/ld+json" is:inline set:html={eventJsonLdString} />
 
   {eventCreated && <StatusToast paramKey="created" message="¡Evento publicado correctamente!" />}
   {eventUpdated && <StatusToast paramKey="updated" message="Evento actualizado correctamente." />}
 
-  <div class="mx-auto max-w-6xl px-6 pb-24 pt-10">
-    <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
-      <article class="lg:col-span-7">
-        <div class="aspect-[16/9] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave">
-          {event.bannerUrl && <img src={event.bannerUrl} alt="" class="h-full w-full object-cover" />}
-        </div>
+  {/*
+    Reparto en dos columnas al modo de la ficha de Meetup: a la izquierda quien
+    organiza y de que va, a la derecha la imagen y todo lo accionable.
 
-        <h1 class="mt-6 text-3xl font-bold tracking-tight text-texto sm:text-4xl">
+    Son tres bloques y no cuatro porque la columna derecha -imagen y tarjeta-
+    tiene que ser un solo elemento de la rejilla: asi ocupa las dos filas
+    (lg:row-span-2) y se estira hasta donde llegue la descripcion, que es lo
+    que le da recorrido a la tarjeta pegajosa. Con dos elementos sueltos, la
+    tarjeta se quedaba sin sitio por donde deslizarse.
+
+    En telefono la rejilla es una columna y el orden queda: titulo, imagen y
+    acciones, descripcion. El titulo va primero a proposito: es lo que dice si
+    vale la pena seguir bajando.
+  */}
+  <div data-gen={color} class="mx-auto max-w-6xl px-6 pb-28 pt-10">
+    <div class="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-12 lg:grid-rows-[auto_1fr]">
+      <header class="lg:order-1 lg:col-span-7">
+        <h1 class="text-3xl font-bold leading-tight text-texto sm:text-[40px] sm:leading-[46px]">
           {event.title}
         </h1>
 
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
-          {/*
-            La cartelera lista el evento a nombre de la comunidad; aqui dentro
-            se ve ademas quien lo creo, que es la persona con la que se habla si
-            algo no cuadra. Sin comunidad, solo aparece esa persona.
-          */}
-          <div class="flex items-center gap-3">
-            {autor.avatarUrl ? (
-              <img src={autor.avatarUrl} alt="" class="size-10 rounded-full object-cover" />
-            ) : (
-              <div class="flex size-10 items-center justify-center rounded-full bg-superficie text-sm font-medium text-suave">
-                {autor.name.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div class="min-w-0">
-              <p class="text-xs text-suave">Organiza</p>
-
-              {event.community ? (
-                <a
-                  href={`/comunidades/${event.community.slug}`}
-                  class="font-medium text-texto transition hover:text-acento-texto"
-                >
-                  {event.community.name}
-                </a>
-              ) : (
-                <p class="flex items-center gap-1.5 font-medium text-texto">
-                  {/*
-                    Solo se enlaza si tiene nombre de usuario: la URL del perfil
-                    publico es /u/<usuario>, y sin el no hay a donde llevar.
-                  */}
-                  {perfilOrganizador?.username ? (
-                    <a
-                      href={`/u/${perfilOrganizador.username}`}
-                      class="transition hover:text-acento-texto"
-                    >
-                      {event.organizer.name}
-                    </a>
-                  ) : (
-                    event.organizer.name
-                  )}
-                  {perfilOrganizador?.verification && (
-                    <VerifiedBadge type={perfilOrganizador.verification} class="size-4" />
-                  )}
-                </p>
-              )}
-
-              {event.community && (
-                <p class="mt-0.5 flex items-center gap-1.5 text-xs text-suave">
-                  Publicado por
-                  {perfilOrganizador?.username ? (
-                    <a
-                      href={`/u/${perfilOrganizador.username}`}
-                      class="font-medium text-texto transition hover:text-acento-texto"
-                    >
-                      {event.organizer.name}
-                    </a>
-                  ) : (
-                    event.organizer.name
-                  )}
-                  {perfilOrganizador?.verification && (
-                    <VerifiedBadge type={perfilOrganizador.verification} class="size-3.5" />
-                  )}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {event.tags.length > 0 && (
-            <div class="flex flex-wrap gap-2">
-              {event.tags.map((tag) => <Badge variant="auto" seed={tag}>{tag}</Badge>)}
+        {/*
+          Quien organiza es siempre la persona, tambien cuando el evento sale
+          en la cartelera a nombre de una comunidad: es con ella con quien se
+          habla si algo no cuadra. La comunidad tiene su propia tarjeta debajo,
+          que es donde de verdad se puede pulsar para conocerla.
+        */}
+        <div class="mt-6 flex items-center gap-3">
+          {event.organizer.avatarUrl ? (
+            <img src={event.organizer.avatarUrl} alt="" class="size-11 shrink-0 rounded-full object-cover" />
+          ) : (
+            <div class="flex size-11 shrink-0 items-center justify-center rounded-full bg-fondo-alt text-base font-medium text-suave">
+              {event.organizer.name.charAt(0).toUpperCase()}
             </div>
           )}
+          <div class="min-w-0">
+            <p class="text-xs text-tenue">Organiza</p>
+            <p class="flex items-center gap-1.5 font-semibold text-texto">
+              {/*
+                Solo se enlaza si tiene nombre de usuario: la URL del perfil
+                publico es /u/<usuario>, y sin el no hay a donde llevar.
+              */}
+              {perfilOrganizador?.username ? (
+                <a href={`/u/${perfilOrganizador.username}`} class="transition hover:text-acento-texto">
+                  {event.organizer.name}
+                </a>
+              ) : (
+                event.organizer.name
+              )}
+              {perfilOrganizador?.verification && (
+                <VerifiedBadge type={perfilOrganizador.verification} class="size-4 shrink-0" />
+              )}
+            </p>
+          </div>
         </div>
 
-        <div class="mt-8 max-w-none whitespace-pre-line text-base leading-relaxed text-texto">
-          {event.description}
-        </div>
-      </article>
-
-      <aside class="lg:col-span-5">
-        <div class="lg:sticky lg:top-24">
-          <Card blur class="space-y-6 p-6">
-            <div>
-              <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-suave">
-                <CalendarDays class="size-3.5" stroke-width={2} />
-                Fecha y hora
+        {event.community && (
+          <a
+            href={`/comunidades/${event.community.slug}`}
+            class="mt-5 flex items-center gap-4 rounded-2xl border border-linea bg-superficie p-3 transition hover:border-[var(--g)]"
+          >
+            {event.community.avatarUrl ? (
+              <img src={event.community.avatarUrl} alt="" class="size-14 shrink-0 rounded-xl object-cover" />
+            ) : (
+              <div class="flex size-14 shrink-0 items-center justify-center rounded-xl bg-fondo-alt text-lg font-semibold text-suave">
+                {event.community.name.charAt(0).toUpperCase()}
               </div>
-              <p class="mt-2 font-semibold capitalize text-texto">
-                {formatEventDateLong(event.startDate, event.timezone)}
-              </p>
-              <p class="text-sm text-suave">
-                {formatEventTime(event.startDate, event.timezone)} – {formatEventTime(event.endDate, event.timezone)}
-                {tzAbbreviation && ` (${tzAbbreviation})`}
-              </p>
-              <p
-                id="local-time-hint"
-                class="mt-1 hidden text-xs text-tenue"
-                data-event-timezone={event.timezone}
-                data-start-iso={event.startDate.toISOString()}
-                data-end-iso={event.endDate.toISOString()}
-              />
+            )}
+            <div class="min-w-0 flex-1">
+              <p class="text-xs text-tenue">Publicado en</p>
+              <p class="truncate font-semibold text-texto">{event.community.name}</p>
+            </div>
+            <ChevronRight class="size-5 shrink-0 text-tenue" stroke-width={2} />
+          </a>
+        )}
+      </header>
+
+      <aside class="lg:order-2 lg:col-span-5 lg:row-span-2">
+        <div class="lg:sticky lg:top-10">
+          <div class="aspect-[16/9] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave shadow-[var(--c-sombra)]">
+            {event.bannerUrl && <img src={event.bannerUrl} alt="" class="h-full w-full object-cover" />}
+          </div>
+
+          {/*
+            Los datos duros van en filas con icono, no en bloques con titulillo
+            en versales: cada fila se lee de un vistazo y la accion que le
+            corresponde -anadir al calendario, abrir el mapa- vive en su propio
+            filo derecho, junto al dato del que depende.
+          */}
+          <div class="mt-5 overflow-hidden rounded-3xl border border-linea bg-superficie shadow-[var(--c-sombra-alta)]">
+            <div class="flex items-start gap-4 p-5">
+              <span class="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--g-suave)] text-[var(--g-texto)]">
+                <CalendarDays class="size-5" stroke-width={2} />
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="font-semibold text-texto first-letter:uppercase">
+                  {formatEventDateLong(event.startDate, event.timezone)}
+                </p>
+                <p class="text-sm text-suave">
+                  {formatEventTime(event.startDate, event.timezone)} – {formatEventTime(event.endDate, event.timezone)}
+                  {tzAbbreviation && ` (${tzAbbreviation})`}
+                </p>
+                <p
+                  id="local-time-hint"
+                  class="mt-1 hidden text-xs text-tenue"
+                  data-event-timezone={event.timezone}
+                  data-start-iso={event.startDate.toISOString()}
+                  data-end-iso={event.endDate.toISOString()}
+                />
+              </div>
+              <a
+                href={googleCalendarUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Añadir a Google Calendar"
+                title="Añadir a Google Calendar"
+                class="grid size-9 shrink-0 place-items-center rounded-full text-tenue transition hover:bg-fondo-alt hover:text-texto"
+              >
+                <CalendarPlus class="size-5" stroke-width={1.75} />
+              </a>
             </div>
 
-            <div class="border-t border-linea pt-6">
-              <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-suave">
+            <div class="mx-5 h-px bg-linea-suave"></div>
+
+            <div class="flex items-start gap-4 p-5">
+              <span class="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--g-suave)] text-[var(--g-texto)]">
                 {event.modality === 'virtual' ? (
-                  <Video class="size-3.5" stroke-width={2} />
+                  <Video class="size-5" stroke-width={2} />
                 ) : (
-                  <MapPin class="size-3.5" stroke-width={2} />
+                  <MapPin class="size-5" stroke-width={2} />
                 )}
-                Ubicación
+              </span>
+              <div class="min-w-0 flex-1">
+                {event.modality === 'virtual' ? (
+                  <p class="font-semibold text-texto">Evento en línea</p>
+                ) : (
+                  <p class="font-semibold text-texto">{physicalLocation}</p>
+                )}
+
+                {event.modality === 'hibrido' && event.meetingUrl && (
+                  <p class="text-sm text-suave">También disponible en línea</p>
+                )}
+
+                {event.meetingUrl && event.modality !== 'presencial' && (
+                  <a
+                    href={event.meetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="mt-0.5 block break-all text-sm text-acento-texto hover:underline"
+                  >
+                    {event.meetingUrl}
+                  </a>
+                )}
               </div>
-
-              {event.modality === 'virtual' ? (
-                <p class="mt-2 font-medium text-texto">Evento en línea</p>
-              ) : (
-                <p class="mt-2 font-medium text-texto">{physicalLocation}</p>
-              )}
-
-              {event.modality === 'hibrido' && event.meetingUrl && (
-                <p class="mt-1 text-sm text-suave">También disponible en línea</p>
-              )}
-
-              {event.meetingUrl && event.modality !== 'presencial' && (
+              {mapsUrl && event.modality !== 'virtual' && (
                 <a
-                  href={event.meetingUrl}
+                  href={mapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="mt-1 block break-all text-sm text-acento-texto hover:underline"
+                  aria-label="Ver en el mapa"
+                  title="Ver en el mapa"
+                  class="grid size-9 shrink-0 place-items-center rounded-full text-tenue transition hover:bg-fondo-alt hover:text-texto"
                 >
-                  {event.meetingUrl}
+                  <SquareArrowOutUpRight class="size-4" stroke-width={1.75} />
                 </a>
               )}
             </div>
 
-            <div class="border-t border-linea pt-6">
+            <div class="mx-5 h-px bg-linea-suave"></div>
+
+            {/*
+              El ancla de la barra inferior. Mientras este bloque se vea, la
+              barra sobra: el mismo boton ya esta en pantalla.
+            */}
+            <div id="rsvp-anchor" class="p-5">
+              <div class="flex items-center gap-4">
+                <span class="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--g-suave)] text-[var(--g-texto)]">
+                  <Users class="size-5" stroke-width={2} />
+                </span>
+                <p data-rsvp-count class="min-w-0 flex-1 text-sm text-suave">
+                  {textoAsistentes(rsvpCount)}
+                </p>
+              </div>
+
               {eventEnded ? (
-                <button
-                  id="rsvp-button"
-                  type="button"
-                  disabled
-                  class="w-full cursor-not-allowed rounded-2xl border border-linea bg-superficie px-4 py-2.5 text-sm font-medium text-suave opacity-70"
-                >
+                <p class="mt-4 w-full rounded-2xl border border-linea bg-fondo-alt px-4 py-2.5 text-center text-sm font-medium text-suave">
                   {isAttending ? 'Asististe a este evento' : 'Este evento ya terminó'}
-                </button>
+                </p>
               ) : user ? (
                 <button
-                  id="rsvp-button"
                   type="button"
+                  data-rsvp
                   data-event-id={event.id}
                   data-attending={isAttending ? 'true' : 'false'}
-                  class={`w-full rounded-2xl border px-4 py-2.5 text-sm font-medium transition active:scale-[0.97] ${
-                    isAttending
-                      ? 'border-acento bg-acento-suave text-acento-texto'
-                      : 'border-linea bg-superficie text-texto hover:border-acento'
-                  }`}
+                  class="group mt-4 w-full rounded-2xl border border-linea bg-superficie px-4 py-3 text-sm font-semibold text-texto transition active:scale-[0.97] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60 data-[attending=true]:border-acento data-[attending=true]:bg-acento-suave data-[attending=true]:text-acento-texto"
                 >
-                  {isAttending ? '✓ Asistes' : 'Me interesa'}
+                  <span class="inline-flex items-center justify-center gap-1.5 group-data-[attending=true]:hidden">
+                    Me interesa
+                  </span>
+                  <span class="hidden items-center justify-center gap-1.5 group-data-[attending=true]:inline-flex">
+                    <Check class="size-4" stroke-width={2.5} />
+                    Asistes
+                  </span>
                 </button>
               ) : (
                 <a
                   href="/?login=required"
                   data-login-required
-                  class="block w-full rounded-2xl border border-linea bg-superficie px-4 py-2.5 text-center text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento"
+                  class="mt-4 block w-full rounded-2xl border border-linea bg-superficie px-4 py-3 text-center text-sm font-semibold text-texto transition active:scale-[0.97] hover:border-acento"
                 >
-                  Inicia sesión para decir que asistes
+                  Inicia sesión para asistir
                 </a>
-              )}
-              {!eventEnded && (
-                <p id="rsvp-count" class="mt-2 text-center text-sm text-suave">
-                  {rsvpCount === 0
-                    ? 'Sé el primero en decir que asistes'
-                    : `${rsvpCount} ${rsvpCount === 1 ? 'persona interesada' : 'personas interesadas'}`}
-                </p>
               )}
             </div>
 
-            <Button
-              variant="primary"
-              href={googleCalendarUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-full"
-            >
-              Añadir a Google Calendar
-            </Button>
+            <div class="border-t border-linea bg-fondo-alt p-5">
+              <ShareButtons event={event} url={pageUrl} icsUrl={icsDataUrl} />
 
-            <ShareButtons event={event} url={pageUrl} icsUrl={icsDataUrl} />
-
-            {isOwner && (
-              <div class="flex items-center justify-between border-t border-linea pt-4">
-                <a href={`/eventos/${event.slug}/editar`} class="text-sm font-medium text-suave transition hover:text-texto">
-                  Editar evento
-                </a>
-                <button
-                  id="delete-event-button"
-                  type="button"
-                  data-event-id={event.id}
-                  class="text-sm font-medium text-acento-texto transition active:scale-[0.97] hover:text-acento-texto disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Eliminar evento
-                </button>
-              </div>
-            )}
-          </Card>
+              {isOwner && (
+                <div class="mt-5 flex items-center justify-between border-t border-linea pt-4">
+                  <a
+                    href={`/eventos/${event.slug}/editar`}
+                    class="text-sm font-medium text-suave transition hover:text-texto"
+                  >
+                    Editar evento
+                  </a>
+                  <button
+                    id="delete-event-button"
+                    type="button"
+                    data-event-id={event.id}
+                    class="text-sm font-medium text-acento-texto transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Eliminar evento
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </aside>
+
+      {/*
+        Descripcion, mapa y asistentes van dentro de un unico elemento de la
+        rejilla, no como tres hermanos. Si fueran tres, cada uno estrenaria
+        fila y la fila que ocupa la columna derecha empujaria a las siguientes
+        hasta debajo de la tarjeta: con una descripcion corta eso dejaba media
+        pantalla en blanco antes de "Donde". Metidos en un solo bloque, el
+        texto manda y lo que sigue sube hasta donde acabe, sea largo o corto.
+      */}
+      <div class="space-y-12 lg:order-3 lg:col-span-7">
+          <section>
+          {/*
+            El filo corto bajo el rotulo es lo que hace que "Detalles" se lea como
+            el comienzo de una seccion y no como una linea mas de la columna. Va
+            del color del evento, el mismo del filo de su tarjeta en la cartelera.
+          */}
+          <h2 class="text-2xl font-bold tracking-tight text-texto">Detalles</h2>
+          <span class="mt-2 block h-1 w-14 rounded-full bg-[var(--g)]" aria-hidden="true"></span>
+
+          <div class="mt-6 whitespace-pre-line text-base leading-relaxed text-texto">
+            {event.description}
+          </div>
+
+          {event.tags.length > 0 && (
+            <div class="mt-8 border-t border-linea pt-6">
+              <p class="text-xs font-medium uppercase tracking-wide text-tenue">Temas</p>
+              <div class="mt-3 flex flex-wrap gap-2">
+                {event.tags.map((tag) => <Badge variant="auto" seed={tag}>{tag}</Badge>)}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {mapaEmbedUrl && (
+          <section>
+            <h2 class="text-2xl font-bold tracking-tight text-texto">Dónde</h2>
+            <span class="mt-2 block h-1 w-14 rounded-full bg-[var(--g)]" aria-hidden="true"></span>
+
+            {/*
+              El mapa se carga en diferido: es un tercero pesado y casi siempre
+              queda por debajo del pliegue, asi que no tiene por que competir con
+              el resto de la ficha por el ancho de banda de la primera pantalla.
+            */}
+            <div class="mt-6 overflow-hidden rounded-3xl border border-linea bg-superficie shadow-[var(--c-sombra)]">
+              <iframe
+                src={mapaEmbedUrl}
+                title={`Mapa de ${physicalLocation}`}
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                class="block h-56 w-full border-0 sm:h-64"
+              />
+
+              <div class="flex items-start gap-4 border-t border-linea p-5">
+                <span class="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--g-suave)] text-[var(--g-texto)]">
+                  <MapPin class="size-5" stroke-width={2} />
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="font-semibold text-texto">{lugarTitulo}</p>
+                  {lugarDetalle && <p class="text-sm text-suave">{lugarDetalle}</p>}
+                </div>
+                {mapsUrl && (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="shrink-0 text-sm font-medium text-acento-texto transition hover:underline"
+                  >
+                    Ver en Google Maps
+                  </a>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section>
+          <div class="flex items-center gap-3">
+            <h2 class="text-2xl font-bold tracking-tight text-texto">Asistentes</h2>
+            <span
+              data-attendee-count
+              class="grid h-7 min-w-7 place-items-center rounded-full border border-linea px-2 text-sm font-medium text-suave"
+            >
+              {rsvpCount}
+            </span>
+          </div>
+          <span class="mt-2 block h-1 w-14 rounded-full bg-[var(--g)]" aria-hidden="true"></span>
+
+          <p data-attendees-empty hidden={rsvpCount > 0} class="mt-6 text-sm text-suave">
+            Todavía no hay nadie confirmado. Quien lo haga aparecerá aquí.
+          </p>
+
+          <ul class="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {tarjetasAsistentes.map((asistente) => (
+              <li data-attendee-self={asistente.propio ? '' : undefined} hidden={asistente.oculta}>
+                {/*
+                  Solo se enlaza a quien tiene nombre de usuario, igual que en la
+                  cabecera: sin el no existe /u/<usuario> a donde llevar. Los
+                  demas se pintan con la misma tarjeta, sin enlace.
+                */}
+                <a
+                  href={asistente.username ? `/u/${asistente.username}` : undefined}
+                  class:list={[
+                    'flex flex-col items-center gap-2 rounded-2xl border border-linea bg-superficie p-4 text-center transition',
+                    asistente.username && 'hover:border-[var(--g)]',
+                  ]}
+                >
+                  <span class="relative">
+                    {asistente.avatarUrl ? (
+                      <img src={asistente.avatarUrl} alt="" class="size-16 rounded-full object-cover" />
+                    ) : (
+                      <span class="grid size-16 place-items-center rounded-full bg-fondo-alt text-xl font-medium text-suave">
+                        {asistente.nombre.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    {asistente.organiza && (
+                      <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--g-suave)] px-2 py-0.5 text-[10px] font-semibold text-[var(--g-texto)]">
+                        Organiza
+                      </span>
+                    )}
+                  </span>
+                  <span class="flex w-full items-center justify-center gap-1">
+                    <span class="truncate text-xs font-medium text-texto">{asistente.nombre}</span>
+                    {asistente.verification && (
+                      <VerifiedBadge type={asistente.verification} class="size-3 shrink-0" />
+                    )}
+                  </span>
+                </a>
+              </li>
+            ))}
+
+            {asistentesRestantes > 0 && (
+              <li class="flex items-center justify-center rounded-2xl border border-dashed border-linea p-4 text-sm font-medium text-suave">
+                +{asistentesRestantes}
+              </li>
+            )}
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  {/*
+    La barra de la ficha de Meetup: mientras el boton de asistir esta en
+    pantalla no aparece -seria el mismo boton dos veces-, y entra en cuanto se
+    va. Se retira sola al llegar al pie para no taparlo.
+
+    Empieza fuera de pantalla y con visibility oculta: `invisible` es lo que la
+    saca del orden de tabulacion y del arbol de accesibilidad mientras no se
+    ve, que un translate por si solo no hace.
+  */}
+  <div
+    id="barra-evento"
+    data-gen={color}
+    class="pointer-events-none invisible fixed inset-x-0 bottom-0 z-40 translate-y-full px-3 pb-3 opacity-0 transition duration-300 sm:px-5 sm:pb-5"
+  >
+    <div class="pointer-events-auto mx-auto flex max-w-6xl items-center gap-3 rounded-[28px] border border-linea bg-superficie px-4 py-3 shadow-[var(--c-sombra-alta)] sm:gap-6 sm:px-6">
+      <span class="hidden h-10 w-1.5 shrink-0 rounded-full bg-[var(--g)] sm:block" aria-hidden="true"></span>
+
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-xs text-suave">
+          {formatEventDate(event.startDate, event.timezone)} · {formatEventTime(event.startDate, event.timezone)}
+        </p>
+        <p class="truncate text-sm font-semibold text-texto sm:text-base">{event.title}</p>
+      </div>
+
+      <p data-rsvp-count class="hidden shrink-0 text-sm text-suave lg:block">
+        {textoAsistentes(rsvpCount)}
+      </p>
+
+      <button
+        id="barra-compartir"
+        type="button"
+        aria-label="Compartir evento"
+        title="Compartir evento"
+        class="grid size-10 shrink-0 place-items-center rounded-full border border-linea text-suave transition active:scale-[0.95] hover:border-acento hover:text-texto"
+      >
+        <Share2 id="barra-compartir-icono" class="size-4" stroke-width={2} />
+        <Check id="barra-compartir-listo" class="hidden size-4 text-acento-texto" stroke-width={2.5} />
+      </button>
+
+      {eventEnded ? (
+        <span class="shrink-0 rounded-full bg-fondo-alt px-5 py-2.5 text-sm font-semibold text-suave">
+          Terminó
+        </span>
+      ) : user ? (
+        <button
+          type="button"
+          data-rsvp
+          data-event-id={event.id}
+          data-attending={isAttending ? 'true' : 'false'}
+          class="group shrink-0 rounded-full bg-acento px-5 py-2.5 text-sm font-semibold text-acento-contraste transition active:scale-[0.97] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 data-[attending=true]:bg-acento-suave data-[attending=true]:text-acento-texto data-[attending=true]:ring-1 data-[attending=true]:ring-inset data-[attending=true]:ring-acento"
+        >
+          <span class="inline-flex items-center gap-1.5 group-data-[attending=true]:hidden">Asistir</span>
+          <span class="hidden items-center gap-1.5 group-data-[attending=true]:inline-flex">
+            <Check class="size-4" stroke-width={2.5} />
+            Asistes
+          </span>
+        </button>
+      ) : (
+        <a
+          href="/?login=required"
+          data-login-required
+          class="shrink-0 rounded-full bg-acento px-5 py-2.5 text-sm font-semibold text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
+        >
+          Asistir
+        </a>
+      )}
     </div>
   </div>
 </BaseLayout>
@@ -326,58 +662,146 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
   }
 </script>
 
+<script>
+  // Aparicion de la barra. Dos observadores en vez de escuchar el scroll: el
+  // navegador ya sabe cuando un elemento entra o sale, y preguntarselo en cada
+  // pixel de scroll obligaria a medir posiciones a mano en cada evento.
+  const barra = document.getElementById('barra-evento');
+  const ancla = document.getElementById('rsvp-anchor');
+  const pie = document.querySelector('footer');
+
+  if (barra && ancla) {
+    let anclaVisible = true;
+    let pieVisible = false;
+
+    const pintar = (): void => {
+      const mostrar = !anclaVisible && !pieVisible;
+      barra.classList.toggle('invisible', !mostrar);
+      barra.classList.toggle('translate-y-full', !mostrar);
+      barra.classList.toggle('opacity-0', !mostrar);
+    };
+
+    new IntersectionObserver(
+      ([entrada]) => {
+        anclaVisible = entrada?.isIntersecting ?? true;
+        pintar();
+      },
+      // El bloque cuenta como visible hasta que su ultimo pixel se va por
+      // arriba; asi la barra no entra mientras todavia se lee el boton.
+      { threshold: 0 },
+    ).observe(ancla);
+
+    if (pie) {
+      new IntersectionObserver(
+        ([entrada]) => {
+          pieVisible = entrada?.isIntersecting ?? false;
+          pintar();
+        },
+        // El pie no cuenta como visible en cuanto asoma, sino cuando sube
+        // hasta donde esta la barra: recortar 96px por abajo -su alto con el
+        // margen- deja que la barra siga ahi mientras todavia no se tocan.
+        // Sin este recorte, en una ficha corta el pie entra antes de que el
+        // boton de asistir se haya ido y la barra no aparecia nunca.
+        { threshold: 0, rootMargin: '0px 0px -96px 0px' },
+      ).observe(pie);
+    }
+  }
+
+  // Compartir desde la barra. No reutiliza el boton de la tarjeta porque
+  // cuando la barra se ve, esa tarjeta esta fuera de pantalla y su aviso de
+  // "copiado" no lo veria nadie: aqui el acuse es el propio icono, que pasa a
+  // ser una palomita durante dos segundos.
+  const compartir = document.getElementById('barra-compartir');
+  const iconoCompartir = document.getElementById('barra-compartir-icono');
+  const iconoListo = document.getElementById('barra-compartir-listo');
+
+  compartir?.addEventListener('click', async () => {
+    const url = window.location.href;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: document.title, url });
+      } catch {
+        // Se cerro el dialogo nativo sin compartir; no es un error real.
+      }
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.alert('No se pudo copiar el enlace.');
+      return;
+    }
+
+    iconoCompartir?.classList.add('hidden');
+    iconoListo?.classList.remove('hidden');
+
+    setTimeout(() => {
+      iconoCompartir?.classList.remove('hidden');
+      iconoListo?.classList.add('hidden');
+    }, 2000);
+  });
+</script>
+
 {user && (
   <script>
-    const rsvpButton = document.getElementById('rsvp-button') as HTMLButtonElement | null;
-    const rsvpCountLabel = document.getElementById('rsvp-count') as HTMLParagraphElement | null;
+    // Los dos botones -el de la tarjeta y el de la barra- son el mismo estado,
+    // asi que el script los trata como un conjunto: pulsar cualquiera actualiza
+    // ambos, y los contadores van por el mismo camino. El aspecto de cada uno
+    // lo resuelve el CSS a partir de data-attending, que es lo unico que toca
+    // este codigo.
+    const botones = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-rsvp]'));
+    const contadores = Array.from(document.querySelectorAll<HTMLElement>('[data-rsvp-count]'));
 
-    function rsvpCountText(count: number): string {
-      if (count === 0) {
+    function textoAsistentes(total: number): string {
+      if (total === 0) {
         return 'Sé el primero en decir que asistes';
       }
-      return `${count} ${count === 1 ? 'persona interesada' : 'personas interesadas'}`;
+      return `${total} ${total === 1 ? 'persona interesada' : 'personas interesadas'}`;
     }
 
-    function setRsvpButtonState(attending: boolean): void {
-      if (!rsvpButton) {
-        return;
-      }
-      rsvpButton.dataset.attending = String(attending);
-      rsvpButton.textContent = attending ? '✓ Asistes' : 'Me interesa';
-      rsvpButton.classList.toggle('border-acento', attending);
-      rsvpButton.classList.toggle('bg-acento-suave', attending);
-      rsvpButton.classList.toggle('text-acento-texto', attending);
-      rsvpButton.classList.toggle('border-linea', !attending);
-      rsvpButton.classList.toggle('bg-superficie', !attending);
-      rsvpButton.classList.toggle('text-texto', !attending);
-    }
+    botones.forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const asistiendo = boton.dataset.attending === 'true';
+        botones.forEach((otro) => (otro.disabled = true));
 
-    rsvpButton?.addEventListener('click', async () => {
-      const attending = rsvpButton.dataset.attending === 'true';
-      rsvpButton.disabled = true;
+        try {
+          const response = await fetch(`/api/events/${boton.dataset.eventId}/rsvp`, {
+            method: asistiendo ? 'DELETE' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
 
-      try {
-        const response = await fetch(`/api/events/${rsvpButton.dataset.eventId}/rsvp`, {
-          method: attending ? 'DELETE' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        });
+          if (!response.ok) {
+            const result = await response.json().catch(() => ({}));
+            throw new Error(result.error ?? 'No se pudo actualizar tu asistencia.');
+          }
 
-        if (!response.ok) {
-          const result = await response.json().catch(() => ({}));
-          throw new Error(result.error ?? 'No se pudo actualizar tu asistencia.');
+          const result = await response.json();
+          botones.forEach((otro) => (otro.dataset.attending = String(result.attending)));
+          contadores.forEach((contador) => (contador.textContent = textoAsistentes(result.count)));
+
+          // La rejilla de asistentes de mas abajo tambien es estado: la propia
+          // tarjeta entra o sale, y la burbuja del titulo sigue al total.
+          document
+            .querySelectorAll<HTMLElement>('[data-attendee-self]')
+            .forEach((tarjeta) => (tarjeta.hidden = !result.attending));
+
+          const burbuja = document.querySelector<HTMLElement>('[data-attendee-count]');
+          if (burbuja) {
+            burbuja.textContent = String(result.count);
+          }
+
+          const vacio = document.querySelector<HTMLElement>('[data-attendees-empty]');
+          if (vacio) {
+            vacio.hidden = result.count > 0;
+          }
+        } catch (error) {
+          window.alert(error instanceof Error ? error.message : 'No se pudo actualizar tu asistencia.');
+        } finally {
+          botones.forEach((otro) => (otro.disabled = false));
         }
-
-        const result = await response.json();
-        setRsvpButtonState(result.attending);
-
-        if (rsvpCountLabel) {
-          rsvpCountLabel.textContent = rsvpCountText(result.count);
-        }
-      } catch (error) {
-        window.alert(error instanceof Error ? error.message : 'No se pudo actualizar tu asistencia.');
-      } finally {
-        rsvpButton.disabled = false;
-      }
+      });
     });
   </script>
 )}
