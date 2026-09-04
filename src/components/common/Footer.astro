@@ -154,7 +154,12 @@ const columns = [
       </div>
     </div>
 
-    <div class="mt-16 text-sm tracking-[0.02em] text-white/50">
+    {/*
+      El credito vuelve a la misma linea que los enlaces legales y anclado a la
+      derecha: en su propia fila debajo quedaba flotando en mitad de la tarjeta.
+      En movil se apilan, que es donde no cabe la fila.
+    */}
+    <div class="mt-16 flex flex-col gap-6 text-sm tracking-[0.02em] text-white/50 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
         <p>© {year} Nodo</p>
         <a href="/privacidad" class="font-medium transition hover:text-white">Privacidad</a>
@@ -166,10 +171,10 @@ const columns = [
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Sitio desarrollado por Sentra Labs, abre sentralabs.co"
-        class="mt-7 inline-flex items-center gap-2 transition hover:text-white"
+        class="inline-flex shrink-0 items-center gap-3 transition hover:text-white"
       >
         Desarrollado por
-        <img src="/logo/sentralabs.png" alt="Sentra Labs" width="1458" height="513" class="h-5 w-auto" />
+        <img src="/logo/sentralabs.png" alt="Sentra Labs" width="1458" height="513" class="h-7 w-auto" />
       </a>
     </div>
   </div>
