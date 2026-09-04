@@ -1,0 +1,214 @@
+---
+import { ImagePlus, ZoomIn } from '@lucide/astro';
+
+interface Props {
+  id: string;
+  name: string;
+  label: string;
+}
+
+const { id, name, label } = Astro.props;
+---
+
+{/*
+  Elegir foto y encuadrarla antes de subirla. El servidor ya recorta a cuadrado
+  en /api/imagenes, pero recortar por su cuenta es quedarse con el centro
+  geometrico: si la cara esta arriba a la izquierda, la corta. Aqui se elige el
+  encuadre.
+
+  El recorte sale como data URL en un input oculto y no como Blob en una
+  variable: los scripts de dos componentes distintos no comparten modulo, y un
+  input es el sitio natural para que el formulario lo recoja.
+*/}
+<div data-cropper={id}>
+  <span class="block text-sm font-medium text-texto">{label}</span>
+
+  <div class="mt-1.5 flex items-center gap-4">
+    <div
+      data-vista
+      class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-fondo-alt text-tenue"
+    >
+      <ImagePlus class="size-6" stroke-width={1.5} />
+    </div>
+
+    <div>
+      <button
+        type="button"
+        data-elegir
+        class="h-9 rounded-full border border-linea bg-superficie px-4 text-sm font-semibold text-texto transition active:scale-[0.97] hover:border-acento"
+      >
+        Elegir foto
+      </button>
+      <p class="mt-1.5 text-xs text-tenue">JPG o PNG, hasta 5 MB.</p>
+    </div>
+  </div>
+
+  <input type="file" accept="image/*" data-archivo class="hidden" />
+  <input type="hidden" id={id} name={name} data-valor />
+
+  <dialog
+    data-dialogo
+    aria-label="Recortar foto"
+    class="m-auto w-[calc(100vw-2rem)] max-w-[420px] rounded-3xl bg-superficie p-0 text-texto shadow-[var(--c-sombra-alta)] backdrop:bg-[#111113]/40"
+  >
+    <div class="p-6">
+      <h2 class="text-lg font-bold text-texto">Encuadra la foto</h2>
+      <p class="mt-1 text-sm text-suave">Arrastra para mover y usa la barra para acercar.</p>
+
+      {/*
+        El lienzo es cuadrado y del tamano en que se guarda, asi que lo que se
+        ve dentro del marco es exactamente lo que se sube: no hay una segunda
+        conversion despues que pueda desplazar el encuadre.
+      */}
+      <div
+        data-marco
+        class="mt-4 aspect-square w-full cursor-grab overflow-hidden rounded-2xl bg-fondo-alt active:cursor-grabbing"
+      >
+        <canvas data-lienzo width="512" height="512" class="h-full w-full touch-none"></canvas>
+      </div>
+
+      <label class="mt-4 flex items-center gap-3">
+        <ZoomIn class="size-4 shrink-0 text-suave" stroke-width={1.75} />
+        <span class="sr-only">Acercar</span>
+        <input type="range" data-zoom min="1" max="3" step="0.01" value="1" class="w-full" />
+      </label>
+
+      <div class="mt-5 flex gap-3">
+        <button
+          type="button"
+          data-cancelar
+          class="h-10 flex-1 rounded-full border border-linea text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          data-confirmar
+          class="h-10 flex-1 rounded-full bg-acento text-sm font-semibold text-acento-contraste transition active:scale-[0.98] hover:opacity-90"
+        >
+          Usar esta foto
+        </button>
+      </div>
+    </div>
+  </dialog>
+</div>
+
+<script>
+  const LADO = 512;
+
+  document.querySelectorAll<HTMLElement>('[data-cropper]').forEach((raiz) => {
+    const archivo = raiz.querySelector<HTMLInputElement>('[data-archivo]')!;
+    const valor = raiz.querySelector<HTMLInputElement>('[data-valor]')!;
+    const vista = raiz.querySelector<HTMLElement>('[data-vista]')!;
+    const dialogo = raiz.querySelector<HTMLDialogElement>('[data-dialogo]')!;
+    const marco = raiz.querySelector<HTMLElement>('[data-marco]')!;
+    const lienzo = raiz.querySelector<HTMLCanvasElement>('[data-lienzo]')!;
+    const zoom = raiz.querySelector<HTMLInputElement>('[data-zoom]')!;
+    const ctx = lienzo.getContext('2d')!;
+
+    let imagen: HTMLImageElement | null = null;
+    let escala = 1;
+    let x = 0;
+    let y = 0;
+
+    // Escala minima: la que hace que la imagen cubra el cuadrado por su lado
+    // corto. Por debajo asomaria el fondo dentro del recorte.
+    const escalaBase = (): number =>
+      imagen ? Math.max(LADO / imagen.naturalWidth, LADO / imagen.naturalHeight) : 1;
+
+    function limitar(): void {
+      if (!imagen) return;
+      const ancho = imagen.naturalWidth * escala;
+      const alto = imagen.naturalHeight * escala;
+      x = Math.min(0, Math.max(LADO - ancho, x));
+      y = Math.min(0, Math.max(LADO - alto, y));
+    }
+
+    function pintar(): void {
+      if (!imagen) return;
+      limitar();
+      ctx.clearRect(0, 0, LADO, LADO);
+      ctx.drawImage(imagen, x, y, imagen.naturalWidth * escala, imagen.naturalHeight * escala);
+    }
+
+    const elegir = raiz.querySelector<HTMLButtonElement>('[data-elegir]')!;
+    elegir.addEventListener('click', () => archivo.click());
+
+    archivo.addEventListener('change', () => {
+      const fichero = archivo.files?.[0];
+      if (!fichero) return;
+
+      const img = new Image();
+      img.onload = () => {
+        imagen = img;
+        escala = escalaBase();
+        zoom.min = String(escala);
+        zoom.max = String(escala * 3);
+        zoom.step = String(escala / 100);
+        zoom.value = String(escala);
+        // Arranca centrado, que es el encuadre que acierta mas veces.
+        x = (LADO - img.naturalWidth * escala) / 2;
+        y = (LADO - img.naturalHeight * escala) / 2;
+        pintar();
+        dialogo.showModal();
+      };
+      img.src = URL.createObjectURL(fichero);
+    });
+
+    zoom.addEventListener('input', () => {
+      if (!imagen) return;
+      const anterior = escala;
+      escala = Number(zoom.value);
+      // Se acerca hacia el centro del marco y no hacia la esquina, que es lo
+      // que uno espera al mover la barra.
+      x = LADO / 2 - ((LADO / 2 - x) * escala) / anterior;
+      y = LADO / 2 - ((LADO / 2 - y) * escala) / anterior;
+      pintar();
+    });
+
+    let arrastrando = false;
+    let ultimoX = 0;
+    let ultimoY = 0;
+
+    marco.addEventListener('pointerdown', (e) => {
+      arrastrando = true;
+      ultimoX = e.clientX;
+      ultimoY = e.clientY;
+      marco.setPointerCapture(e.pointerId);
+    });
+
+    marco.addEventListener('pointermove', (e) => {
+      if (!arrastrando) return;
+      // El lienzo se muestra escalado a la caja, asi que el movimiento del
+      // raton hay que convertirlo a pixeles del lienzo antes de aplicarlo.
+      const factor = LADO / marco.getBoundingClientRect().width;
+      x += (e.clientX - ultimoX) * factor;
+      y += (e.clientY - ultimoY) * factor;
+      ultimoX = e.clientX;
+      ultimoY = e.clientY;
+      pintar();
+    });
+
+    for (const evento of ['pointerup', 'pointercancel', 'pointerleave']) {
+      marco.addEventListener(evento, () => { arrastrando = false; });
+    }
+
+    raiz.querySelector('[data-cancelar]')?.addEventListener('click', () => {
+      dialogo.close();
+      archivo.value = '';
+    });
+
+    raiz.querySelector('[data-confirmar]')?.addEventListener('click', () => {
+      valor.value = lienzo.toDataURL('image/jpeg', 0.9);
+      vista.innerHTML = '';
+      const previo = document.createElement('img');
+      previo.src = valor.value;
+      previo.alt = '';
+      previo.className = 'h-full w-full object-cover';
+      vista.appendChild(previo);
+      elegir.textContent = 'Cambiar foto';
+      dialogo.close();
+      archivo.value = '';
+    });
+  });
+</script>

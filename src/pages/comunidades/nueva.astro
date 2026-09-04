@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Card from '../../components/ui/Card.astro';
 import Button from '../../components/ui/Button.astro';
+import AvatarCropper from '../../components/ui/AvatarCropper.astro';
 import { getCurrentUser } from '../../lib/auth';
 import { getCommunityByOwner } from '../../lib/firebase/communities';
 
@@ -33,6 +34,8 @@ const inputClass =
 
     <Card class="mt-8 p-6">
       <form id="community-form" class="space-y-5">
+        <AvatarCropper id="avatarUrl" name="avatarUrl" label="Foto de la comunidad" />
+
         <div>
           <label for="name" class="block text-sm font-medium text-texto">Nombre</label>
           <input id="name" name="name" required minlength="3" maxlength="60" class={inputClass} placeholder="Ada Espacio Creativo" />
@@ -56,20 +59,47 @@ const inputClass =
   const error = document.getElementById('community-error');
   const submit = document.getElementById('community-submit') as HTMLButtonElement | null;
 
+  // La foto se sube al enviar y no al recortarla: si alguien abre el
+  // formulario, elige una foto y se va, no queda un fichero huerfano en
+  // Storage sin comunidad que lo use. Mismo criterio que EventForm.
+  async function subirAvatar(dataUrl: string): Promise<string> {
+    const recorte = await (await fetch(dataUrl)).blob();
+
+    // Cuerpo binario, no FormData: multipart dispara la comprobacion de origen
+    // de Astro y responde 403 detras del proxy de produccion.
+    const respuesta = await fetch('/api/imagenes?kind=avatar', {
+      method: 'POST',
+      headers: { 'Content-Type': recorte.type || 'image/jpeg' },
+      body: recorte,
+    });
+
+    const cuerpo = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok || !cuerpo.url) {
+      throw new Error(cuerpo.error ?? 'No se pudo subir la foto.');
+    }
+
+    return cuerpo.url as string;
+  }
+
   form?.addEventListener('submit', async (evento) => {
     evento.preventDefault();
     error?.classList.add('hidden');
     if (submit) submit.disabled = true;
 
     const datos = new FormData(form);
+    const recorte = String(datos.get('avatarUrl') ?? '');
 
     try {
+      const avatarUrl = recorte ? await subirAvatar(recorte) : undefined;
+
       const respuesta = await fetch('/api/comunidades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: String(datos.get('name') ?? ''),
           description: String(datos.get('description') ?? ''),
+          avatarUrl,
         }),
       });
 
