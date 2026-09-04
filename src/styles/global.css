@@ -43,7 +43,7 @@
 
   --c-texto: #111113;          /* casi negro, nunca #000 */
   --c-texto-suave: #58585d;    /* 6.9:1 */
-  --c-texto-tenue: #8e8e96;    /* 3.0:1, solo texto grande o decorativo */
+  --c-texto-tenue: #73737c;    /* 4.58:1, para texto real que no debe competir con el principal */
 
   --c-acento: var(--marca-rojo);
   --c-acento-texto: var(--rojo-texto);
@@ -71,7 +71,7 @@
 
   --c-texto: #f4f4f5;
   --c-texto-suave: #a1a1aa;
-  --c-texto-tenue: #71717a;
+  --c-texto-tenue: #87878f;    /* 5.29:1 sobre el fondo del tema */
 
   /* El rojo de marca da 4.42 sobre este fondo: suficiente para texto
      grande y botones, no para parrafos. Se aclara para lo demas. */

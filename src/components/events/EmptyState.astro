@@ -4,11 +4,18 @@ import { CalendarSearch } from '@lucide/astro';
 interface Props {
   title?: string;
   description?: string;
+  // El CTA por defecto anima a publicar el primer evento, que es lo que toca
+  // cuando el catalogo esta vacio. Quien no encuentra resultados con filtros
+  // necesita lo contrario: limpiarlos. El enlace puede omitirse (href='').
+  ctaHref?: string;
+  ctaLabel?: string;
 }
 
 const {
   title = 'Aún no hay eventos publicados',
   description = 'Cuando la comunidad empiece a publicar, sus eventos aparecerán aquí.',
+  ctaHref = '/eventos/nuevo',
+  ctaLabel = 'Publicar el primer evento',
 } = Astro.props;
 ---
 
@@ -20,10 +27,12 @@ const {
     <p class="text-base font-medium text-texto">{title}</p>
     <p class="text-sm text-suave">{description}</p>
   </div>
-  <a
-    href="/eventos/nuevo"
-    class="mt-2 inline-flex items-center rounded-full bg-acento px-4 py-2 text-sm font-medium text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
-  >
-    Publicar el primer evento
-  </a>
+  {ctaHref && (
+    <a
+      href={ctaHref}
+      class="mt-2 inline-flex items-center rounded-full bg-acento px-4 py-2 text-sm font-medium text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
+    >
+      {ctaLabel}
+    </a>
+  )}
 </div>

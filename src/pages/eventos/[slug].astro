@@ -25,6 +25,7 @@ if (!event) {
 
 const user = await getCurrentUser(Astro.cookies);
 const isOwner = user?.uid === event.organizer.uid;
+const eventEnded = event.endDate.getTime() < Date.now();
 
 // En la cabecera manda la comunidad si el evento se publico en su nombre.
 const autor = event.community ?? event.organizer;
@@ -82,7 +83,7 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
     <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
       <article class="lg:col-span-7">
         <div class="aspect-[16/9] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave">
-          {event.bannerUrl && <img src={event.bannerUrl} alt={event.title} class="h-full w-full object-cover" />}
+          {event.bannerUrl && <img src={event.bannerUrl} alt="" class="h-full w-full object-cover" />}
         </div>
 
         <h1 class="mt-6 text-3xl font-bold tracking-tight text-texto sm:text-4xl">
@@ -97,7 +98,7 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
           */}
           <div class="flex items-center gap-3">
             {autor.avatarUrl ? (
-              <img src={autor.avatarUrl} alt={autor.name} class="size-10 rounded-full object-cover" />
+              <img src={autor.avatarUrl} alt="" class="size-10 rounded-full object-cover" />
             ) : (
               <div class="flex size-10 items-center justify-center rounded-full bg-superficie text-sm font-medium text-suave">
                 {autor.name.charAt(0).toUpperCase()}
@@ -202,7 +203,16 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
             </div>
 
             <div class="border-t border-linea pt-6">
-              {user ? (
+              {eventEnded ? (
+                <button
+                  id="rsvp-button"
+                  type="button"
+                  disabled
+                  class="w-full cursor-not-allowed rounded-2xl border border-linea bg-superficie px-4 py-2.5 text-sm font-medium text-suave opacity-70"
+                >
+                  {isAttending ? 'Asististe a este evento' : 'Este evento ya terminó'}
+                </button>
+              ) : user ? (
                 <button
                   id="rsvp-button"
                   type="button"
@@ -219,16 +229,19 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
               ) : (
                 <a
                   href="/?login=required"
+                  data-login-required
                   class="block w-full rounded-2xl border border-linea bg-superficie px-4 py-2.5 text-center text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento"
                 >
                   Inicia sesión para decir que asistes
                 </a>
               )}
-              <p id="rsvp-count" class="mt-2 text-center text-sm text-suave">
-                {rsvpCount === 0
-                  ? 'Sé el primero en decir que asistes'
-                  : `${rsvpCount} ${rsvpCount === 1 ? 'persona interesada' : 'personas interesadas'}`}
-              </p>
+              {!eventEnded && (
+                <p id="rsvp-count" class="mt-2 text-center text-sm text-suave">
+                  {rsvpCount === 0
+                    ? 'Sé el primero en decir que asistes'
+                    : `${rsvpCount} ${rsvpCount === 1 ? 'persona interesada' : 'personas interesadas'}`}
+                </p>
+              )}
             </div>
 
             <Button
@@ -369,7 +382,15 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
           throw new Error(result.error ?? 'No se pudo eliminar el evento.');
         }
 
-        window.location.href = '/?deleted=true';
+        // Quien borra desde "Mis eventos" vuelve ahi con el aviso; el resto
+        // cae a la portada. Sin esto, borrar desde la lista siempre devolvia
+        // a la home aunque no fuera de donde se venia.
+        const volver =
+          document.referrer && document.referrer.includes('/mis-eventos')
+            ? '/mis-eventos?deleted=true'
+            : '/?deleted=true';
+
+        window.location.href = volver;
       } catch (error) {
         window.alert(error instanceof Error ? error.message : 'No se pudo eliminar el evento.');
         deleteButton.disabled = false;

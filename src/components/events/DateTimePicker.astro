@@ -212,8 +212,34 @@ const { id, name, label, value = '', class: triggerClass = '' } = Astro.props;
         selHora.value = String(fecha.getHours());
         selMinuto.value = String(fecha.getMinutes());
         pintarMes();
+        // El foco entra al panel: sin esto, abrirlo con teclado lo deja colgado
+        // y el primer Tab se pierde en la pagina de atras.
+        const dia = dias.querySelector<HTMLButtonElement>('button:not(:disabled)');
+        (dia ?? selHora).focus();
       }
     }
+
+    // Atrapar el foco dentro del panel mientras esta abierto: role="dialog"
+    // promete ese comportamiento a quien use teclado o lector de pantalla, y un
+    // Tab suelto se escaparia al formulario que hay detras.
+    panel.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab' || panel.hidden) return;
+      const controles = Array.from(
+        panel.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('button, select'),
+      ).filter((el) => !(el as HTMLButtonElement).disabled);
+
+      if (controles.length === 0) return;
+      const primero = controles[0]! as HTMLElement;
+      const ultimo = controles[controles.length - 1]! as HTMLElement;
+
+      if (e.shiftKey && document.activeElement === primero) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primero.focus();
+      }
+    });
 
     boton.addEventListener('click', () => abrir(panel.hidden !== false));
 

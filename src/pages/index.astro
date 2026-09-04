@@ -231,6 +231,19 @@ const posicionesPaso = [
 
 const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 
+// El <title> de una vista filtrada describe la vista: sin esto, "ceramica" y
+// "sin filtros" compartian el mismo titulo estatico en los resultados de
+// busqueda.
+const resultadosTitle = query
+  ? `${query} — Nodo`
+  : modalidad
+    ? `Eventos ${modalidad === 'hibrido' ? 'híbridos' : modalidad === 'virtual' ? 'virtuales' : 'presenciales'} — Nodo`
+    : ciudad
+      ? `Eventos en ${ciudad} — Nodo`
+      : 'Nodo — Eventos y cartelera comunitaria';
+const resultadosDescription =
+  'Eventos y actividades de las comunidades en la cartelera de Nodo.';
+
 // Publicaciones de Instagram, cacheadas en Firestore por /api/instagram/sync.
 // Se lee de ahi y no de Instagram: consultar en cada visita gastaria cuota y
 // ataria el tiempo de respuesta de la home a un servicio ajeno.
@@ -253,7 +266,10 @@ if (MOSTRAR_PUBLICACIONES) {
 }
 ---
 
-<BaseLayout>
+<BaseLayout
+  title={vistaResultados ? resultadosTitle : undefined}
+  description={vistaResultados ? resultadosDescription : undefined}
+>
   {eventDeleted && <StatusToast paramKey="deleted" message="Evento eliminado correctamente." />}
 
   {/*
@@ -439,11 +455,15 @@ if (MOSTRAR_PUBLICACIONES) {
           <EmptyState
             title="No hay eventos pasados"
             description="Todavía no se ha realizado ningún evento con estos filtros."
+            ctaHref="/"
+            ctaLabel="Ver eventos próximos"
           />
         ) : (
           <EmptyState
             title="No hay eventos para esta búsqueda"
             description="Prueba con otro filtro o vuelve a explorar todos los eventos."
+            ctaHref="/"
+            ctaLabel="Limpiar filtros y explorar"
           />
         )
       ) : (

@@ -84,12 +84,19 @@ const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
     <title>{title}</title>
 
     <meta property="og:type" content={type} />
+    <meta property="og:locale" content="es_CO" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:alt" content={title} />
 
-    <meta name="twitter:card" content="summary_large_image" />
+    {/*
+      La tarjeta con imagen grande pide un og:image de 1200x630: el logo
+      cuadrado de la home no lo es, asi que la home va con la tarjeta resumida
+      y solo los articulos (eventos, con banner 16:9) con la grande.
+    */}
+    <meta name="twitter:card" content={type === 'article' ? 'summary_large_image' : 'summary'} />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
