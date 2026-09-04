@@ -7,9 +7,11 @@ import { X } from '@lucide/astro';
   decida si lo muestra antes de que haya pintado nada: revelarlo con JS tras
   pintarlo visible causaria un parpadeo, y quedarse oculto no lo causa.
 
-  Barra al pie, como la de Meetup en movil, y no la tarjeta flotante que habia
-  arriba a la derecha: aquella aparecia nada mas cargar y tapaba contenido antes
-  de que nadie hubiera visto de que va el sitio. Esta espera a que se baje.
+  Tarjeta al pie, como la de Meetup en movil: separada de los filos, esquinas
+  redondeadas y el boton ovalado ocupando todo su ancho. No es la tarjeta
+  flotante que habia arriba a la derecha, que aparecia nada mas cargar y tapaba
+  contenido antes de que nadie hubiera visto de que va el sitio: esta espera a
+  que se baje una pantalla.
 
   Los dos proveedores no caben en una barra, asi que el boton abre el modal de
   sesion, que ya los tiene. Es un boton y no un enlace porque no navega.
@@ -19,32 +21,33 @@ import { X } from '@lucide/astro';
   role="dialog"
   aria-labelledby="nodo-banner-acceso-titulo"
   hidden
-  class="fixed inset-x-0 bottom-0 z-40 border-t border-linea bg-superficie px-5 py-4 shadow-[0_-8px_28px_-12px_rgb(17_17_19_/_0.18)]"
+  class="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-[520px] rounded-[28px] border border-linea bg-superficie p-5 shadow-[0_-4px_32px_-8px_rgb(17_17_19_/_0.22)]"
 >
-  <div class="mx-auto flex max-w-[1200px] flex-col items-center gap-3 sm:flex-row sm:justify-between">
-    <p id="nodo-banner-acceso-titulo" class="text-center text-base font-semibold text-texto sm:text-left">
-      Únete a Nodo y encuentra tu comunidad
-    </p>
+  <button
+    id="nodo-banner-cerrar"
+    type="button"
+    aria-label="Cerrar"
+    class="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-tenue transition hover:bg-fondo-alt hover:text-texto"
+  >
+    <X class="size-4" stroke-width={2} />
+  </button>
 
-    <div class="flex w-full items-center gap-2 sm:w-auto">
-      <button
-        id="nodo-banner-entrar"
-        type="button"
-        class="h-11 flex-1 rounded-full bg-acento px-6 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.98] hover:opacity-90 sm:flex-none"
-      >
-        Iniciar sesión
-      </button>
+  <p
+    id="nodo-banner-acceso-titulo"
+    class="px-6 text-center text-lg font-bold leading-snug text-texto"
+  >
+    Únete a Nodo y encuentra tu comunidad
+  </p>
 
-      <button
-        id="nodo-banner-cerrar"
-        type="button"
-        aria-label="Cerrar"
-        class="flex size-11 shrink-0 items-center justify-center rounded-full text-suave transition hover:bg-fondo-alt hover:text-texto"
-      >
-        <X class="size-5" stroke-width={2} />
-      </button>
-    </div>
-  </div>
+  {/* El boton ocupa el ancho de la tarjeta y va completamente ovalado, como el
+      suyo: es la unica accion que hay aqui, asi que no compite con nada. */}
+  <button
+    id="nodo-banner-entrar"
+    type="button"
+    class="mt-4 h-14 w-full rounded-full bg-acento text-base font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.98] hover:opacity-90"
+  >
+    Iniciar sesión
+  </button>
 </div>
 
 <script>
