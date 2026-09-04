@@ -103,5 +103,38 @@ const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
     </main>
     <Footer />
     <LoginModal />
+
+    {!haySesion && (
+      <script>
+        import { loginWithGoogleCredential } from '../lib/firebase/client';
+
+        const clientId = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID;
+
+        // Sin Client ID configurado (entornos de prueba, PR previews) el
+        // anuncio simplemente no aparece, igual que Instagram u otras
+        // integraciones opcionales del sitio.
+        if (clientId) {
+          const script = document.createElement('script');
+          script.src = 'https://accounts.google.com/gsi/client';
+          script.async = true;
+          script.defer = true;
+          script.onload = () => {
+            window.google?.accounts.id.initialize({
+              client_id: clientId,
+              callback: (response) => {
+                loginWithGoogleCredential(response.credential).catch((error) => {
+                  console.error('No se pudo iniciar sesión con Google One Tap:', error);
+                });
+              },
+              // Chrome exige FedCM para el One Tap desde 2024; sin esto el
+              // aviso deja de mostrarse silenciosamente en vez de fallar.
+              use_fedcm_for_prompt: true,
+            });
+            window.google?.accounts.id.prompt();
+          };
+          document.head.appendChild(script);
+        }
+      </script>
+    )}
   </body>
 </html>
