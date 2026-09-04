@@ -4,7 +4,10 @@ import StatusToast from '../../components/common/StatusToast.astro';
 import ShareButtons from '../../components/events/ShareButtons.astro';
 import Badge from '../../components/ui/Badge.astro';
 import { getCurrentUser } from '../../lib/auth';
-import { getEventBySlug } from '../../lib/firebase/events';
+import EventCard from '../../components/events/EventCard.astro';
+import { filterEvents, getEventBySlug, getEvents } from '../../lib/firebase/events';
+import { normalizeCityName } from '../../lib/eventValidation';
+import type { NodoEvent } from '../../types/event';
 import { getRsvpInfo, getRsvpUids } from '../../lib/firebase/rsvps';
 import { getEventJsonLd } from '../../lib/eventSchema';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
@@ -164,6 +167,59 @@ const pageUrl = new URL(Astro.url.pathname, Astro.site?.origin ?? Astro.url.orig
 // este bloque JSON-LD e inyectar HTML/JS — el texto es contenido de usuario sin sanitizar.
 const eventJsonLdString = JSON.stringify(getEventJsonLd(event, pageUrl)).replace(/</g, '\\u003c');
 
+// Otros eventos al pie de la ficha, como el "You may also like" de Meetup.
+//
+// Cuesta una lectura del catalogo completo, que es cara para una pagina que
+// hasta ahora solo leia su propio documento. Se paga a proposito: puntuar por
+// etiquetas compartidas no se puede consultar en Firestore sin indices que
+// este proyecto no tiene, y ordenar en memoria sobre una sola lectura es el
+// mismo camino que ya toma la portada. Ademas la ficha anonima se cachea
+// sesenta segundos en el middleware, asi que no se repite por cada visita.
+function claveTexto(valor: string): string {
+  return valor
+    .normalize('NFD')
+    .replace(/[^\x00-\x7F]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+let recomendados: NodoEvent[] = [];
+
+try {
+  const etiquetas = new Set(event.tags.map(claveTexto));
+  const ciudad = event.city ? normalizeCityName(event.city) : null;
+  const proximos = filterEvents(await getEvents(), { timeframe: 'upcoming' });
+
+  // Los pesos dicen que se parece a que: lo de la misma comunidad primero,
+  // luego lo que comparte tema, y la ciudad solo desempata. Sin ninguna
+  // coincidencia todos valen cero y manda la fecha, asi que la seccion nunca
+  // sale vacia mientras haya algo proximo que no sea este mismo evento.
+  recomendados = proximos
+    .filter((otro) => otro.id !== event.id)
+    .map((otro) => {
+      let afinidad = 0;
+
+      if (event.community && otro.community?.id === event.community.id) {
+        afinidad += 4;
+      } else if (otro.organizer.uid === event.organizer.uid) {
+        afinidad += 3;
+      }
+
+      afinidad += otro.tags.filter((tag) => etiquetas.has(claveTexto(tag))).length * 2;
+
+      if (ciudad && otro.city && normalizeCityName(otro.city) === ciudad) {
+        afinidad += 1;
+      }
+
+      return { otro, afinidad };
+    })
+    .sort((a, b) => b.afinidad - a.afinidad || a.otro.startDate.getTime() - b.otro.startDate.getTime())
+    .slice(0, 3)
+    .map((entrada) => entrada.otro);
+} catch (error) {
+  console.warn('No se pudieron obtener los eventos recomendados:', error);
+}
+
 const eventCreated = Astro.url.searchParams.get('created') === 'true';
 const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
 
@@ -201,7 +257,7 @@ function textoAsistentes(total: number): string {
     acciones, descripcion. El titulo va primero a proposito: es lo que dice si
     vale la pena seguir bajando.
   */}
-  <div data-gen={color} class="mx-auto max-w-6xl px-6 pb-28 pt-10">
+  <div data-gen={color} class="mx-auto max-w-6xl px-6 pb-16 pt-10">
     <div class="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-12 lg:grid-rows-[auto_1fr]">
       <header class="lg:order-1 lg:col-span-7">
         <h1 class="text-3xl font-bold leading-tight text-texto sm:text-[40px] sm:leading-[46px]">
@@ -567,6 +623,24 @@ function textoAsistentes(total: number): string {
       </div>
     </div>
   </div>
+
+  {recomendados.length > 0 && (
+    <section class="mx-auto max-w-6xl px-6 pb-28">
+      <div class="flex items-end justify-between gap-4">
+        <h2 class="text-2xl font-bold tracking-tight text-texto">Te puede interesar</h2>
+        <a
+          href="/?ver=todos"
+          class="shrink-0 text-sm font-medium text-acento-texto transition hover:underline"
+        >
+          Ver todos
+        </a>
+      </div>
+
+      <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {recomendados.map((otro) => <EventCard event={otro} />)}
+      </div>
+    </section>
+  )}
 
   {/*
     La barra de la ficha de Meetup: mientras el boton de asistir esta en
