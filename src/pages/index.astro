@@ -65,11 +65,15 @@ const categorias = [...new Set(proximos.flatMap((event) => event.tags))]
 // Las dimensiones son las reales de cada archivo, no un cuadrado comodin:
 // van en el HTML para que el navegador reserve el hueco con la proporcion
 // correcta y el texto no salte cuando cargan.
+// Cada pieza se coloca dentro de su columna lateral, no respecto a la ventana:
+// la columna es la que se ancla al texto. Dentro, las de arriba se pegan al
+// borde exterior y las de abajo al interior, para que la pareja quede
+// escalonada en vez de apilada en vertical.
 const collage = [
-  { src: '/banner/comida.webp', ancho: 700, alto: 533, sitio: 'left-[58px] top-0 -rotate-3' },
-  { src: '/banner/arte.webp', ancho: 700, alto: 694, sitio: 'left-[58px] bottom-6 rotate-4 2xl:left-[130px]' },
-  { src: '/banner/fiesta.webp', ancho: 700, alto: 592, sitio: 'right-[58px] top-0 rotate-3' },
-  { src: '/banner/tecnologia.webp', ancho: 700, alto: 581, sitio: 'right-[58px] bottom-6 -rotate-4 2xl:right-[130px]' },
+  { src: '/banner/comida.webp', ancho: 700, alto: 533, lado: 'izquierda', sitio: 'left-0 top-0 w-[240px] -rotate-3' },
+  { src: '/banner/arte.webp', ancho: 700, alto: 694, lado: 'izquierda', sitio: 'right-0 bottom-2 w-[250px] rotate-4' },
+  { src: '/banner/fiesta.webp', ancho: 700, alto: 592, lado: 'derecha', sitio: 'right-0 top-0 w-[240px] rotate-3' },
+  { src: '/banner/tecnologia.webp', ancho: 700, alto: 581, lado: 'derecha', sitio: 'left-0 bottom-2 w-[250px] -rotate-4' },
 ];
 
 const pasos = [
@@ -130,16 +134,41 @@ El collage lateral ocupa el sitio del suyo: dos recortes por lado, a 58px de
     invadirla.
   */}
   <section class="relative overflow-hidden px-6 pb-14 pt-24">
-    <div class="pointer-events-none absolute inset-0 hidden xl:block" aria-hidden="true">
-      {collage.map((pieza) => (
-        <img
-          src={pieza.src}
-          alt=""
-          width={pieza.ancho}
-          height={pieza.alto}
-          loading="eager"
-          class:list={['absolute w-[230px] 2xl:w-[290px]', pieza.sitio]}
-        />
+    {/*
+      Las columnas laterales cuelgan de la columna de texto, no de los filos de
+      la ventana: es lo que hace Meetup, cuyas piezas se quedan a 12px del texto
+      tanto a 1440 como a 1800. Anclarlas al filo las dejaba pegadas a las
+      esquinas y con un hueco creciente en el medio segun se ensancha la
+      pantalla.
+
+      El umbral es 1380 y no un breakpoint redondo porque es la cuenta exacta:
+      680 de texto mas dos columnas de 310 con 20px de aire cada una. Por
+      debajo no caben sin invadir el titular.
+    */}
+    <div
+      class="pointer-events-none absolute inset-x-0 top-10 mx-auto hidden h-[450px] w-[680px] min-[1380px]:block"
+      aria-hidden="true"
+    >
+      {['izquierda', 'derecha'].map((lado) => (
+        <div
+          class:list={[
+            'absolute top-0 h-full w-[310px]',
+            lado === 'izquierda' ? '-left-[330px]' : '-right-[330px]',
+          ]}
+        >
+          {collage
+            .filter((pieza) => pieza.lado === lado)
+            .map((pieza) => (
+              <img
+                src={pieza.src}
+                alt=""
+                width={pieza.ancho}
+                height={pieza.alto}
+                loading="eager"
+                class:list={['absolute', pieza.sitio]}
+              />
+            ))}
+        </div>
       ))}
     </div>
 
