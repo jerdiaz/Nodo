@@ -1,4 +1,4 @@
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from './server';
 
 export interface RsvpInfo {
@@ -32,17 +32,32 @@ export async function getAttendedEventIds(uid: string, eventIds: string[]): Prom
   return new Set(results.filter((eventId): eventId is string => eventId !== null));
 }
 
-// Quienes han confirmado, en orden de llegada y como mucho `max`. Devuelve
-// solo los uid: cruzarlos con sus perfiles es trabajo de getUserProfiles, que
-// lo hace en un solo viaje con getAll() y ya se usa para los organizadores.
+export interface RsvpEntry {
+  uid: string;
+  // Cuando confirmo. Es null en un documento sin marca de tiempo, que hoy no
+  // deberia existir: setRsvp es el unico que escribe aqui.
+  createdAt: Date | null;
+}
+
+// Quienes han confirmado, en orden de llegada y como mucho `max`. Devuelve el
+// uid y la fecha, no el perfil: cruzarlos lo hace getUserProfiles en un solo
+// getAll(), y asi quien llame decide a quien mas mete en ese mismo viaje.
 //
 // El orden por createdAt no necesita indice compuesto -es un campo suelto de
 // una subcoleccion, que Firestore indexa por su cuenta- pero si deja fuera
 // cualquier documento que no lo tenga. Hoy no puede haberlos: setRsvp es el
 // unico que escribe aqui y siempre pone serverTimestamp.
-export async function getRsvpUids(eventId: string, max: number): Promise<string[]> {
+export async function getRsvpEntries(eventId: string, max: number): Promise<RsvpEntry[]> {
   const snapshot = await rsvpsCollection(eventId).orderBy('createdAt', 'asc').limit(max).get();
-  return snapshot.docs.map((doc) => doc.id);
+
+  return snapshot.docs.map((doc) => {
+    const createdAt = doc.data()?.createdAt;
+
+    return {
+      uid: doc.id,
+      createdAt: createdAt instanceof Timestamp ? createdAt.toDate() : null,
+    };
+  });
 }
 
 export async function getRsvpInfo(eventId: string, uid?: string): Promise<RsvpInfo> {
