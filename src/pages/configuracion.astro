@@ -2,9 +2,10 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Button from '../components/ui/Button.astro';
 import { getCurrentUser } from '../lib/auth';
+import ImageCropper from '../components/ui/ImageCropper.astro';
 import { getUserProfile } from '../lib/firebase/users';
 import { SOCIAL_FIELDS } from '../types/profile';
-import { Rss, TriangleAlert, Upload } from '@lucide/astro';
+import { Rss, TriangleAlert } from '@lucide/astro';
 import { getEvents } from '../lib/firebase/events';
 import type { UserProfile } from '../types/profile';
 
@@ -169,35 +170,15 @@ const inputClass =
         </div>
 
         <div class="sm:w-40">
-          <span class="block text-sm font-medium text-texto">Foto de perfil</span>
-          <div class="relative mt-1.5 w-fit">
-            <img
-              id="avatar-preview"
-              src={avatarUrl || undefined}
-              alt=""
-              class:list={['size-28 rounded-full bg-fondo-alt object-cover', !avatarUrl && 'hidden']}
-            />
-            <div
-              id="avatar-fallback"
-              class:list={[
-                'flex size-28 items-center justify-center rounded-full bg-fondo-alt text-3xl font-semibold text-texto',
-                avatarUrl && 'hidden',
-              ]}
-            >
-              {firstName.charAt(0).toUpperCase()}
-            </div>
-            <label
-              for="avatarFile"
-              class="absolute bottom-0 right-0 flex size-9 cursor-pointer items-center justify-center rounded-full bg-acento text-acento-contraste shadow-lg transition hover:opacity-90"
-              title="Cambiar foto de perfil"
-            >
-              <Upload class="size-4" stroke-width={2.5} />
-              <span class="sr-only">Cambiar foto de perfil</span>
-              <input id="avatarFile" name="avatarFile" type="file" accept="image/*" class="sr-only" />
-            </label>
-          </div>
-          <p class="mt-2 text-xs text-tenue">JPG, PNG o WEBP, máx. 2 MB.</p>
-          <input type="hidden" id="avatarUrl" name="avatarUrl" value={avatarUrl} />
+          <ImageCropper
+            id="avatarUrl"
+            name="avatarUrl"
+            kind="avatar"
+            label="Foto de perfil"
+            value={avatarUrl}
+            fallback={firstName.charAt(0).toUpperCase()}
+            hint="Arrastra una imagen aquí o haz clic. JPG, PNG o WEBP."
+          />
         </div>
       </div>
 
@@ -407,12 +388,8 @@ const inputClass =
 </BaseLayout>
 
 <script>
-  const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 
   const form = document.getElementById('profile-form') as HTMLFormElement;
-  const avatarInput = document.getElementById('avatarFile') as HTMLInputElement;
-  const avatarPreview = document.getElementById('avatar-preview') as HTMLImageElement;
-  const avatarFallback = document.getElementById('avatar-fallback') as HTMLElement;
   const avatarUrlInput = document.getElementById('avatarUrl') as HTMLInputElement;
   const bioField = document.getElementById('bio') as HTMLTextAreaElement;
   const bioCount = document.getElementById('bio-count') as HTMLElement;
@@ -492,14 +469,16 @@ const inputClass =
     if (actual === 'sistema') aplicarTema('sistema');
   });
 
-  // La imagen va al servidor, que la modera y la recorta antes de guardarla.
-  async function subirImagen(file: File, kind: 'avatar' | 'banner'): Promise<string> {
+  // El recorte va al servidor, que lo modera antes de guardarlo.
+  async function subirImagen(dataUrl: string, kind: 'avatar' | 'banner'): Promise<string> {
+    const recorte = await (await fetch(dataUrl)).blob();
+
     // Cuerpo binario, no FormData: multipart dispara la comprobacion de origen
     // de Astro y responde 403 detras del proxy de produccion.
     const response = await fetch(`/api/imagenes?kind=${kind}`, {
       method: 'POST',
-      headers: { 'Content-Type': file.type || 'image/jpeg' },
-      body: file,
+      headers: { 'Content-Type': recorte.type || 'image/jpeg' },
+      body: recorte,
     });
     const result = await response.json().catch(() => ({}));
 
@@ -661,37 +640,21 @@ const inputClass =
   bioField.addEventListener('input', updateBioCount);
   updateBioCount();
 
-  avatarInput.addEventListener('change', () => {
-    const file = avatarInput.files?.[0];
-    if (!file) {
-      return;
-    }
-    avatarPreview.src = URL.createObjectURL(file);
-    avatarPreview.classList.remove('hidden');
-    avatarFallback.classList.add('hidden');
-  });
-
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     errorBox.classList.add('hidden');
     successBox.classList.add('hidden');
-
-    const file = avatarInput.files?.[0];
-
-    if (file && file.size > MAX_AVATAR_SIZE) {
-      errorBox.textContent = 'La imagen no puede superar 2 MB.';
-      errorBox.classList.remove('hidden');
-      return;
-    }
 
     submitButton.disabled = true;
 
     try {
       let avatarUrl = avatarUrlInput.value;
 
-      if (file) {
+      // Un recorte nuevo llega como data URL; una foto ya guardada, como la
+      // URL de Storage que no hay que volver a subir.
+      if (avatarUrl.startsWith('data:')) {
         submitButton.textContent = 'Revisando imagen…';
-        avatarUrl = await subirImagen(file, 'avatar');
+        avatarUrl = await subirImagen(avatarUrl, 'avatar');
         avatarUrlInput.value = avatarUrl;
       }
 

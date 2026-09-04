@@ -1,6 +1,6 @@
 ---
-import { Upload } from '@lucide/astro';
 import Card from '../ui/Card.astro';
+import ImageCropper from '../ui/ImageCropper.astro';
 import Button from '../ui/Button.astro';
 import type { NodoEvent } from '../../types/event';
 import DateTimePicker from './DateTimePicker.astro';
@@ -46,32 +46,18 @@ const inputClass =
     novalidate
     data-method={submitMethod}
     data-action={submitUrl}
-    data-existing-banner={event?.bannerUrl ?? ''}
     class="space-y-6"
   >
     <input type="hidden" id="timezone" name="timezone" />
 
-    <div>
-      <label for="bannerFile" class="block text-sm font-medium text-texto">
-        Banner <span class="text-tenue">(opcional)</span>
-      </label>
-      <label
-        for="bannerFile"
-        id="banner-dropzone"
-        class="mt-1.5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-acento bg-fondo-alt px-6 py-10 text-center transition hover:border-acento"
-      >
-        <Upload class="size-5 text-suave" stroke-width={1.75} />
-        <span class="text-sm text-texto">Sube la imagen de portada (16:9 recomendado)</span>
-        <span class="text-xs text-tenue">Arrastra y suelta, o haz clic para elegir. JPG, PNG o WEBP, máx. 5 MB.</span>
-        <input id="bannerFile" name="bannerFile" type="file" accept="image/*" class="sr-only" />
-      </label>
-      <img
-        id="banner-preview"
-        class={`mt-3 aspect-[16/9] w-full rounded-2xl object-cover ${event?.bannerUrl ? '' : 'hidden'}`}
-        src={event?.bannerUrl}
-        alt="Vista previa del banner"
-      />
-    </div>
+    <ImageCropper
+      id="bannerUrl"
+      name="bannerUrl"
+      kind="banner"
+      label="Banner (opcional)"
+      value={event?.bannerUrl ?? ''}
+      hint="Arrastra la imagen de portada o haz clic para elegirla. Se recorta a 16:9."
+    />
 
     <div>
       <label for="title" class="block text-sm font-medium text-texto">Título</label>
@@ -190,7 +176,6 @@ const inputClass =
 </Card>
 
 <script>
-  const MAX_BANNER_SIZE = 5 * 1024 * 1024;
 
   const form = document.getElementById('event-form') as HTMLFormElement;
   const modalityInput = document.getElementById('modality') as HTMLInputElement;
@@ -199,9 +184,7 @@ const inputClass =
   const onlineGroup = document.querySelector('[data-field-group="online"]') as HTMLElement;
   const cityInput = document.getElementById('city') as HTMLInputElement;
   const meetingUrlInput = document.getElementById('meetingUrl') as HTMLInputElement;
-  const bannerDropzone = document.getElementById('banner-dropzone') as HTMLLabelElement;
-  const bannerInput = document.getElementById('bannerFile') as HTMLInputElement;
-  const bannerPreview = document.getElementById('banner-preview') as HTMLImageElement;
+  const bannerUrlInput = document.getElementById('bannerUrl') as HTMLInputElement;
   const timezoneInput = document.getElementById('timezone') as HTMLInputElement;
   const tagsHiddenInput = document.getElementById('tags') as HTMLInputElement;
   const tagChipsContainer = document.getElementById('tag-chips') as HTMLElement;
@@ -211,14 +194,16 @@ const inputClass =
 
   const originalButtonText = submitButton.textContent ?? 'Publicar evento';
 
-  // La imagen va al servidor, que la modera y la recorta antes de guardarla.
-  async function subirImagen(file: File, kind: 'avatar' | 'banner'): Promise<string> {
+  // El recorte va al servidor, que lo modera antes de guardarlo.
+  async function subirImagen(dataUrl: string, kind: 'avatar' | 'banner'): Promise<string> {
+    const recorte = await (await fetch(dataUrl)).blob();
+
     // Cuerpo binario, no FormData: multipart dispara la comprobacion de origen
     // de Astro y responde 403 detras del proxy de produccion.
     const response = await fetch(`/api/imagenes?kind=${kind}`, {
       method: 'POST',
-      headers: { 'Content-Type': file.type || 'image/jpeg' },
-      body: file,
+      headers: { 'Content-Type': recorte.type || 'image/jpeg' },
+      body: recorte,
     });
     const result = await response.json().catch(() => ({}));
 
@@ -325,46 +310,6 @@ const inputClass =
   setActiveModalityTab(modalityInput.value);
   updateConditionalFields();
 
-  // --- Banner: dropzone con vista previa y soporte drag & drop ---
-  function handleBannerFile(file: File | undefined): void {
-    if (!file) {
-      const existingBanner = form.dataset.existingBanner;
-      if (existingBanner) {
-        bannerPreview.src = existingBanner;
-        bannerPreview.classList.remove('hidden');
-      } else {
-        bannerPreview.classList.add('hidden');
-        bannerPreview.removeAttribute('src');
-      }
-      return;
-    }
-
-    bannerPreview.src = URL.createObjectURL(file);
-    bannerPreview.classList.remove('hidden');
-  }
-
-  bannerInput.addEventListener('change', () => handleBannerFile(bannerInput.files?.[0]));
-
-  bannerDropzone.addEventListener('dragover', (event) => {
-    event.preventDefault();
-    bannerDropzone.classList.add('border-acento');
-  });
-
-  bannerDropzone.addEventListener('dragleave', () => {
-    bannerDropzone.classList.remove('border-acento');
-  });
-
-  bannerDropzone.addEventListener('drop', (event) => {
-    event.preventDefault();
-    bannerDropzone.classList.remove('border-acento');
-
-    const file = event.dataTransfer?.files?.[0];
-    if (file) {
-      bannerInput.files = event.dataTransfer.files;
-      handleBannerFile(file);
-    }
-  });
-
   // --- Etiquetas: chips removibles ---
   let tags: string[] = tagsHiddenInput.value
     ? tagsHiddenInput.value
@@ -449,24 +394,18 @@ const inputClass =
       addTagFromInput();
     }
 
-    const bannerFile = bannerInput.files?.[0];
-
-    if (bannerFile && bannerFile.size > MAX_BANNER_SIZE) {
-      errorBox.textContent = 'La imagen no puede superar 5 MB.';
-      errorBox.classList.remove('hidden');
-      return;
-    }
-
     submitButton.disabled = true;
 
     try {
-      // Sin archivo nuevo, bannerUrl queda `undefined` y el banner actual
-      // (si lo hay) se conserva sin cambios en la actualización.
+      // Sin recorte nuevo, bannerUrl queda `undefined` y el banner actual
+      // (si lo hay) se conserva sin cambios en la actualización. Un recorte
+      // recien hecho llega como data URL; el que ya estaba guardado, como la
+      // URL de Storage, que no hay que volver a subir.
       let bannerUrl: string | undefined;
 
-      if (bannerFile) {
+      if (bannerUrlInput.value.startsWith('data:')) {
         submitButton.textContent = 'Revisando imagen…';
-        bannerUrl = await subirImagen(bannerFile, 'banner');
+        bannerUrl = await subirImagen(bannerUrlInput.value, 'banner');
       }
 
       submitButton.textContent = form.dataset.method === 'PUT' ? 'Guardando…' : 'Publicando…';

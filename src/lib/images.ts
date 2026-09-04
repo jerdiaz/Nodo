@@ -9,12 +9,20 @@ const UNSAFE = ['LIKELY', 'VERY_LIKELY'];
 
 export type ImageKind = 'avatar' | 'banner' | 'publicacion';
 
+// El limite ya no es lo que ve quien sube una foto: el recortador del
+// navegador (ImageCropper.astro) manda siempre un JPEG ya reducido a estas
+// mismas medidas, que ronda los cientos de kilobytes venga de donde venga el
+// original. Lo que queda aqui es un tope de seguridad para quien llame a la
+// API por su cuenta, y se queda por debajo de los 20 MB que admite Vision en
+// una peticion.
+const TOPE = 15 * 1024 * 1024;
+
 const SPECS: Record<ImageKind, { prefix: string; width: number; height: number; maxBytes: number }> = {
-  // El recorte se hace en el servidor: asi el tamano final no depende de lo
+  // El recorte se rehace en el servidor: asi el tamano final no depende de lo
   // que el navegador quiera subir y las miniaturas siempre cuadran.
-  avatar: { prefix: 'avatars', width: 512, height: 512, maxBytes: 2 * 1024 * 1024 },
-  banner: { prefix: 'event-banners', width: 1600, height: 900, maxBytes: 5 * 1024 * 1024 },
-  publicacion: { prefix: 'instagram', width: 1080, height: 1080, maxBytes: 8 * 1024 * 1024 },
+  avatar: { prefix: 'avatars', width: 512, height: 512, maxBytes: TOPE },
+  banner: { prefix: 'event-banners', width: 1600, height: 900, maxBytes: TOPE },
+  publicacion: { prefix: 'instagram', width: 1080, height: 1080, maxBytes: TOPE },
 };
 
 let visionClient: ImageAnnotatorClient | null = null;

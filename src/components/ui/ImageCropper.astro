@@ -1,0 +1,287 @@
+---
+import { ImagePlus, Upload, ZoomIn } from '@lucide/astro';
+
+interface Props {
+  id: string;
+  name: string;
+  label: string;
+  kind: 'avatar' | 'banner';
+  // URL ya guardada, al editar. Se distingue de un recorte nuevo porque no
+  // empieza por "data:", que es como el formulario sabe si hay que subir algo.
+  value?: string;
+  // Iniciales u otro texto para cuando no hay foto (perfil).
+  fallback?: string;
+  hint?: string;
+}
+
+const { id, name, label, kind, value = '', fallback = '', hint } = Astro.props;
+
+// Las mismas medidas que SPECS en lib/images.ts: el lienzo produce ya el
+// tamano final, asi que el recorte del servidor no vuelve a mover el encuadre.
+const ESPECIES = {
+  avatar: { ancho: 512, alto: 512, marco: 'aspect-square w-full', vista: 'size-28 rounded-full' },
+  banner: { ancho: 1600, alto: 900, marco: 'aspect-[16/9] w-full', vista: 'aspect-[16/9] w-full rounded-2xl' },
+} as const;
+
+const espec = ESPECIES[kind];
+const hayValor = Boolean(value);
+---
+
+{/*
+  Elegir foto y encuadrarla antes de subirla. El servidor tambien recorta, pero
+  por su cuenta se queda con el centro geometrico: si la cara esta arriba a la
+  izquierda, la corta. Aqui se elige el encuadre.
+
+  El recorte sale como data URL en un input oculto y no como Blob en una
+  variable: los scripts de dos componentes distintos no comparten modulo, y un
+  input es el sitio natural para que el formulario lo recoja.
+
+  De paso el lienzo hace de compresor: sea cual sea el tamano del original, lo
+  que viaja al servidor es este JPEG ya reducido a las medidas finales, de
+  ahi que el limite de subida no le llegue nunca a quien sube desde el movil.
+*/}
+<div data-cropper={id} data-ancho={espec.ancho} data-alto={espec.alto}>
+  <span class="block text-sm font-medium text-texto">{label}</span>
+
+  <div
+    data-soltar
+    class:list={[
+      'mt-1.5 flex gap-4',
+      kind === 'avatar' ? 'items-center' : 'flex-col items-start',
+    ]}
+  >
+    <div
+      data-vista
+      class:list={[
+        'flex shrink-0 items-center justify-center overflow-hidden bg-fondo-alt text-tenue',
+        espec.vista,
+        !hayValor && 'border border-dashed border-linea',
+      ]}
+    >
+      {hayValor
+        ? <img src={value} alt="" class="h-full w-full object-cover" />
+        : fallback
+          ? <span class="text-2xl font-bold text-suave">{fallback}</span>
+          : kind === 'banner'
+            ? <Upload class="size-5" stroke-width={1.5} />
+            : <ImagePlus class="size-6" stroke-width={1.5} />}
+    </div>
+
+    <div>
+      <button
+        type="button"
+        data-elegir
+        class="h-9 rounded-full border border-linea bg-superficie px-4 text-sm font-semibold text-texto transition active:scale-[0.97] hover:border-acento"
+      >
+        {hayValor ? 'Cambiar foto' : 'Elegir foto'}
+      </button>
+      <p class="mt-1.5 text-xs text-tenue">{hint ?? 'Arrastra una imagen aquí o haz clic. JPG, PNG o WEBP.'}</p>
+    </div>
+  </div>
+
+  <input type="file" accept="image/*" data-archivo class="hidden" />
+  <input type="hidden" id={id} name={name} data-valor value={value} />
+
+  <dialog
+    data-dialogo
+    aria-label="Recortar imagen"
+    class:list={[
+      'm-auto w-[calc(100vw-2rem)] rounded-3xl bg-superficie p-0 text-texto shadow-[var(--c-sombra-alta)] backdrop:bg-[#111113]/40',
+      kind === 'banner' ? 'max-w-[640px]' : 'max-w-[420px]',
+    ]}
+  >
+    <div class="p-6">
+      <h2 class="text-lg font-bold text-texto">Encuadra la imagen</h2>
+      <p class="mt-1 text-sm text-suave">Arrastra para mover y usa la barra para acercar.</p>
+
+      <div
+        data-marco
+        class:list={[
+          'mt-4 cursor-grab overflow-hidden rounded-2xl bg-fondo-alt active:cursor-grabbing',
+          espec.marco,
+        ]}
+      >
+        <canvas data-lienzo width={espec.ancho} height={espec.alto} class="h-full w-full touch-none"></canvas>
+      </div>
+
+      <label class="mt-4 flex items-center gap-3">
+        <ZoomIn class="size-4 shrink-0 text-suave" stroke-width={1.75} />
+        <span class="sr-only">Acercar</span>
+        <input type="range" data-zoom min="1" max="3" step="0.01" value="1" class="w-full" />
+      </label>
+
+      <p data-fallo class="mt-3 hidden text-sm text-acento-texto" role="alert"></p>
+
+      <div class="mt-5 flex gap-3">
+        <button
+          type="button"
+          data-cancelar
+          class="h-10 flex-1 rounded-full border border-linea text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          data-confirmar
+          class="h-10 flex-1 rounded-full bg-acento text-sm font-semibold text-acento-contraste transition active:scale-[0.98] hover:opacity-90"
+        >
+          Usar esta imagen
+        </button>
+      </div>
+    </div>
+  </dialog>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-cropper]').forEach((raiz) => {
+    const ANCHO = Number(raiz.dataset.ancho);
+    const ALTO = Number(raiz.dataset.alto);
+
+    const archivo = raiz.querySelector<HTMLInputElement>('[data-archivo]')!;
+    const valor = raiz.querySelector<HTMLInputElement>('[data-valor]')!;
+    const vista = raiz.querySelector<HTMLElement>('[data-vista]')!;
+    const soltar = raiz.querySelector<HTMLElement>('[data-soltar]')!;
+    const dialogo = raiz.querySelector<HTMLDialogElement>('[data-dialogo]')!;
+    const marco = raiz.querySelector<HTMLElement>('[data-marco]')!;
+    const lienzo = raiz.querySelector<HTMLCanvasElement>('[data-lienzo]')!;
+    const zoom = raiz.querySelector<HTMLInputElement>('[data-zoom]')!;
+    const fallo = raiz.querySelector<HTMLElement>('[data-fallo]')!;
+    const elegir = raiz.querySelector<HTMLButtonElement>('[data-elegir]')!;
+    const ctx = lienzo.getContext('2d')!;
+
+    let imagen: HTMLImageElement | null = null;
+    let escala = 1;
+    let x = 0;
+    let y = 0;
+
+    // Escala minima: la que hace que la imagen cubra el marco por su lado
+    // corto. Por debajo asomaria el fondo dentro del recorte.
+    const escalaBase = (): number =>
+      imagen ? Math.max(ANCHO / imagen.naturalWidth, ALTO / imagen.naturalHeight) : 1;
+
+    function limitar(): void {
+      if (!imagen) return;
+      x = Math.min(0, Math.max(ANCHO - imagen.naturalWidth * escala, x));
+      y = Math.min(0, Math.max(ALTO - imagen.naturalHeight * escala, y));
+    }
+
+    function pintar(): void {
+      if (!imagen) return;
+      limitar();
+      ctx.clearRect(0, 0, ANCHO, ALTO);
+      ctx.drawImage(imagen, x, y, imagen.naturalWidth * escala, imagen.naturalHeight * escala);
+    }
+
+    function abrir(fichero: File): void {
+      fallo.classList.add('hidden');
+
+      const img = new Image();
+      const objeto = URL.createObjectURL(fichero);
+
+      img.onload = () => {
+        URL.revokeObjectURL(objeto);
+        imagen = img;
+        escala = escalaBase();
+        zoom.min = String(escala);
+        zoom.max = String(escala * 3);
+        zoom.step = String(escala / 100);
+        zoom.value = String(escala);
+        // Arranca centrado, que es el encuadre que acierta mas veces.
+        x = (ANCHO - img.naturalWidth * escala) / 2;
+        y = (ALTO - img.naturalHeight * escala) / 2;
+        pintar();
+        dialogo.showModal();
+      };
+
+      // Formatos que el navegador no sabe decodificar (HEIC de iPhone en
+      // Chrome, por ejemplo) no llegan ni a onload.
+      img.onerror = () => {
+        URL.revokeObjectURL(objeto);
+        window.alert('No se pudo leer esa imagen. Prueba con un JPG, PNG o WEBP.');
+      };
+
+      img.src = objeto;
+    }
+
+    elegir.addEventListener('click', () => archivo.click());
+
+    archivo.addEventListener('change', () => {
+      const fichero = archivo.files?.[0];
+      if (fichero) abrir(fichero);
+    });
+
+    soltar.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      vista.classList.add('border-acento');
+    });
+
+    soltar.addEventListener('dragleave', () => vista.classList.remove('border-acento'));
+
+    soltar.addEventListener('drop', (e) => {
+      e.preventDefault();
+      vista.classList.remove('border-acento');
+      const fichero = e.dataTransfer?.files?.[0];
+      if (fichero?.type.startsWith('image/')) abrir(fichero);
+    });
+
+    zoom.addEventListener('input', () => {
+      if (!imagen) return;
+      const anterior = escala;
+      escala = Number(zoom.value);
+      // Se acerca hacia el centro del marco y no hacia la esquina, que es lo
+      // que uno espera al mover la barra.
+      x = ANCHO / 2 - ((ANCHO / 2 - x) * escala) / anterior;
+      y = ALTO / 2 - ((ALTO / 2 - y) * escala) / anterior;
+      pintar();
+    });
+
+    let arrastrando = false;
+    let ultimoX = 0;
+    let ultimoY = 0;
+
+    marco.addEventListener('pointerdown', (e) => {
+      arrastrando = true;
+      ultimoX = e.clientX;
+      ultimoY = e.clientY;
+      marco.setPointerCapture(e.pointerId);
+    });
+
+    marco.addEventListener('pointermove', (e) => {
+      if (!arrastrando) return;
+      // El lienzo se muestra escalado a la caja, asi que el movimiento del
+      // raton hay que convertirlo a pixeles del lienzo antes de aplicarlo.
+      const factor = ANCHO / marco.getBoundingClientRect().width;
+      x += (e.clientX - ultimoX) * factor;
+      y += (e.clientY - ultimoY) * factor;
+      ultimoX = e.clientX;
+      ultimoY = e.clientY;
+      pintar();
+    });
+
+    for (const evento of ['pointerup', 'pointercancel', 'pointerleave']) {
+      marco.addEventListener(evento, () => { arrastrando = false; });
+    }
+
+    raiz.querySelector('[data-cancelar]')?.addEventListener('click', () => {
+      dialogo.close();
+      archivo.value = '';
+    });
+
+    raiz.querySelector('[data-confirmar]')?.addEventListener('click', () => {
+      valor.value = lienzo.toDataURL('image/jpeg', 0.85);
+      valor.dispatchEvent(new Event('change', { bubbles: true }));
+
+      vista.innerHTML = '';
+      vista.classList.remove('border', 'border-dashed', 'border-linea');
+      const previo = document.createElement('img');
+      previo.src = valor.value;
+      previo.alt = '';
+      previo.className = 'h-full w-full object-cover';
+      vista.appendChild(previo);
+
+      elegir.textContent = 'Cambiar foto';
+      dialogo.close();
+      archivo.value = '';
+    });
+  });
+</script>

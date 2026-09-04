@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Card from '../../components/ui/Card.astro';
 import Button from '../../components/ui/Button.astro';
-import AvatarCropper from '../../components/ui/AvatarCropper.astro';
+import ImageCropper from '../../components/ui/ImageCropper.astro';
 import { getCurrentUser } from '../../lib/auth';
 import { getCommunityByOwner } from '../../lib/firebase/communities';
 
@@ -34,7 +34,7 @@ const inputClass =
 
     <Card class="mt-8 p-6">
       <form id="community-form" class="space-y-5">
-        <AvatarCropper id="avatarUrl" name="avatarUrl" label="Foto de la comunidad" />
+        <ImageCropper id="avatarUrl" name="avatarUrl" kind="avatar" label="Foto de la comunidad" />
 
         <div>
           <label for="name" class="block text-sm font-medium text-texto">Nombre</label>
