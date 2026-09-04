@@ -31,7 +31,11 @@
   --azul-texto: #0a7fa3;      /* 4.59 */
 
   /* --- Semanticos: tema claro (por defecto) --- */
-  --c-fondo: #ffffff;
+  /* El fondo no es blanco puro, igual que el de Meetup, que va a #fcfcfd en
+     html, body y cabecera. Reservar el #ffffff para las superficies -tarjetas,
+     menus, la pastilla del buscador- hace que floten sin necesidad de borde:
+     tres puntos de diferencia no se ven como color, pero si como relieve. */
+  --c-fondo: #fcfcfd;
   --c-fondo-alt: #f7f6f3;      /* hueso, no gris puro */
   --c-superficie: #ffffff;
   --c-linea: #e3e3e6;
