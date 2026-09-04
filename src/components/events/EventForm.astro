@@ -36,7 +36,7 @@ const submitLabel = isEdit ? 'Guardar cambios' : 'Publicar evento';
 const cancelHref = isEdit ? `/eventos/${event!.slug}` : '/';
 
 const inputClass =
-  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus:outline-none focus:ring-2 focus:ring-acento';
+  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus-visible:outline-none focus:ring-2 focus:ring-acento';
 ---
 
 <Card class="mt-8 p-8">
@@ -186,7 +186,7 @@ const inputClass =
           id="tag-input-field"
           type="text"
           placeholder="Agregar etiqueta y presiona Enter..."
-          class="min-w-32 flex-1 bg-transparent py-1 text-sm text-texto placeholder:text-tenue focus:outline-none"
+          class="min-w-32 flex-1 bg-transparent py-1 text-sm text-texto placeholder:text-tenue focus-visible:outline-none"
         />
       </div>
       <input type="hidden" id="tags" name="tags" value={tagsValue} />

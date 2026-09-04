@@ -31,7 +31,7 @@ if (profile?.username) {
 const [authFirst = '', ...authRest] = user.name.split(' ');
 
 const inputClass =
-  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus:outline-none focus:ring-2 focus:ring-acento';
+  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus-visible:outline-none focus:ring-2 focus:ring-acento';
 ---
 
 <BaseLayout title="Te damos la bienvenida — Nodo" description="Completa tu perfil en Nodo.">
@@ -66,7 +66,7 @@ const inputClass =
             autocomplete="off"
             autocapitalize="none"
             spellcheck="false"
-            class="w-full bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue focus:outline-none"
+            class="w-full bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue focus-visible:outline-none"
             value={suggestUsername(user.name, user.email)}
           />
         </div>

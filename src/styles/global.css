@@ -109,19 +109,27 @@
   }
 }
 
-body {
-  background: var(--c-fondo);
-  color: var(--c-texto);
-}
+/* En capa "base": Tailwind emite sus utilidades (incluida
+   focus-visible:outline-none) en la capa "utilities", que en cascade layers
+   siempre gana sobre cualquier capa nombrada anterior sin importar la
+   especificidad. Sin este @layer, estas reglas quedarian "sin capa" y una
+   regla sin capa le gana a CUALQUIER capa con nombre, utilities incluida —
+   ninguna clase de Tailwind podria pisar el outline de foco de aqui abajo. */
+@layer base {
+  body {
+    background: var(--c-fondo);
+    color: var(--c-texto);
+  }
 
-::selection {
-  background: var(--c-acento);
-  color: var(--c-acento-contraste);
-}
+  ::selection {
+    background: var(--c-acento);
+    color: var(--c-acento-contraste);
+  }
 
-:focus-visible {
-  outline: 2px solid var(--c-acento);
-  outline-offset: 2px;
+  :focus-visible {
+    outline: 2px solid var(--c-acento);
+    outline-offset: 2px;
+  }
 }
 
 /* =========================================================

@@ -49,7 +49,7 @@ const calendarUrl = profile?.calendarToken
   : '';
 
 const inputClass =
-  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus:outline-none focus:ring-2 focus:ring-acento';
+  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus-visible:outline-none focus:ring-2 focus:ring-acento';
 ---
 
 <BaseLayout title="Configuración — Nodo" description="Ajusta tu perfil en Nodo.">
@@ -148,7 +148,7 @@ const inputClass =
                 maxlength="30"
                 autocomplete="off"
                 placeholder="tunombre"
-                class="w-full bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue focus:outline-none"
+                class="w-full bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue focus-visible:outline-none"
                 value={profile?.username ?? ''}
               />
             </div>
@@ -216,7 +216,7 @@ const inputClass =
                 autocomplete="off"
                 aria-label={field.label}
                 placeholder="nombre de usuario"
-                class="w-full min-w-0 bg-superficie px-3 py-2.5 text-sm text-texto placeholder:text-tenue focus:outline-none"
+                class="w-full min-w-0 bg-superficie px-3 py-2.5 text-sm text-texto placeholder:text-tenue focus-visible:outline-none"
                 value={profile?.socials?.[field.key] ?? ''}
               />
             </div>
@@ -231,7 +231,7 @@ const inputClass =
               autocomplete="off"
               aria-label="Sitio web"
               placeholder="tu sitio web"
-              class="w-full min-w-0 bg-superficie px-3 py-2.5 text-sm text-texto placeholder:text-tenue focus:outline-none"
+              class="w-full min-w-0 bg-superficie px-3 py-2.5 text-sm text-texto placeholder:text-tenue focus-visible:outline-none"
               value={profile?.socials?.website ?? ''}
             />
           </div>
@@ -280,7 +280,7 @@ const inputClass =
               type="text"
               readonly
               value={calendarUrl}
-              class="w-full min-w-0 rounded-xl bg-fondo-alt px-3 py-2 font-mono text-xs text-texto ring-1 ring-inset ring-linea focus:outline-none"
+              class="w-full min-w-0 rounded-xl bg-fondo-alt px-3 py-2 font-mono text-xs text-texto ring-1 ring-inset ring-linea focus-visible:outline-none"
             />
             <button
               id="ical-copy"
@@ -343,7 +343,7 @@ const inputClass =
                   type="text"
                   autocomplete="off"
                   placeholder="usuario que los recibe"
-                  class="w-full bg-superficie px-3 py-2 text-sm text-texto placeholder:text-tenue focus:outline-none"
+                  class="w-full bg-superficie px-3 py-2 text-sm text-texto placeholder:text-tenue focus-visible:outline-none"
                 />
               </span>
             </span>
@@ -385,7 +385,7 @@ const inputClass =
                 maxlength="6"
                 autocomplete="off"
                 placeholder="Código"
-                class="w-32 rounded-xl bg-fondo-alt px-3 py-2 font-mono text-sm uppercase tracking-widest text-texto placeholder:tracking-normal placeholder:text-tenue ring-1 ring-inset ring-linea focus:outline-none focus:ring-2 focus:ring-acento"
+                class="w-32 rounded-xl bg-fondo-alt px-3 py-2 font-mono text-sm uppercase tracking-widest text-texto placeholder:tracking-normal placeholder:text-tenue ring-1 ring-inset ring-linea focus-visible:outline-none focus:ring-2 focus:ring-acento"
               />
               <button
                 id="delete-confirm"
