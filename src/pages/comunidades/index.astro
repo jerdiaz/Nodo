@@ -1,0 +1,116 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import EmptyState from '../../components/events/EmptyState.astro';
+import Button from '../../components/ui/Button.astro';
+import { getCurrentUser } from '../../lib/auth';
+import { getCommunities, getCommunityByOwner, getMemberCount } from '../../lib/firebase/communities';
+import { getEvents } from '../../lib/firebase/events';
+import { genColor } from '../../lib/genColor';
+import { CalendarDays, Users } from '@lucide/astro';
+import type { NodoEvent } from '../../types/event';
+import type { NodoCommunity } from '../../types/community';
+
+const user = await getCurrentUser(Astro.cookies);
+
+let comunidades: NodoCommunity[] = [];
+let allEvents: NodoEvent[] = [];
+
+try {
+  [comunidades, allEvents] = await Promise.all([getCommunities(), getEvents()]);
+} catch (error) {
+  console.warn('No se pudieron obtener las comunidades desde Firebase:', error);
+}
+
+const ahora = Date.now();
+
+// El recuento de miembros es una agregacion por comunidad; se piden todas a la
+// vez para no encadenar una espera por fila.
+const conteos = await Promise.all(
+  comunidades.map((comunidad) => getMemberCount(comunidad.id).catch(() => 0)),
+);
+
+const filas = comunidades.map((comunidad, indice) => {
+  const suyos = allEvents.filter((event) => event.community?.id === comunidad.id);
+
+  return {
+    comunidad,
+    miembros: conteos[indice] ?? 0,
+    total: suyos.length,
+    proximos: suyos.filter((event) => event.endDate.getTime() >= ahora).length,
+  };
+}).sort((a, b) => b.proximos - a.proximos || b.total - a.total);
+
+const propia = user ? await getCommunityByOwner(user.uid).catch(() => null) : null;
+---
+
+<BaseLayout title="Comunidades — Nodo" description="Comunidades que publican en la cartelera de Nodo.">
+  <div class="mx-auto max-w-[1200px] px-6 pb-24 pt-12">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-[32px] font-bold leading-tight text-texto">Comunidades</h1>
+        <p class="mt-3 max-w-prose text-suave">
+          Quienes organizan lo que ves en la cartelera. Únete a las que te interesen para no
+          perderte lo que preparan.
+        </p>
+      </div>
+
+      {/* Quien ya administra una va a la suya; el resto, al formulario. */}
+      <Button href={propia ? `/comunidades/${propia.slug}` : '/comunidades/nueva'}>
+        {propia ? 'Mi comunidad' : 'Crear comunidad'}
+      </Button>
+    </div>
+
+    {filas.length === 0 ? (
+      <div class="mt-12">
+        <EmptyState
+          title="Todavía no hay comunidades"
+          description="Crea la primera y publica tus eventos a su nombre."
+        />
+      </div>
+    ) : (
+      <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {filas.map((fila) => (
+          <a
+            href={`/comunidades/${fila.comunidad.slug}`}
+            data-gen={genColor(fila.comunidad.name)}
+            class="group rounded-3xl bg-superficie p-6 shadow-[var(--c-sombra)] transition hover:-translate-y-1"
+          >
+            <div class="flex items-center gap-4">
+              {fila.comunidad.avatarUrl ? (
+                <img src={fila.comunidad.avatarUrl} alt="" class="size-14 shrink-0 rounded-2xl object-cover" />
+              ) : (
+                <div class="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--g-suave)] text-xl font-bold text-[var(--g-texto)]">
+                  {fila.comunidad.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              <div class="min-w-0">
+                <h2 class="truncate text-lg font-bold text-texto">{fila.comunidad.name}</h2>
+                <p class="mt-0.5 flex items-center gap-3 text-xs text-suave">
+                  <span class="flex items-center gap-1">
+                    <Users class="size-3.5" stroke-width={1.75} />
+                    {fila.miembros}
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <CalendarDays class="size-3.5" stroke-width={1.75} />
+                    {fila.total}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {fila.comunidad.description && (
+              <p class="mt-4 line-clamp-3 text-sm leading-6 text-suave">{fila.comunidad.description}</p>
+            )}
+
+            <p class="mt-4 text-sm font-semibold text-[var(--g-texto)]">
+              {fila.proximos === 0
+                ? 'Sin eventos próximos'
+                : `${fila.proximos} ${fila.proximos === 1 ? 'evento próximo' : 'eventos próximos'}`}
+            </p>
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+</BaseLayout>

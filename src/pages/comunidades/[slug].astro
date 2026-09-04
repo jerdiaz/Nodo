@@ -1,0 +1,153 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import EmptyState from '../../components/events/EmptyState.astro';
+import EventCard from '../../components/events/EventCard.astro';
+import Button from '../../components/ui/Button.astro';
+import { getCurrentUser } from '../../lib/auth';
+import { getCommunityBySlug, getMemberCount, isMember } from '../../lib/firebase/communities';
+import { getEvents } from '../../lib/firebase/events';
+import { formatMonthYear } from '../../lib/format';
+import { CalendarDays, Users } from '@lucide/astro';
+import type { NodoEvent } from '../../types/event';
+
+const community = await getCommunityBySlug(Astro.params.slug ?? '');
+
+if (!community) {
+  return Astro.redirect('/comunidades');
+}
+
+const user = await getCurrentUser(Astro.cookies);
+const esDueno = user?.uid === community.ownerUid;
+
+let allEvents: NodoEvent[] = [];
+
+try {
+  allEvents = await getEvents();
+} catch (error) {
+  console.warn('No se pudo obtener el catálogo de eventos desde Firebase:', error);
+}
+
+const eventos = allEvents.filter((event) => event.community?.id === community.id);
+const ahora = Date.now();
+const proximos = eventos.filter((event) => event.endDate.getTime() >= ahora);
+const pasados = eventos
+  .filter((event) => event.endDate.getTime() < ahora)
+  .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+
+const miembros = await getMemberCount(community.id).catch(() => 0);
+const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => false) : false;
+---
+
+<BaseLayout title={`${community.name} — Nodo`} description={community.description ?? `Comunidad ${community.name} en Nodo.`}>
+  <div class="mx-auto max-w-[1200px] px-6 pb-24 pt-12">
+    <header class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+      <div class="flex min-w-0 items-start gap-5">
+        {community.avatarUrl ? (
+          <img src={community.avatarUrl} alt="" class="size-20 shrink-0 rounded-2xl object-cover" />
+        ) : (
+          <div class="flex size-20 shrink-0 items-center justify-center rounded-2xl bg-fondo-alt text-3xl font-bold text-texto">
+            {community.name.charAt(0).toUpperCase()}
+          </div>
+        )}
+
+        <div class="min-w-0">
+          <h1 class="text-[32px] font-bold leading-tight text-texto">{community.name}</h1>
+
+          <div class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-suave">
+            <span class="flex items-center gap-1.5">
+              <Users class="size-4" stroke-width={1.75} />
+              {miembros} {miembros === 1 ? 'miembro' : 'miembros'}
+            </span>
+            <span class="flex items-center gap-1.5">
+              <CalendarDays class="size-4" stroke-width={1.75} />
+              {eventos.length} {eventos.length === 1 ? 'evento' : 'eventos'}
+            </span>
+            <span>Desde {formatMonthYear(community.createdAt)}</span>
+          </div>
+
+          {community.description && (
+            <p class="mt-4 max-w-prose whitespace-pre-line text-suave">{community.description}</p>
+          )}
+        </div>
+      </div>
+
+      <div class="shrink-0">
+        {esDueno ? (
+          <Button href="/eventos/nuevo">Publicar evento</Button>
+        ) : (
+          <button
+            id="community-join"
+            type="button"
+            data-slug={community.slug}
+            data-joined={yaEsMiembro ? 'true' : 'false'}
+            data-sesion={user ? 'activa' : 'inactiva'}
+            class="h-10 rounded-full bg-acento px-5 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {yaEsMiembro ? 'Siguiendo' : 'Unirme'}
+          </button>
+        )}
+      </div>
+    </header>
+
+    <div class="mt-12 space-y-12">
+      {proximos.length > 0 && (
+        <section>
+          <h2 class="text-2xl font-bold tracking-tight text-texto">Próximos eventos</h2>
+          <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {proximos.map((event) => <EventCard event={event} />)}
+          </div>
+        </section>
+      )}
+
+      {pasados.length > 0 && (
+        <section>
+          <h2 class="text-2xl font-bold tracking-tight text-texto">Eventos pasados</h2>
+          <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {pasados.map((event) => <EventCard event={event} />)}
+          </div>
+        </section>
+      )}
+
+      {eventos.length === 0 && (
+        <EmptyState
+          title="Esta comunidad todavía no ha publicado"
+          description="Cuando publique su primer evento, aparecerá aquí."
+        />
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const boton = document.getElementById('community-join') as HTMLButtonElement | null;
+
+  boton?.addEventListener('click', async () => {
+    // Sin sesion no se puede seguir a nadie: en vez de fallar contra la API, se
+    // abre el mismo modal que usa el resto del sitio.
+    if (boton.dataset.sesion !== 'activa') {
+      (document.getElementById('nodo-modal-sesion') as HTMLDialogElement | null)?.showModal();
+      return;
+    }
+
+    const siguiendo = boton.dataset.joined === 'true';
+    boton.disabled = true;
+
+    try {
+      const respuesta = await fetch(`/api/comunidades/${boton.dataset.slug}/unirse`, {
+        method: siguiendo ? 'DELETE' : 'POST',
+      });
+
+      if (!respuesta.ok) {
+        throw new Error('No se pudo completar la acción.');
+      }
+
+      const cuerpo = await respuesta.json();
+      boton.dataset.joined = cuerpo.joined ? 'true' : 'false';
+      boton.textContent = cuerpo.joined ? 'Siguiendo' : 'Unirme';
+    } catch (error) {
+      console.error(error);
+    } finally {
+      boton.disabled = false;
+    }
+  });
+</script>

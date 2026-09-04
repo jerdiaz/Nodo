@@ -181,15 +181,24 @@ const GEN_DESTACADAS = ['rojo', 'azul', 'magenta'] as const;
 
 // Quien mas publica va primero. Se agrupa sobre los eventos que ya estan en
 // memoria, asi que esta seccion no cuesta ninguna lectura extra de Firestore.
+//
+// La clave es la comunidad cuando el evento se publico en su nombre, y la
+// persona cuando no: asi una comunidad no aparece partida en dos filas segun
+// quien de sus eventos se mire.
 const comunidades = [...proximos.reduce((mapa, evento) => {
-  const actual = mapa.get(evento.organizer.uid);
+  const autor = evento.community ?? evento.organizer;
+  const clave = evento.community?.id ?? evento.organizer.uid;
+  const enlace = evento.community ? `/comunidades/${evento.community.slug}` : '/comunidades';
+  const actual = mapa.get(clave);
+
   if (actual) {
     actual.total += 1;
   } else {
-    mapa.set(evento.organizer.uid, { organizador: evento.organizer, total: 1, proximo: evento });
+    mapa.set(clave, { autor, enlace, total: 1, proximo: evento });
   }
+
   return mapa;
-}, new Map<string, { organizador: NodoEvent['organizer']; total: number; proximo: NodoEvent }>()).values()]
+}, new Map<string, { autor: { name: string; avatarUrl?: string }; enlace: string; total: number; proximo: NodoEvent }>()).values()]
   .sort((a, b) => b.total - a.total)
   .slice(0, 3)
   .map((entrada, indice) => ({ ...entrada, color: GEN_DESTACADAS[indice]! }));
@@ -764,29 +773,29 @@ if (MOSTRAR_PUBLICACIONES) {
                 data-gen={comunidad.color}
                 class:list={[indice === 1 ? 'md:mt-12' : '']}
               >
-                <a href="/comunidades" class="group block">
+                <a href={comunidad.enlace} class="group block">
                   <div class="relative">
                     {/* El bloque de color asoma por abajo y por la izquierda. */}
                     <div class="absolute -bottom-3 -left-3 h-full w-full rounded-3xl bg-[var(--g)]" aria-hidden="true"></div>
 
                     <div class="relative flex aspect-[16/10] items-center justify-center overflow-hidden rounded-3xl bg-[var(--g-suave)]">
-                      {comunidad.organizador.avatarUrl ? (
+                      {comunidad.autor.avatarUrl ? (
                         <img
-                          src={comunidad.organizador.avatarUrl}
+                          src={comunidad.autor.avatarUrl}
                           alt=""
                           loading="lazy"
                           class="size-24 rounded-full object-cover ring-4 ring-superficie transition duration-300 group-hover:scale-105"
                         />
                       ) : (
                         <span class="flex size-24 items-center justify-center rounded-full bg-superficie text-3xl font-bold text-[var(--g-texto)] ring-4 ring-superficie">
-                          {comunidad.organizador.name.charAt(0).toUpperCase()}
+                          {comunidad.autor.name.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <h3 class="mt-8 text-lg font-bold leading-snug text-texto">
-                    {comunidad.organizador.name}
+                    {comunidad.autor.name}
                   </h3>
                   <p class="mt-2 text-sm leading-6 text-suave">
                     {comunidad.total === 1

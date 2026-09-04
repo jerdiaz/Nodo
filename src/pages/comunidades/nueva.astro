@@ -1,0 +1,91 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Card from '../../components/ui/Card.astro';
+import Button from '../../components/ui/Button.astro';
+import { getCurrentUser } from '../../lib/auth';
+import { getCommunityByOwner } from '../../lib/firebase/communities';
+
+const user = await getCurrentUser(Astro.cookies);
+
+if (!user) {
+  return Astro.redirect('/?login=required');
+}
+
+// Una por persona: si ya administra una, se le lleva a la suya en vez de
+// dejarle rellenar un formulario que la API va a rechazar.
+const propia = await getCommunityByOwner(user.uid);
+
+if (propia) {
+  return Astro.redirect(`/comunidades/${propia.slug}`);
+}
+
+const inputClass =
+  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus-visible:outline-none focus:ring-2 focus:ring-acento';
+---
+
+<BaseLayout title="Crear comunidad — Nodo" description="Crea tu comunidad en Nodo.">
+  <div class="mx-auto max-w-2xl px-6 pb-24 pt-12">
+    <h1 class="text-[32px] font-bold leading-tight text-texto">Crea tu comunidad</h1>
+    <p class="mt-3 text-suave">
+      Los eventos que publiques saldrán en la cartelera a nombre de la comunidad, y quien quiera
+      seguirla podrá unirse. Los que ya tengas publicados pasarán a ella.
+    </p>
+
+    <Card class="mt-8 p-6">
+      <form id="community-form" class="space-y-5">
+        <div>
+          <label for="name" class="block text-sm font-medium text-texto">Nombre</label>
+          <input id="name" name="name" required minlength="3" maxlength="60" class={inputClass} placeholder="Ada Espacio Creativo" />
+        </div>
+
+        <div>
+          <label for="description" class="block text-sm font-medium text-texto">Descripción</label>
+          <textarea id="description" name="description" rows="4" maxlength="400" class={inputClass} placeholder="¿Qué organiza tu comunidad y para quién?"></textarea>
+        </div>
+
+        <p id="community-error" class="hidden text-sm text-acento-texto" role="alert"></p>
+
+        <Button type="submit" id="community-submit" class="w-full">Crear comunidad</Button>
+      </form>
+    </Card>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById('community-form') as HTMLFormElement | null;
+  const error = document.getElementById('community-error');
+  const submit = document.getElementById('community-submit') as HTMLButtonElement | null;
+
+  form?.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    error?.classList.add('hidden');
+    if (submit) submit.disabled = true;
+
+    const datos = new FormData(form);
+
+    try {
+      const respuesta = await fetch('/api/comunidades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: String(datos.get('name') ?? ''),
+          description: String(datos.get('description') ?? ''),
+        }),
+      });
+
+      const cuerpo = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        throw new Error(cuerpo.error ?? 'No se pudo crear la comunidad.');
+      }
+
+      window.location.href = `/comunidades/${cuerpo.slug}`;
+    } catch (fallo) {
+      if (error) {
+        error.textContent = fallo instanceof Error ? fallo.message : 'No se pudo crear la comunidad.';
+        error.classList.remove('hidden');
+      }
+      if (submit) submit.disabled = false;
+    }
+  });
+</script>

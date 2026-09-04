@@ -18,6 +18,10 @@ const modalityLabel: Record<EventModality, string> = {
 };
 
 const ModalityIcon = event.modality === 'virtual' ? Video : MapPin;
+
+// En el listado manda la comunidad y no la persona: el evento se publica en su
+// nombre. Quien lo creo se ve al entrar en la ficha.
+const autor = event.community ?? event.organizer;
 const locationLabel = getEventLocationLabel(event);
 const firstTag = event.tags[0];
 // El filo de color dice de que va el evento: sale de su primera etiqueta, no
@@ -58,18 +62,14 @@ const color = genColorForEvent(event);
 
       <div class="flex items-center justify-between gap-3 border-t border-linea pt-3">
         <div class="flex min-w-0 items-center gap-2">
-          {event.organizer.avatarUrl ? (
-            <img
-              src={event.organizer.avatarUrl}
-              alt={event.organizer.name}
-              class="size-6 shrink-0 rounded-full object-cover"
-            />
+          {autor.avatarUrl ? (
+            <img src={autor.avatarUrl} alt={autor.name} class="size-6 shrink-0 rounded-full object-cover" />
           ) : (
             <div class="flex size-6 shrink-0 items-center justify-center rounded-full bg-fondo-alt text-[10px] font-medium text-suave">
-              {event.organizer.name.charAt(0).toUpperCase()}
+              {autor.name.charAt(0).toUpperCase()}
             </div>
           )}
-          <span class="truncate text-xs text-suave">{event.organizer.name}</span>
+          <span class="truncate text-xs text-suave">{autor.name}</span>
         </div>
 
         {firstTag && (

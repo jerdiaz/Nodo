@@ -12,6 +12,9 @@ import { getEventJsonLd } from '../../lib/eventSchema';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
 import { formatEventDateLong, formatEventTime } from '../../lib/format';
 import { CalendarDays, MapPin, Video } from '@lucide/astro';
+import VerifiedBadge from '../../components/ui/VerifiedBadge.astro';
+import { getUserProfile } from '../../lib/firebase/users';
+import type { UserProfile } from '../../types/profile';
 
 const { slug } = Astro.params;
 const event = slug ? await getEventBySlug(slug).catch(() => null) : null;
@@ -22,6 +25,19 @@ if (!event) {
 
 const user = await getCurrentUser(Astro.cookies);
 const isOwner = user?.uid === event.organizer.uid;
+
+// En la cabecera manda la comunidad si el evento se publico en su nombre.
+const autor = event.community ?? event.organizer;
+
+// La palomita de verificado es del perfil de quien creo el evento, no del
+// evento, asi que hay que leerlo.
+let perfilOrganizador: UserProfile | null = null;
+
+try {
+  perfilOrganizador = await getUserProfile(event.organizer.uid);
+} catch (error) {
+  console.warn('No se pudo obtener el perfil del organizador:', error);
+}
 
 let rsvpCount = 0;
 let isAttending = false;
@@ -74,21 +90,46 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
         </h1>
 
         <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+          {/*
+            La cartelera lista el evento a nombre de la comunidad; aqui dentro
+            se ve ademas quien lo creo, que es la persona con la que se habla si
+            algo no cuadra. Sin comunidad, solo aparece esa persona.
+          */}
           <div class="flex items-center gap-3">
-            {event.organizer.avatarUrl ? (
-              <img
-                src={event.organizer.avatarUrl}
-                alt={event.organizer.name}
-                class="size-10 rounded-full object-cover"
-              />
+            {autor.avatarUrl ? (
+              <img src={autor.avatarUrl} alt={autor.name} class="size-10 rounded-full object-cover" />
             ) : (
               <div class="flex size-10 items-center justify-center rounded-full bg-superficie text-sm font-medium text-suave">
-                {event.organizer.name.charAt(0).toUpperCase()}
+                {autor.name.charAt(0).toUpperCase()}
               </div>
             )}
-            <div>
+            <div class="min-w-0">
               <p class="text-xs text-suave">Organiza</p>
-              <p class="font-medium text-texto">{event.organizer.name}</p>
+
+              {event.community ? (
+                <a
+                  href={`/comunidades/${event.community.slug}`}
+                  class="font-medium text-texto transition hover:text-acento-texto"
+                >
+                  {event.community.name}
+                </a>
+              ) : (
+                <p class="flex items-center gap-1.5 font-medium text-texto">
+                  {event.organizer.name}
+                  {perfilOrganizador?.verification && (
+                    <VerifiedBadge type={perfilOrganizador.verification} class="size-4" />
+                  )}
+                </p>
+              )}
+
+              {event.community && (
+                <p class="mt-0.5 flex items-center gap-1.5 text-xs text-suave">
+                  Publicado por {event.organizer.name}
+                  {perfilOrganizador?.verification && (
+                    <VerifiedBadge type={perfilOrganizador.verification} class="size-3.5" />
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
