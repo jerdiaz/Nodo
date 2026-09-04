@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from './server';
+import { getUserProfiles } from './users';
 
 export interface RsvpInfo {
   count: number;
@@ -58,6 +59,67 @@ export async function getRsvpEntries(eventId: string, max: number): Promise<Rsvp
       createdAt: createdAt instanceof Timestamp ? createdAt.toDate() : null,
     };
   });
+}
+
+export interface AttendeeFace {
+  uid: string;
+  name: string;
+  avatarUrl?: string;
+}
+
+// Las caras que van en la tarjeta de la cartelera, por evento.
+//
+// Es una consulta por evento, pero todas salen a la vez con Promise.all, asi
+// que el coste en tiempo es el de una sola ida y vuelta y no el de la suma.
+// Los perfiles se resuelven en un unico getAll() para todos los eventos
+// juntos, no uno por tarjeta.
+//
+// Se pide por lote y desde la pagina, en vez de que cada tarjeta busque lo
+// suyo: el marcado de Astro se renderiza en orden, asi que ocho tarjetas
+// pidiendo por su cuenta serian ocho esperas encadenadas.
+export async function getAttendeeFaces(
+  eventIds: string[],
+  max: number,
+): Promise<Map<string, AttendeeFace[]>> {
+  if (eventIds.length === 0) {
+    return new Map();
+  }
+
+  const porEvento = await Promise.all(
+    [...new Set(eventIds)].map(async (eventId) => {
+      try {
+        const snapshot = await rsvpsCollection(eventId).orderBy('createdAt', 'asc').limit(max).get();
+        return [eventId, snapshot.docs.map((doc) => doc.id)] as const;
+      } catch {
+        // Un evento cuya subcoleccion falle no debe dejar sin caras a los
+        // demas: se queda sin ellas y la tarjeta cae al contador a secas.
+        return [eventId, [] as string[]] as const;
+      }
+    }),
+  );
+
+  const perfiles = await getUserProfiles(porEvento.flatMap(([, uids]) => uids));
+
+  return new Map(
+    porEvento.map(([eventId, uids]) => [
+      eventId,
+      uids.flatMap((uid) => {
+        const perfil = perfiles.get(uid);
+
+        if (!perfil) {
+          return [];
+        }
+
+        return [
+          {
+            uid,
+            name: [perfil.firstName, perfil.lastName].filter(Boolean).join(' ') || 'Alguien',
+            avatarUrl: perfil.avatarUrl,
+          },
+        ];
+      }),
+    ]),
+  );
 }
 
 export async function getRsvpInfo(eventId: string, uid?: string): Promise<RsvpInfo> {
