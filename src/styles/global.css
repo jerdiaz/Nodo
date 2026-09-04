@@ -52,6 +52,12 @@
 
   --c-sombra: 0 1px 2px rgb(17 17 19 / 0.06), 0 12px 28px -12px rgb(17 17 19 / 0.14);
 
+  /* Para las piezas que tienen que leerse como una tarjeta suelta y no como un
+     bloque de la pagina. La de arriba cae casi en vertical y no asoma por los
+     lados; esta abre el desenfoque y recorta menos, asi que rodea la tarjeta
+     por los costados como la del perfil de Meetup. */
+  --c-sombra-alta: 0 2px 8px rgb(17 17 19 / 0.05), 0 20px 50px -10px rgb(17 17 19 / 0.20);
+
   color-scheme: light;
 }
 
@@ -75,6 +81,7 @@
   --c-acento-suave: #2a1416;
 
   --c-sombra: 0 1px 1px rgb(0 0 0 / 0.3), 0 12px 28px -10px rgb(0 0 0 / 0.55);
+  --c-sombra-alta: 0 2px 8px rgb(0 0 0 / 0.35), 0 20px 50px -10px rgb(0 0 0 / 0.7);
 
   color-scheme: dark;
 }
