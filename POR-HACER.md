@@ -5,104 +5,51 @@ acceso a la consola de Firebase / Google Cloud del proyecto.
 
 | | |
 |---|---|
-| **Proyecto** | `nodo-comunidad` |
-| **Número de proyecto** | `99790926806` |
-| **Consola** | <https://console.firebase.google.com/project/nodo-comunidad> |
+| **Proyecto** | `nododb` |
+| **Número de proyecto** | `1005485040427` |
+| **Consola** | <https://console.firebase.google.com/project/nododb> |
 | **Sitio** | <https://nodo-eventos.duckdns.org> |
 
-Ninguna de estas tareas requiere volver a desplegar la aplicación: las reglas y
-la configuración viven en Firebase, no en el contenedor del VPS. El código que
-las aprovecha **ya está desplegado y esperando**.
+> **Migración de proyecto (3 de septiembre de 2026).** Nodo vivía en
+> `nodo-comunidad`, cuya cuenta creadora tenía la facturación desactivada. Todo
+> se movió a `nododb`, con plan Blaze. Los 5 UIDs de Firebase Auth se
+> conservaron intactos con `importUsers`, que es lo que evita que los eventos
+> queden huérfanos: el uid es la llave del documento en `users`, de
+> `events.organizer.uid` y del documento en `events/{id}/rsvps`.
+>
+> No se migraron los 4 eventos de ejemplo (sus organizadores `seed-organizer-*`
+> no son cuentas reales; se regeneran con `npm run db:seed`) ni la bitácora
+> `image_moderation`. Se perdió un RSVP, el de un usuario real a un evento de
+> ejemplo. Storage no tenía nada que migrar: el bucket viejo nunca llegó a
+> existir.
 
 ---
 
-## 1. Activar Firebase Storage — el bloqueo real
-
-**Sin esto no se puede subir ninguna imagen a Nodo.** Ni banners de eventos ni
-fotos de perfil.
-
-### Por qué
-
-Firebase Storage nunca se activó en este proyecto: **no existe ningún bucket**.
-Se comprobaron los dos nombres posibles (`nodo-comunidad.firebasestorage.app` y
-`nodo-comunidad.appspot.com`) y ninguno existe.
-
-Esto significa que la subida de imágenes **nunca ha funcionado**, desde que se
-implementó. No se había notado porque los eventos de ejemplo traen imágenes
-externas de Unsplash: los cinco `bannerUrl` guardados en Firestore apuntan a
-`images.unsplash.com`, ninguno a Firebase.
-
-### Qué hacer
-
-1. Consola de Firebase → **Storage** → **Comenzar / Get started**.
-2. Elegir ubicación. **Es irreversible**: conviene `us-central1` o la región más
-   cercana a los usuarios (Colombia). No se puede cambiar después.
-3. Al terminar, el bucket queda creado.
-
-### Cómo verificar
-
-Entrar al sitio, ir a **Configuración**, subir una foto de perfil y guardar.
-Debe aparecer sin error. Si falla, revisar la tarea 2.
-
----
-
-## 2. Publicar las reglas de Storage
-
-**Prioridad baja.** Es higiene, no un bloqueo: la aplicación escribe con el
-Admin SDK, que no pasa por estas reglas.
-
-### Qué hacer
-
-Consola → **Storage** → pestaña **Rules** → reemplazar **todo** el contenido
-por lo que hay en [`storage.rules`](storage.rules) de este repositorio, y
-publicar.
-
-> ⚠️ **Pegar el bloque completo.** Publicar reemplaza las reglas enteras: pegar
-> solo un fragmento rompe lo que no se incluya.
-
-Con el CLI, desde la raíz del repositorio actualizado:
-
-```bash
-firebase deploy --only storage
-```
-
-### Por qué las reglas deniegan toda escritura
-
-Las imágenes ya no van del navegador a Storage: pasan por `POST /api/imagenes`,
-que las revisa y recorta antes de guardarlas con el Admin SDK. Ningún cliente
-necesita permiso de escritura, así que se deniega por completo. La lectura
-pública no depende de estas reglas: las URLs llevan el token de descarga que
-genera la propia subida.
-
----
-
-## 3. Activar Cloud Vision — moderación de imágenes
+## 1. Activar Cloud Vision — moderación de imágenes
 
 **Sin esto las imágenes se aceptan sin revisar.** No se rompe nada, pero nadie
 comprueba lo que se sube a una cartelera pública.
 
 ### Estado actual
 
-La API responde `PERMISSION_DENIED`: no está habilitada en el proyecto.
+La API no está habilitada en `nododb`. El código lo detecta y **acepta la
+imagen sin revisarla**, registrándola en la colección `image_moderation` con
+`checked: false`. Se eligió así a propósito: ese error significa "la API no
+está activada" — un estado del despliegue, no una señal sobre la imagen, y que
+quien sube no puede provocar. Fallar cerrado dejaría el producto sin subida de
+imágenes. **Cualquier otro fallo sí rechaza la subida.**
 
-El código lo detecta y **acepta la imagen sin revisarla**, registrándola en la
-colección `image_moderation` con `checked: false`. Se eligió así a propósito:
-ese error significa "la API no está activada" — un estado del despliegue, no
-una señal sobre la imagen, y que quien sube no puede provocar. Fallar cerrado
-dejaría el producto sin subida de imágenes. **Cualquier otro fallo sí rechaza
-la subida.**
+### Qué hacer
 
-### Opción A — activarla en el proyecto de Nodo (recomendada)
+<https://console.developers.google.com/apis/api/vision.googleapis.com/overview?project=1005485040427>
 
-<https://console.developers.google.com/apis/api/vision.googleapis.com/overview?project=99790926806>
-
-Pulsar **Habilitar**. Requiere que el proyecto tenga facturación activa (plan
-Blaze). Tarda unos minutos en propagarse.
+Pulsar **Habilitar**. El proyecto ya está en Blaze, que es el requisito. Tarda
+unos minutos en propagarse.
 
 No hay que tocar nada más: el código ya usa la cuenta de servicio de Firebase
 para llamar a Vision, y la moderación empieza a funcionar sola.
 
-### Opción B — usar Cloud Vision de otro proyecto
+### Alternativa — usar Cloud Vision de otro proyecto
 
 Solo si activarla en Nodo no es posible. Por ejemplo, el proyecto de TransCar
 (`transcar-da12c`) ya la tiene habilitada.
@@ -123,7 +70,7 @@ Solo si activarla en Nodo no es posible. Por ejemplo, el proyecto de TransCar
 **Las tres variables tienen que estar presentes**; con dos de tres se ignoran y
 se usa la cuenta de Firebase.
 
-> ⚠️ **El consumo se factura al proyecto de las credenciales.** Con la opción B,
+> ⚠️ **El consumo se factura al proyecto de las credenciales.** Con esta vía,
 > la cuota y el gasto de Vision se cargan a TransCar, no a Nodo.
 
 ### Cómo verificar
@@ -138,7 +85,33 @@ los mismos que usa TransCar en su moderación del feed comunitario.
 
 ---
 
-## 4. Marcar el primer administrador
+## 2. Configurar el proveedor de Microsoft
+
+**Sin esto, quien tenga cuenta de Microsoft no puede entrar.** Afecta hoy a un
+usuario real: `wJrgMsYFGEXx1KYj6dBYGJQprVq1`
+(`estebanmanuel600@hotmail.com`), que además es el candidato a administrador de
+la tarea 3.
+
+Google sí está habilitado y funciona.
+
+### Qué hacer
+
+1. Registrar la app en <https://portal.azure.com> → *App registrations*, con
+   esta URL de redirección:
+
+   ```
+   https://nododb.firebaseapp.com/__/auth/handler
+   ```
+
+2. Consola de Firebase → *Authentication* → *Sign-in method* → **Microsoft** →
+   pegar *ID de aplicación* y *Secreto de aplicación*, y guardar.
+
+El registro del proyecto viejo no sirve: apuntaba al dominio de callback de
+`nodo-comunidad`.
+
+---
+
+## 3. Marcar el primer administrador
 
 **Sin esto nadie puede conceder verificaciones**, y la página `/admin` responde
 404 para todo el mundo.
@@ -147,20 +120,23 @@ Es el único eslabón manual del sistema, y no se puede evitar sin dejar una
 puerta abierta: si la aplicación pudiera nombrar administradores, cualquiera
 podría nombrarse a sí mismo.
 
-### Orden obligatorio
+### Qué hacer
 
-La colección `users` está vacía. **El documento no existe hasta que la persona
-entra por primera vez**, así que no se puede editar antes.
+A diferencia de antes de la migración, **los documentos de `users` ya existen**:
+se importaron con sus uids. No hace falta iniciar sesión primero.
 
-1. **Manuel primero**: entrar al sitio con Google o Microsoft. Como es el primer
-   inicio de sesión, la aplicación lleva a `/bienvenida`: elegir nombre de
-   usuario y pulsar *Continuar*. **Eso crea el documento.**
-2. **Después, en la consola**: *Firestore Database* → colección `users` →
-   documento con ID `wJrgMsYFGEXx1KYj6dBYGJQprVq1` → **Añadir campo**:
+*Firestore Database* → colección `users` → **Añadir campo**:
 
-   | Campo | Tipo | Valor |
-   |---|---|---|
-   | `admin` | boolean | `true` |
+| Campo | Tipo | Valor |
+|---|---|---|
+| `admin` | boolean | `true` |
+
+Sobre uno de estos dos documentos:
+
+| uid | Cuenta | Se puede usar hoy |
+|---|---|---|
+| `wJrgMsYFGEXx1KYj6dBYGJQprVq1` | `estebanmanuel600@hotmail.com` (Microsoft) | No, hasta la tarea 2 |
+| `9trpWTAUMBUuKpSNPjMW9V0sQBy2` | `estebangood209@gmail.com` (Google) | Sí |
 
 ### Cómo verificar
 
@@ -172,11 +148,11 @@ volver a la consola.
 
 ---
 
-## 5. Publicaciones de Instagram en la home (opcional)
+## 4. Publicaciones de Instagram en la home (opcional)
 
 La home tiene una sección que muestra las últimas publicaciones de
-[@redglobalcol](https://www.instagram.com/redglobalcol/). **Mientras no se
-configure, la sección no aparece** — no hay hueco vacío ni "próximamente".
+[@redglobalcol](https://www.instagram.com/redglobalcol/). **Hoy está apagada
+con un interruptor explícito en el código**, así que no aparece.
 
 ### Cómo funciona
 
@@ -186,9 +162,8 @@ Instagram: consultar en cada visita gastaría cuota, ataría el tiempo de
 respuesta de la home a un servicio ajeno y expondría el token.
 
 Las URLs de imagen de Instagram van firmadas y **caducan**, así que la
-sincronización rehospeda cada imagen en Storage. Si Storage no está activo
-(tarea 1), guarda la URL original, que funciona un tiempo y luego deja de
-cargar.
+sincronización rehospeda cada imagen en Storage. El bucket ya existe, así que
+esto funciona.
 
 ### Qué hace falta
 
@@ -203,7 +178,10 @@ cargar.
    SYNC_SECRET=<una cadena larga y aleatoria, inventada por vosotros>
    ```
 
-4. Reiniciar el contenedor: `docker compose up -d`.
+4. **Encender el interruptor**: poner `MOSTRAR_PUBLICACIONES = true` en
+   `src/pages/index.astro`, commitear y desplegar. A diferencia del resto de
+   este documento, **esta tarea sí requiere volver a desplegar**, porque vive en
+   el código y no en la consola.
 5. Programar la sincronización, por ejemplo en el cron del VPS cada 6 horas:
 
    ```bash
@@ -236,14 +214,14 @@ ha hecho porque no está decidido**, no por olvido.
 
 ---
 
-## Qué funciona mientras tanto
+## Qué funciona
 
-Todo lo demás. Concretamente:
+Todo lo demás, **incluida la subida de imágenes**, que nunca había funcionado
+antes de la migración porque el proyecto viejo no llegó a tener bucket:
 
-- Publicar, editar y eliminar eventos **sin imagen**.
+- Publicar, editar y eliminar eventos, con imagen o sin ella.
 - Perfil, configuración, nombre de usuario, biografía y enlaces sociales.
 - Suscripción iCal al calendario propio.
 - Asistencias (RSVP) y el calendario.
 - Eliminación de cuenta con transferencia o borrado en cascada.
-
-Lo único que no funciona sin la tarea 1 es **subir imágenes**.
+- Inicio de sesión con Google.
