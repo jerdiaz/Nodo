@@ -244,6 +244,53 @@ const inputClass =
 
   timezoneInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+  // --- Fechas: minutos en punto por defecto, sin fechas pasadas, fin nunca antes que inicio ---
+  const startDateInput = document.getElementById('startDate') as HTMLInputElement;
+  const endDateInput = document.getElementById('endDate') as HTMLInputElement;
+
+  function pad(value: number): string {
+    return String(value).padStart(2, '0');
+  }
+
+  // Los inputs datetime-local no llevan zona horaria, asi que se arma el
+  // string con la hora local del navegador y no con metodos UTC.
+  function toLocalInputValue(date: Date): string {
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  // Un evento nuevo empieza vacio (ver startValue/endValue arriba); si ya
+  // trae valor es porque se esta editando uno existente, y ese no se toca.
+  if (!startDateInput.value) {
+    const inicioSugerido = new Date();
+    inicioSugerido.setHours(inicioSugerido.getHours() + 1, 0, 0, 0);
+    startDateInput.value = toLocalInputValue(inicioSugerido);
+    startDateInput.min = startDateInput.value;
+
+    const finSugerido = new Date(inicioSugerido);
+    finSugerido.setHours(finSugerido.getHours() + 1);
+    endDateInput.value = toLocalInputValue(finSugerido);
+  }
+
+  // El fin nunca puede quedar antes que el inicio: el minimo del campo se
+  // ata al valor de inicio y, si el fin ya elegido queda antes, se corrige
+  // solo a una hora despues en vez de dejarlo en un estado invalido.
+  function actualizarLimiteFin(): void {
+    if (!startDateInput.value) {
+      return;
+    }
+
+    endDateInput.min = startDateInput.value;
+
+    if (endDateInput.value && endDateInput.value < startDateInput.value) {
+      const inicio = new Date(startDateInput.value);
+      inicio.setHours(inicio.getHours() + 1);
+      endDateInput.value = toLocalInputValue(inicio);
+    }
+  }
+
+  startDateInput.addEventListener('change', actualizarLimiteFin);
+  actualizarLimiteFin();
+
   // --- Modalidad: tabs segmentadas ---
   function setActiveModalityTab(value: string): void {
     modalityTabs.forEach((tab) => {

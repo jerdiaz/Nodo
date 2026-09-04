@@ -49,7 +49,17 @@ export interface ValidatedEventInput {
   tags: string[];
 }
 
-export function validateEventPayload(body: unknown): { data: ValidatedEventInput } | { error: string } {
+export interface ValidateEventOptions {
+  // El formulario ya bloquea fechas pasadas al crear, pero editar un evento
+  // que ya ocurrio (corregir la descripcion, por ejemplo) es legitimo y no
+  // deberia forzar a mover la fecha al futuro solo para poder guardar.
+  allowPastStart?: boolean;
+}
+
+export function validateEventPayload(
+  body: unknown,
+  options: ValidateEventOptions = {},
+): { data: ValidatedEventInput } | { error: string } {
   if (typeof body !== 'object' || body === null) {
     return { error: 'Cuerpo de la solicitud inválido.' };
   }
@@ -98,6 +108,10 @@ export function validateEventPayload(body: unknown): { data: ValidatedEventInput
 
   if (!endDate || Number.isNaN(endDate.getTime())) {
     return { error: 'La fecha de fin no es válida.' };
+  }
+
+  if (!options.allowPastStart && startDate.getTime() < Date.now()) {
+    return { error: 'La fecha de inicio no puede ser en el pasado.' };
   }
 
   if (endDate <= startDate) {

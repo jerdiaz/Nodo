@@ -32,7 +32,7 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
   }
 
   const body = await request.json().catch(() => null);
-  const validation = validateEventPayload(body);
+  const validation = validateEventPayload(body, { allowPastStart: true });
 
   if ('error' in validation) {
     return jsonResponse({ error: validation.error }, 400);
