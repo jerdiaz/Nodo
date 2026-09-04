@@ -1,0 +1,99 @@
+---
+import { X } from '@lucide/astro';
+import ProviderIcon from '../ui/ProviderIcon.astro';
+---
+
+{/*
+  Empieza oculto con el atributo hidden (no con una clase) para que el script
+  decida si lo muestra antes de que haya pintado nada: revelarlo con JS tras
+  pintarlo visible causaria un parpadeo, y quedarse oculto no lo causa.
+
+  Posicion y medidas calcadas del recuadro de acceso de Meetup en la captura
+  que trajo el pedido: flotante bajo la cabecera, pegado al filo derecho a
+  20px (mismo margen que usa el pie), tarjeta de 360px.
+*/}
+<div
+  id="nodo-banner-acceso"
+  role="dialog"
+  aria-labelledby="nodo-banner-acceso-titulo"
+  hidden
+  class="fixed right-5 top-24 z-40 w-[calc(100vw-2.5rem)] max-w-[360px] rounded-3xl border border-linea bg-superficie p-5 shadow-[var(--c-sombra)]"
+>
+  <button
+    id="nodo-banner-cerrar"
+    type="button"
+    aria-label="Cerrar"
+    class="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-suave transition hover:bg-fondo-alt hover:text-texto"
+  >
+    <X class="size-4" stroke-width={2} />
+  </button>
+
+  <h2 id="nodo-banner-acceso-titulo" class="pr-8 text-base font-semibold text-texto">Accede a Nodo</h2>
+  <p class="mt-1 text-sm leading-5 tracking-[0.02em] text-suave">Guarda eventos y publica los tuyos.</p>
+
+  <div class="mt-4 space-y-2">
+    <button
+      id="nodo-banner-google"
+      type="button"
+      class="flex h-11 w-full items-center justify-center gap-2.5 rounded-full border border-linea bg-superficie text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <ProviderIcon name="google" class="size-4" />
+      Continuar con Google
+    </button>
+
+    <button
+      id="nodo-banner-microsoft"
+      type="button"
+      class="flex h-11 w-full items-center justify-center gap-2.5 rounded-full border border-linea bg-superficie text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <ProviderIcon name="microsoft" class="size-4" />
+      Continuar con Microsoft
+    </button>
+  </div>
+</div>
+
+<script>
+  import { loginWithGoogle, loginWithMicrosoft } from '../../lib/firebase/client';
+
+  const banner = document.getElementById('nodo-banner-acceso');
+
+  if (banner) {
+    // Solo por la sesion del navegador: quien lo cierra no quiere verlo otra
+    // vez mientras sigue navegando, pero no es un rechazo permanente que
+    // deba perseguirlo en cada visita futura.
+    const CERRADO = 'nodo-anuncio-acceso-cerrado';
+
+    if (sessionStorage.getItem(CERRADO) !== '1') {
+      banner.hidden = false;
+    }
+
+    document.getElementById('nodo-banner-cerrar')?.addEventListener('click', () => {
+      banner.hidden = true;
+      sessionStorage.setItem(CERRADO, '1');
+    });
+
+    const botones = [
+      { id: 'nodo-banner-google', entrar: loginWithGoogle },
+      { id: 'nodo-banner-microsoft', entrar: loginWithMicrosoft },
+    ];
+
+    for (const { id, entrar } of botones) {
+      const boton = document.getElementById(id) as HTMLButtonElement | null;
+
+      boton?.addEventListener('click', async () => {
+        botones.forEach(({ id: otro }) => {
+          (document.getElementById(otro) as HTMLButtonElement | null)?.setAttribute('disabled', '');
+        });
+
+        try {
+          await entrar();
+        } catch (error) {
+          console.error('No se pudo iniciar sesión:', error);
+          botones.forEach(({ id: otro }) => {
+            (document.getElementById(otro) as HTMLButtonElement | null)?.removeAttribute('disabled');
+          });
+        }
+      });
+    }
+  }
+</script>

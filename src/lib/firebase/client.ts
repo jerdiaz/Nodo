@@ -1,13 +1,5 @@
 import { getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
-import {
-  GoogleAuthProvider,
-  OAuthProvider,
-  getAuth,
-  signInWithCredential,
-  signInWithPopup,
-  signOut,
-  type UserCredential,
-} from 'firebase/auth';
+import { GoogleAuthProvider, OAuthProvider, getAuth, signInWithPopup, signOut, type UserCredential } from 'firebase/auth';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -24,10 +16,7 @@ export const auth = getAuth(firebaseApp);
 
 // redirectTo existe para quien entra desde el modal de sesion: sin el se
 // recargaria la pagina de la que salio, y quien pulso "Publicar evento"
-// acabaria de vuelta donde estaba en vez de en el formulario. Toma el
-// UserCredential ya resuelto (no el provider) porque las dos formas de
-// entrar -popup y el credential que entrega el One Tap- terminan aqui por
-// caminos distintos de Firebase Auth.
+// acabaria de vuelta donde estaba en vez de en el formulario.
 async function completeSignIn(userCredential: UserCredential, redirectTo?: string): Promise<void> {
   const idToken = await userCredential.user.getIdToken();
 
@@ -69,16 +58,6 @@ export async function loginWithMicrosoft(redirectTo?: string): Promise<void> {
   // educativos/corporativos como el de la UTB), siempre que el registro de
   // la app en Azure tenga habilitado "cualquier tenant + cuentas personales".
   const userCredential = await signInWithPopup(auth, new OAuthProvider('microsoft.com'));
-  return completeSignIn(userCredential, redirectTo);
-}
-
-// El ID token que entrega el One Tap de Google Identity Services no es el
-// mismo objeto que devuelve signInWithPopup: es un JWT crudo de Google, no un
-// UserCredential de Firebase. GoogleAuthProvider.credential lo envuelve para
-// poder canjearlo por una sesion de Firebase sin abrir ningun popup.
-export async function loginWithGoogleCredential(googleIdToken: string, redirectTo?: string): Promise<void> {
-  const credential = GoogleAuthProvider.credential(googleIdToken);
-  const userCredential = await signInWithCredential(auth, credential);
   return completeSignIn(userCredential, redirectTo);
 }
 
