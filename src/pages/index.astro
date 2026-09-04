@@ -547,14 +547,18 @@ if (MOSTRAR_PUBLICACIONES) {
               </div>
             </div>
 
-            {presenciales.length > LIMITE_CARRIL && (
-              <a
-                href={buildFilterHref({ modality: 'presencial', city: ciudad, list: true })}
-                class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
-              >
-                Ver todos los eventos
-              </a>
-            )}
+            {/*
+              Va siempre, tambien cuando el carril ya ensena todo lo que hay:
+              no dice "hay mas", dice donde esta el listado completo. Atado al
+              numero de eventos, desaparecia justo con cuatro publicados, que
+              es cuando la portada mas se parece a un callejon sin salida.
+            */}
+            <a
+              href={buildFilterHref({ modality: 'presencial', city: ciudad, list: true })}
+              class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
+            >
+              Ver todos los eventos
+            </a>
           </div>
 
           {/*
@@ -594,14 +598,12 @@ if (MOSTRAR_PUBLICACIONES) {
               <h2 class="mt-2 text-2xl font-bold tracking-tight text-texto">Próximos eventos virtuales</h2>
             </div>
 
-            {virtuales.length > LIMITE_CARRIL && (
-              <a
-                href={buildFilterHref({ modality: 'virtual', list: true })}
-                class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
-              >
-                Ver todos los eventos
-              </a>
-            )}
+            <a
+              href={buildFilterHref({ modality: 'virtual', list: true })}
+              class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
+            >
+              Ver todos los eventos
+            </a>
           </div>
 
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
