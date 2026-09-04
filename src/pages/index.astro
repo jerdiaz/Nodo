@@ -6,7 +6,7 @@ import EventFilter from '../components/events/EventFilter.astro';
 import SecondaryFilters from '../components/events/SecondaryFilters.astro';
 import StatusToast from '../components/common/StatusToast.astro';
 import Franja from '../components/common/Franja.astro';
-import { MapPin, Video } from '@lucide/astro';
+import { MapPin, Pencil, Video } from '@lucide/astro';
 import { filterEvents, getEvents, getFilterCities } from '../lib/firebase/events';
 import { buildFilterHref } from '../lib/eventFilterHref';
 import { genColor } from '../lib/genColor';
@@ -32,43 +32,43 @@ const timeframeEvents = filterEvents(allEvents, { timeframe });
 const cities = getFilterCities(timeframeEvents);
 
 const events = filterEvents(allEvents, { modality: modalidad, city: ciudad, timeframe, search: query });
-const hasActiveFilters = Boolean(modalidad || ciudad || query);
 
 // La home tiene dos caras. Sin filtros es una portada: carriles por modalidad,
 // categorias y explicacion, para que quien llega de cero vea contenido real sin
 // tocar nada. En cuanto hay un filtro, una busqueda o se piden los pasados, pasa
 // a ser una pagina de resultados: un solo listado, que es lo que se espera
 // cuando uno ha preguntado algo concreto.
-const vistaResultados = hasActiveFilters || timeframe === 'past';
+const vistaResultados = Boolean(modalidad || query) || timeframe === 'past';
 
 const proximos = filterEvents(allEvents, { timeframe: 'upcoming' });
 
 // Los hibridos van con los presenciales: tienen sitio y ciudad, y quien busca
 // algo cerca los quiere ver. En el carril en linea solo entra lo puramente
 // virtual, para que ningun evento salga dos veces en la misma pagina.
-const presenciales = proximos.filter((event) => event.modality !== 'virtual');
+const presencialesTodos = proximos.filter((event) => event.modality !== 'virtual');
+const presenciales = ciudad ? filterEvents(presencialesTodos, { city: ciudad }) : presencialesTodos;
 const virtuales = proximos.filter((event) => event.modality === 'virtual');
 
-// Dos filas de tres en pantalla ancha. Lo que sobra vive detras de "Ver todos",
-// que lleva al mismo listado filtrado de siempre.
-const LIMITE_CARRIL = 6;
+// Cuatro por fila y una sola fila, como los carriles de Meetup. Lo que sobra
+// vive detras de "Ver todos los eventos", que lleva al listado completo.
+const LIMITE_CARRIL = 4;
 
 const categorias = [...new Set(proximos.flatMap((event) => event.tags))]
   .sort((a, b) => a.localeCompare(b, 'es'))
   .slice(0, 12);
 
 // Collage del banner: cuatro recortes con la etiqueta ya rotulada dentro de la
-// imagen, dos por lado, fuera de la columna de 680px del texto. Sustituyen a
-// las manchas de color que hacian de sustituto mientras no habia ilustracion
-// propia. La lista es fija y no sale de las etiquetas de los eventos: el rotulo
-// va pintado en el PNG, asi que no puede seguir a un dato que cambia.
-// Las dimensiones son las reales de cada archivo, no un cuadrado comodin:
-// van en el HTML para que el navegador reserve el hueco con la proporcion
-// correcta y el texto no salte cuando cargan.
+// imagen. La lista es fija y no sale de las etiquetas de los eventos, porque el
+// rotulo va pintado en el archivo y no puede seguir a un dato que cambia.
+//
 // Cada pieza se coloca dentro de su columna lateral, no respecto a la ventana:
 // la columna es la que se ancla al texto. Dentro, las de arriba se pegan al
 // borde exterior y las de abajo al interior, para que la pareja quede
-// escalonada en vez de apilada en vertical.
+// escalonada en vez de apilada.
+//
+// Las dimensiones son las reales de cada archivo, no un cuadrado comodin: van
+// en el HTML para que el navegador reserve el hueco con la proporcion correcta
+// y el texto no salte cuando cargan.
 const collage = [
   { src: '/banner/comida.webp', ancho: 700, alto: 533, lado: 'izquierda', sitio: 'left-0 top-0 w-[240px] -rotate-3' },
   { src: '/banner/arte.webp', ancho: 700, alto: 694, lado: 'izquierda', sitio: 'right-0 bottom-2 w-[250px] rotate-4' },
@@ -129,9 +129,8 @@ if (MOSTRAR_PUBLICACIONES) {
     Sin buscador: ya vive en la cabecera, y repetirlo aqui obligaba a decidir
     cual de los dos manda. Meetup tampoco lo duplica.
 
-El collage lateral ocupa el sitio del suyo: dos recortes por lado, a 58px de
-    cada filo. Solo desde xl, que es donde caben junto a la columna de texto sin
-    invadirla.
+    El collage lateral ocupa el sitio del suyo: dos recortes por lado, colgados
+    de la columna de texto.
   */}
   <section class="relative overflow-hidden px-6 pb-14 pt-24">
     {/*
@@ -213,7 +212,7 @@ El collage lateral ocupa el sitio del suyo: dos recortes por lado, a 58px de
   </section>
 
   {vistaResultados ? (
-    <section class="mx-auto max-w-6xl px-6 pb-24 pt-4">
+    <section class="mx-auto max-w-[1200px] px-6 pb-24 pt-4">
       <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="flex items-center gap-3">
           <h2 class="text-lg font-semibold text-texto">
@@ -243,7 +242,7 @@ El collage lateral ocupa el sitio del suyo: dos recortes por lado, a 58px de
           />
         )
       ) : (
-        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {events.map((event) => (
             <EventCard event={event} />
           ))}
@@ -251,7 +250,7 @@ El collage lateral ocupa el sitio del suyo: dos recortes por lado, a 58px de
       )}
     </section>
   ) : proximos.length === 0 ? (
-    <section class="mx-auto max-w-6xl px-6 pb-24 pt-4">
+    <section class="mx-auto max-w-[1200px] px-6 pb-24 pt-4">
       <EmptyState />
     </section>
   ) : (
@@ -263,74 +262,110 @@ El collage lateral ocupa el sitio del suyo: dos recortes por lado, a 58px de
         resultados, para quien busca algo concreto.
       -->
       {presenciales.length > 0 && (
-        <section class="mx-auto max-w-6xl px-6 pt-6">
-          <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <section class="mx-auto max-w-[1200px] px-6 pt-6">
+          <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">
                 <MapPin class="size-3.5" stroke-width={2} />
                 Presenciales
               </p>
-              <h2 class="mt-2 text-2xl font-bold tracking-tight text-texto">Eventos cerca de ti</h2>
+
+              {/*
+                La ciudad va dentro del titular y no en una fila de chips
+                aparte: asi la seccion dice de que esta hablando en vez de
+                obligar a mirar cual de los filtros esta activo. El lapiz abre
+                la lista, como en Meetup.
+              */}
+              <div class="mt-2 flex items-center gap-2">
+                <h2 class="text-2xl font-bold tracking-tight text-texto">
+                  Eventos cerca de{' '}
+                  <span class="text-acento-texto">{ciudad ?? 'ti'}</span>
+                </h2>
+
+                {cities.length > 0 && (
+                  <details class="group relative">
+                    {/*
+                      list-none quita el triangulito que el navegador pone por
+                      su cuenta en el summary.
+                    */}
+                    <summary
+                      class="flex size-8 cursor-pointer list-none items-center justify-center rounded-full text-suave transition hover:bg-fondo-alt hover:text-texto"
+                      aria-label="Cambiar de ciudad"
+                    >
+                      <Pencil class="size-4" stroke-width={2} />
+                    </summary>
+
+                    <div class="absolute left-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-2xl border border-linea bg-superficie p-2 shadow-[var(--c-sombra)]">
+                      <a
+                        href={buildFilterHref({})}
+                        class:list={[
+                          'block rounded-xl px-3 py-2 text-sm transition hover:bg-fondo-alt',
+                          ciudad ? 'text-suave' : 'font-semibold text-acento-texto',
+                        ]}
+                      >
+                        Todas las ciudades
+                      </a>
+                      {cities.map((city) => (
+                        <a
+                          href={buildFilterHref({ city })}
+                          class:list={[
+                            'block rounded-xl px-3 py-2 text-sm transition hover:bg-fondo-alt',
+                            ciudad === city ? 'font-semibold text-acento-texto' : 'text-suave',
+                          ]}
+                        >
+                          {city}
+                        </a>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
             </div>
 
-            <div class="flex flex-wrap gap-2 sm:justify-end">
-              {cities.map((city) => (
-                <a
-                  href={buildFilterHref({ city })}
-                  data-gen={genColor(city)}
-                  class="rounded-full border border-linea bg-superficie px-3 py-1 text-xs font-medium text-suave transition hover:border-[var(--g)] hover:text-texto"
-                >
-                  {city}
-                </a>
-              ))}
-            </div>
+            {presenciales.length > LIMITE_CARRIL && (
+              <a
+                href={buildFilterHref({ modality: 'presencial', city: ciudad })}
+                class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
+              >
+                Ver todos los eventos
+              </a>
+            )}
           </div>
 
-          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {presenciales.slice(0, LIMITE_CARRIL).map((event) => (
               <EventCard event={event} />
             ))}
           </div>
-
-          {presenciales.length > LIMITE_CARRIL && (
-            <div class="mt-6 text-center">
-              <a
-                href={buildFilterHref({ modality: 'presencial' })}
-                class="inline-flex items-center rounded-full border border-linea px-5 py-2 text-sm font-medium text-suave transition hover:border-acento hover:text-acento-texto"
-              >
-                Ver todos los presenciales
-              </a>
-            </div>
-          )}
         </section>
       )}
 
       {virtuales.length > 0 && (
-        <section class="mx-auto max-w-6xl px-6 pt-16">
-          <div class="mb-6">
-            <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">
-              <Video class="size-3.5" stroke-width={2} />
-              En línea
-            </p>
-            <h2 class="mt-2 text-2xl font-bold tracking-tight text-texto">Próximos eventos virtuales</h2>
+        <section class="mx-auto max-w-[1200px] px-6 pt-16">
+          <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">
+                <Video class="size-3.5" stroke-width={2} />
+                En línea
+              </p>
+              <h2 class="mt-2 text-2xl font-bold tracking-tight text-texto">Próximos eventos virtuales</h2>
+            </div>
+
+            {virtuales.length > LIMITE_CARRIL && (
+              <a
+                href={buildFilterHref({ modality: 'virtual' })}
+                class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
+              >
+                Ver todos los eventos
+              </a>
+            )}
           </div>
 
-          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {virtuales.slice(0, LIMITE_CARRIL).map((event) => (
               <EventCard event={event} />
             ))}
           </div>
-
-          {virtuales.length > LIMITE_CARRIL && (
-            <div class="mt-6 text-center">
-              <a
-                href={buildFilterHref({ modality: 'virtual' })}
-                class="inline-flex items-center rounded-full border border-linea px-5 py-2 text-sm font-medium text-suave transition hover:border-acento hover:text-acento-texto"
-              >
-                Ver todos los virtuales
-              </a>
-            </div>
-          )}
         </section>
       )}
 
