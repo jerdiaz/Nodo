@@ -8,7 +8,7 @@ import EventCard from '../../components/events/EventCard.astro';
 import { filterEvents, getEventBySlug, getEvents } from '../../lib/firebase/events';
 import { normalizeCityName } from '../../lib/eventValidation';
 import type { NodoEvent } from '../../types/event';
-import { getRsvpInfo, getRsvpUids } from '../../lib/firebase/rsvps';
+import { getRsvpEntries, getRsvpInfo } from '../../lib/firebase/rsvps';
 import { getEventJsonLd } from '../../lib/eventSchema';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
 import {
@@ -52,12 +52,12 @@ let uidsAsistentes: string[] = [];
 try {
   const [info, uids] = await Promise.all([
     getRsvpInfo(event.id, user?.uid),
-    getRsvpUids(event.id, MAX_ASISTENTES),
+    getRsvpEntries(event.id, MAX_ASISTENTES),
   ]);
 
   rsvpCount = info.count;
   isAttending = info.attending;
-  uidsAsistentes = uids;
+  uidsAsistentes = uids.map((entrada) => entrada.uid);
 } catch (error) {
   console.warn('No se pudo obtener la asistencia del evento:', error);
 }
@@ -521,21 +521,40 @@ function textoAsistentes(total: number): string {
               <ShareButtons event={event} url={pageUrl} icsUrl={icsDataUrl} />
 
               {isOwner && (
-                <div class="mt-5 flex items-center justify-between border-t border-linea pt-4">
+                <div class="mt-5 border-t border-linea pt-4">
+                  {/*
+                    Solo lo ve quien organiza. Va como bloque y no como un
+                    enlace mas en la fila de abajo porque no es una accion de
+                    mantenimiento: es lo que se mira antes del evento para
+                    saber a cuanta gente esperar.
+                  */}
                   <a
-                    href={`/eventos/${event.slug}/editar`}
-                    class="text-sm font-medium text-suave transition hover:text-texto"
+                    href={`/eventos/${event.slug}/asistentes`}
+                    class="flex items-center justify-between gap-3 rounded-2xl border border-linea bg-superficie px-4 py-3 text-sm font-medium text-texto transition hover:border-acento"
                   >
-                    Editar evento
+                    <span class="flex items-center gap-2">
+                      <Users class="size-4 shrink-0" stroke-width={1.75} />
+                      Ver quién asiste
+                    </span>
+                    <span class="text-suave">{rsvpCount}</span>
                   </a>
-                  <button
-                    id="delete-event-button"
-                    type="button"
-                    data-event-id={event.id}
-                    class="text-sm font-medium text-acento-texto transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Eliminar evento
-                  </button>
+
+                  <div class="mt-4 flex items-center justify-between">
+                    <a
+                      href={`/eventos/${event.slug}/editar`}
+                      class="text-sm font-medium text-suave transition hover:text-texto"
+                    >
+                      Editar evento
+                    </a>
+                    <button
+                      id="delete-event-button"
+                      type="button"
+                      data-event-id={event.id}
+                      class="text-sm font-medium text-acento-texto transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Eliminar evento
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

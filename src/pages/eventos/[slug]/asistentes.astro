@@ -1,0 +1,242 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import SocialIcon from '../../../components/ui/SocialIcon.astro';
+import VerifiedBadge from '../../../components/ui/VerifiedBadge.astro';
+import { getCurrentUser } from '../../../lib/auth';
+import { getEventBySlug } from '../../../lib/firebase/events';
+import { getRsvpEntries } from '../../../lib/firebase/rsvps';
+import { getUserProfiles } from '../../../lib/firebase/users';
+import { formatEventDateLong, formatEventTime } from '../../../lib/format';
+import { genColorForEvent } from '../../../lib/genColor';
+import { SOCIAL_FIELDS, type SocialKey } from '../../../types/profile';
+import { ArrowLeft, CalendarDays, Users } from '@lucide/astro';
+import type { UserProfile } from '../../../types/profile';
+
+const { slug } = Astro.params;
+const event = slug ? await getEventBySlug(slug).catch(() => null) : null;
+
+if (!event) {
+  return new Response(null, { status: 404, statusText: 'Evento no encontrado' });
+}
+
+const user = await getCurrentUser(Astro.cookies);
+
+// Mismo orden de comprobaciones que en editar: primero se manda a iniciar
+// sesion a quien no la tiene, y solo despues se le niega a quien la tiene
+// pero no es de quien es el evento.
+if (!user) {
+  return Astro.redirect(`/?login=required&destino=${encodeURIComponent(Astro.url.pathname)}`);
+}
+
+if (user.uid !== event.organizer.uid) {
+  return new Response(null, { status: 403, statusText: 'Forbidden' });
+}
+
+// Tope alto pero tope: getAll() resuelve muchos perfiles en un viaje, pero
+// esta pagina los pinta todos y una lista sin limite se hace ingobernable
+// mucho antes por la altura que por la lectura.
+const MAX_ASISTENTES = 500;
+
+const entradas = await getRsvpEntries(event.id, MAX_ASISTENTES).catch(() => []);
+const perfiles = await getUserProfiles(entradas.map((entrada) => entrada.uid)).catch(
+  () => new Map<string, UserProfile>(),
+);
+
+interface EnlaceSocial {
+  key: SocialKey | 'website';
+  href: string;
+  label: string;
+}
+
+interface Asistente {
+  perfil: UserProfile;
+  nombre: string;
+  confirmadoEl: Date | null;
+  enlaces: EnlaceSocial[];
+}
+
+function enlacesSociales(perfil: UserProfile): EnlaceSocial[] {
+  const enlaces: EnlaceSocial[] = SOCIAL_FIELDS.flatMap((campo) => {
+    const cuenta = perfil.socials?.[campo.key];
+
+    return cuenta
+      ? [{ key: campo.key, href: `${campo.baseUrl}${cuenta}`, label: `${campo.label}: @${cuenta}` }]
+      : [];
+  });
+
+  if (perfil.socials?.website) {
+    enlaces.push({
+      key: 'website',
+      href: perfil.socials.website,
+      label: perfil.socials.website.replace(/^https?:\/\//, ''),
+    });
+  }
+
+  return enlaces;
+}
+
+// Quien confirmo pero ya no tiene perfil (cuenta eliminada) se cae de la
+// lista: no hay nada que enseñar de esa fila, y dejarla como "Alguien" solo
+// haria pensar que falta un dato.
+const asistentes: Asistente[] = entradas.flatMap((entrada) => {
+  const perfil = perfiles.get(entrada.uid);
+
+  if (!perfil) {
+    return [];
+  }
+
+  return [
+    {
+      perfil,
+      nombre: [perfil.firstName, perfil.lastName].filter(Boolean).join(' ') || 'Sin nombre',
+      confirmadoEl: entrada.createdAt,
+      enlaces: enlacesSociales(perfil),
+    },
+  ];
+});
+
+const fechaCorta = new Intl.DateTimeFormat('es', {
+  day: 'numeric',
+  month: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+  timeZone: event.timezone,
+});
+
+const color = genColorForEvent(event);
+const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistentes.length) : null;
+---
+
+<BaseLayout
+  title={`Asistentes de ${event.title} — Nodo`}
+  description="Quiénes han confirmado asistencia a tu evento."
+>
+  <div data-gen={color} class="mx-auto max-w-3xl px-6 pb-24 pt-10">
+    <a
+      href={`/eventos/${event.slug}`}
+      class="inline-flex items-center gap-2 text-sm font-medium text-suave transition hover:text-texto"
+    >
+      <ArrowLeft class="size-4" stroke-width={2} />
+      Volver al evento
+    </a>
+
+    <h1 class="mt-6 text-3xl font-bold tracking-tight text-texto">Asistentes</h1>
+    <p class="mt-2 text-suave">{event.title}</p>
+
+    {/* Fecha y hora en un solo span: como dos hijos del flex, al envolverse
+        dejaban la hora colgando en su propia columna. */}
+    <p class="mt-1 flex items-start gap-2 text-sm text-tenue">
+      <CalendarDays class="mt-0.5 size-4 shrink-0" stroke-width={1.75} />
+      <span class="first-letter:uppercase">
+        {formatEventDateLong(event.startDate, event.timezone)} · {formatEventTime(event.startDate, event.timezone)}
+      </span>
+    </p>
+
+    <div class="mt-8 flex flex-wrap items-center gap-3">
+      <span class="inline-flex items-center gap-2 rounded-full bg-[var(--g-suave)] px-4 py-2 text-sm font-semibold text-[var(--g-texto)]">
+        <Users class="size-4" stroke-width={2} />
+        {asistentes.length} {asistentes.length === 1 ? 'confirmado' : 'confirmados'}
+      </span>
+
+      {event.capacity && (
+        <span class="rounded-full border border-linea px-4 py-2 text-sm text-suave">
+          Aforo {event.capacity} · {lugaresRestantes === 0
+            ? 'completo'
+            : `${lugaresRestantes} sin ocupar`}
+        </span>
+      )}
+    </div>
+
+    {/*
+      Lo que se enseña aqui es el perfil publico de cada quien, el mismo que
+      cualquiera ve en /u/<usuario>. El correo no: se recoge al iniciar sesion
+      para identificar la cuenta, y la pagina de Privacidad no dice que se
+      comparta con quien organiza. Cambiarlo es una decision de producto y de
+      esa pagina, no de esta plantilla.
+    */}
+    {asistentes.length === 0 ? (
+      <div class="mt-8 rounded-3xl border border-dashed border-linea px-6 py-16 text-center">
+        <p class="text-base font-medium text-texto">Todavía no hay nadie confirmado</p>
+        <p class="mt-1 text-sm text-suave">
+          Cuando alguien confirme asistencia, aquí verás su perfil.
+        </p>
+      </div>
+    ) : (
+      <ul class="mt-6 divide-y divide-linea overflow-hidden rounded-3xl border border-linea bg-superficie">
+        {asistentes.map(({ perfil, nombre, confirmadoEl, enlaces }) => (
+          <li class="flex items-start gap-4 p-5">
+            {perfil.avatarUrl ? (
+              <img src={perfil.avatarUrl} alt="" class="size-12 shrink-0 rounded-full object-cover" />
+            ) : (
+              <span class="grid size-12 shrink-0 place-items-center rounded-full bg-fondo-alt text-base font-medium text-suave">
+                {nombre.charAt(0).toUpperCase()}
+              </span>
+            )}
+
+            <div class="min-w-0 flex-1">
+              {/*
+                Nombre y fecha comparten linea mientras quepan y la fecha baja
+                sola cuando no: en un telefono, mantenerlas juntas dejaba el
+                nombre en "A." para que cupiera un dato que no corre prisa.
+              */}
+              <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <p class="flex min-w-0 items-center gap-1.5">
+                  <span class="truncate font-semibold text-texto">{nombre}</span>
+                  {perfil.verification && (
+                    <VerifiedBadge type={perfil.verification} class="size-4 shrink-0" />
+                  )}
+                </p>
+
+                {confirmadoEl && (
+                  <span class="shrink-0 text-xs text-tenue">
+                    Confirmó el {fechaCorta.format(confirmadoEl)}
+                  </span>
+                )}
+              </div>
+
+              {perfil.username ? (
+                <a
+                  href={`/u/${perfil.username}`}
+                  class="text-sm text-acento-texto transition hover:underline"
+                >
+                  @{perfil.username}
+                </a>
+              ) : (
+                <p class="text-sm text-tenue">Sin nombre de usuario</p>
+              )}
+
+              {perfil.bio && (
+                <p class="mt-2 line-clamp-2 text-sm leading-6 text-suave">{perfil.bio}</p>
+              )}
+
+              {enlaces.length > 0 && (
+                <div class="mt-3 flex flex-wrap items-center gap-2">
+                  {enlaces.map((enlace) => (
+                    <a
+                      href={enlace.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={enlace.label}
+                      title={enlace.label}
+                      class="flex size-8 items-center justify-center rounded-lg border border-linea text-suave transition active:scale-[0.95] hover:border-acento hover:text-texto"
+                    >
+                      <SocialIcon name={enlace.key} class="size-3.5" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </li>
+        ))}
+      </ul>
+    )}
+
+    {asistentes.length === MAX_ASISTENTES && (
+      <p class="mt-4 text-xs text-tenue">
+        Se muestran los primeros {MAX_ASISTENTES} en confirmar.
+      </p>
+    )}
+  </div>
+</BaseLayout>
