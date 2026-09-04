@@ -31,7 +31,8 @@ const eventEnded = event.endDate.getTime() < Date.now();
 const autor = event.community ?? event.organizer;
 
 // La palomita de verificado es del perfil de quien creo el evento, no del
-// evento, asi que hay que leerlo.
+// evento, asi que hay que leerlo. De paso sale de ahi el nombre de usuario,
+// que es la direccion de su perfil publico.
 let perfilOrganizador: UserProfile | null = null;
 
 try {
@@ -116,7 +117,20 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
                 </a>
               ) : (
                 <p class="flex items-center gap-1.5 font-medium text-texto">
-                  {event.organizer.name}
+                  {/*
+                    Solo se enlaza si tiene nombre de usuario: la URL del perfil
+                    publico es /u/<usuario>, y sin el no hay a donde llevar.
+                  */}
+                  {perfilOrganizador?.username ? (
+                    <a
+                      href={`/u/${perfilOrganizador.username}`}
+                      class="transition hover:text-acento-texto"
+                    >
+                      {event.organizer.name}
+                    </a>
+                  ) : (
+                    event.organizer.name
+                  )}
                   {perfilOrganizador?.verification && (
                     <VerifiedBadge type={perfilOrganizador.verification} class="size-4" />
                   )}
@@ -125,7 +139,17 @@ const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
 
               {event.community && (
                 <p class="mt-0.5 flex items-center gap-1.5 text-xs text-suave">
-                  Publicado por {event.organizer.name}
+                  Publicado por
+                  {perfilOrganizador?.username ? (
+                    <a
+                      href={`/u/${perfilOrganizador.username}`}
+                      class="font-medium text-texto transition hover:text-acento-texto"
+                    >
+                      {event.organizer.name}
+                    </a>
+                  ) : (
+                    event.organizer.name
+                  )}
                   {perfilOrganizador?.verification && (
                     <VerifiedBadge type={perfilOrganizador.verification} class="size-3.5" />
                   )}

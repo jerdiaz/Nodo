@@ -225,3 +225,20 @@ antes de la migración porque el proyecto viejo no llegó a tener bucket:
 - Asistencias (RSVP) y el calendario.
 - Eliminación de cuenta con transferencia o borrado en cascada.
 - Inicio de sesión con Google.
+
+## Desplegar las reglas de Firestore
+
+`firestore.rules` del repositorio **no se despliega solo**: lo que manda es lo
+que hay publicado en el proyecto. Las reglas actuales permitían que cualquier
+cuenta con sesión escribiera eventos directamente contra Firestore con el SDK
+del navegador, saltándose la validación de `POST /api/events`. En el repositorio
+ya están cerradas (`allow write: if false`), pero hay que publicarlas:
+
+```bash
+npx firebase deploy --only firestore:rules --project nododb
+```
+
+O pegarlas a mano en <https://console.firebase.google.com/project/nododb/firestore/rules>.
+
+Nada de la aplicación escribe en Firestore desde el navegador —el SDK cliente
+solo se usa para Auth— así que cerrarlas no rompe ninguna funcionalidad.
