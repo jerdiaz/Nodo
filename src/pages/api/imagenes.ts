@@ -6,6 +6,7 @@ import {
   moderateImage,
   processImage,
   recordModeration,
+  uploadBanner,
   uploadImage,
   type ImageKind,
 } from '../../lib/images';
@@ -76,6 +77,13 @@ export const POST: APIRoute = async ({ request, url, cookies }) => {
   }
 
   try {
+    if (kind === 'banner') {
+      // El banner sale en dos tamanos: el grande para la ficha y uno reducido
+      // para tarjetas y miniaturas, para no bajar 1600px donde caben 280.
+      const { url, urlSmall } = await uploadBanner(user.uid, original);
+      return jsonResponse({ url, urlSmall }, 200);
+    }
+
     const processed = await processImage(original, kind);
     const uploadedUrl = await uploadImage(user.uid, kind, processed);
 

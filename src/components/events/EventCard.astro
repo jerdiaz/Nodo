@@ -38,7 +38,7 @@ const color = genColorForEvent(event);
   <a href={`/eventos/${event.slug}`} class="block">
     <div class="relative aspect-[16/9] w-full overflow-hidden">
       {event.bannerUrl ? (
-        <img src={event.bannerUrl} alt={event.title} class="h-full w-full object-cover" loading="lazy" />
+        <img src={event.bannerSmallUrl ?? event.bannerUrl} alt="" class="h-full w-full object-cover" loading="lazy" />
       ) : (
         <div class="h-full w-full bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave" />
       )}
@@ -64,7 +64,7 @@ const color = genColorForEvent(event);
       <div class="flex items-center justify-between gap-3 border-t border-linea pt-3">
         <div class="flex min-w-0 items-center gap-2">
           {autor.avatarUrl ? (
-            <img src={autor.avatarUrl} alt={autor.name} class="size-6 shrink-0 rounded-full object-cover" />
+            <img src={autor.avatarUrl} alt="" class="size-6 shrink-0 rounded-full object-cover" />
           ) : (
             <div class="flex size-6 shrink-0 items-center justify-center rounded-full bg-fondo-alt text-[10px] font-medium text-suave">
               {autor.name.charAt(0).toUpperCase()}
