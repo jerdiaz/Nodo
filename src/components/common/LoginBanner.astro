@@ -57,13 +57,16 @@ import { X } from '@lucide/astro';
     const CERRADO = 'nodo-anuncio-acceso-cerrado';
     let cerrado = sessionStorage.getItem(CERRADO) === '1';
 
-    // Aparece al llegar a la mitad de la pagina, no al cargar: antes de eso
+    // Aparece tras bajar una pantalla completa, no al cargar: antes de eso
     // nadie ha visto todavia que ofrece el sitio, y una barra pidiendo cuenta
     // de entrada solo estorba.
+    //
+    // El umbral es una pantalla y no un porcentaje de la pagina: la home mide
+    // mas de 8000px en movil, asi que pedir la mitad obligaba a recorrer 3400px
+    // antes de que apareciera, y en la practica no aparecia nunca.
     const revisar = (): void => {
       if (cerrado) return;
-      const recorrido = window.scrollY + window.innerHeight;
-      banner.hidden = recorrido < document.documentElement.scrollHeight * 0.5;
+      banner.hidden = window.scrollY < window.innerHeight;
     };
 
     document.getElementById('nodo-banner-cerrar')?.addEventListener('click', () => {
