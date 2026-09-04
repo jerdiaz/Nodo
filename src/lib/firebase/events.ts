@@ -89,7 +89,12 @@ export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoE
       return false;
     }
 
-    if (filters.city && event.city !== filters.city) {
+    // Comparacion normalizada y no estricta: la ciudad se guarda tal como la
+    // teclea quien publica, asi que "Cartagena" y "cartagena" conviven en la
+    // base. Con igualdad estricta, el campo de ciudad de la cabecera solo
+    // acertaria si se escribiera con las mismas mayusculas y tildes que el
+    // evento, que es pedirle adivinacion a quien busca.
+    if (filters.city && normalizeForSearch(event.city ?? '') !== normalizeForSearch(filters.city)) {
       return false;
     }
 

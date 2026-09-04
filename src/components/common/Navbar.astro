@@ -1,5 +1,5 @@
 ---
-import { ChevronDown, LogOut, Plus, Settings, User } from '@lucide/astro';
+import { ChevronDown, LogOut, Plus, Search, Settings, User } from '@lucide/astro';
 import { getDisplayUser } from '../../lib/auth';
 
 const user = await getDisplayUser(Astro.cookies);
@@ -10,16 +10,68 @@ const links = [
   { href: '/comunidades', label: 'Comunidades' },
   ...(user ? [{ href: '/mis-eventos', label: 'Mis eventos' }] : []),
 ];
+
+// La cabecera va en todas las paginas, asi que la busqueda se rellena con lo
+// que haya en la URL y no con estado propio: quien filtra por ciudad sigue
+// viendo su ciudad escrita al navegar a la ficha de un evento y volver.
+const searchQuery = Astro.url.searchParams.get('q') ?? '';
+const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
 ---
 
-<header class="sticky top-0 z-50 border-b border-linea bg-fondo/70 backdrop-blur-xl">
-  <nav class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-    <a href="/" class="flex items-center gap-2 text-lg font-bold tracking-tight text-texto">
+{/*
+  Medidas tomadas de la cabecera de Meetup: 80px de alto, contenido a 1200px,
+  esquinas inferiores redondeadas a 24px y la barra de busqueda como pastilla
+  de 500x44 con los dos campos separados por un filo de 1px.
+
+  El radio va sin overflow-hidden a proposito. El fondo se recorta igual
+  -border-radius siempre recorta el fondo del propio elemento- pero los menus
+  desplegables de sesion y de cuenta son absolute dentro de la cabecera: con
+  overflow-hidden se cortarian y no se verian al abrirlos.
+*/}
+<header class="sticky top-0 z-50 rounded-b-3xl border-b border-linea bg-fondo/80 backdrop-blur-xl">
+  <nav class="mx-auto flex h-20 max-w-[1200px] items-center gap-4 px-6">
+    <a href="/" class="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-texto">
       <img src="/logo-icon.png" alt="" class="size-7" />
       <span>Nodo<span class="text-acento-texto">.</span></span>
     </a>
 
-    <ul class="hidden items-center gap-8 text-sm text-suave md:flex">
+    {/*
+      Dos campos y un boton dentro de una sola pastilla, como Meetup. Es un GET
+      a la home, que es donde vive el listado: sin JavaScript, y las URLs que
+      genera son las mismas ?q= y ?ciudad= que ya usaban los filtros.
+    */}
+    <form
+      method="get"
+      action="/"
+      role="search"
+      class="hidden h-11 w-full max-w-[500px] items-center rounded-full border border-linea bg-superficie pl-5 pr-1.5 shadow-[var(--c-sombra)] transition focus-within:border-acento lg:flex"
+    >
+      <input
+        type="text"
+        name="q"
+        value={searchQuery}
+        placeholder="Buscar eventos..."
+        aria-label="Buscar eventos"
+        class="min-w-0 flex-1 border-r border-linea-suave bg-transparent pr-4 text-sm tracking-[0.02em] text-texto outline-none placeholder:text-tenue"
+      />
+      <input
+        type="text"
+        name="ciudad"
+        value={searchCity}
+        placeholder="Ciudad"
+        aria-label="Filtrar por ciudad"
+        class="min-w-0 flex-1 bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none placeholder:text-tenue"
+      />
+      <button
+        type="submit"
+        aria-label="Buscar"
+        class="flex size-9 shrink-0 items-center justify-center rounded-full bg-acento text-acento-contraste transition active:scale-[0.95] hover:opacity-90"
+      >
+        <Search class="size-4" stroke-width={2.5} />
+      </button>
+    </form>
+
+    <ul class="ml-auto hidden shrink-0 items-center gap-7 text-sm font-medium tracking-[0.02em] text-suave xl:flex">
       {links.map((link) => (
         <li>
           <a href={link.href} class="transition hover:text-texto">
@@ -29,10 +81,10 @@ const links = [
       ))}
     </ul>
 
-    <div class="flex items-center gap-3">
+    <div class="ml-auto flex shrink-0 items-center gap-3 xl:ml-0">
       <a
         href="/eventos/nuevo"
-        class="inline-flex items-center gap-1.5 rounded-full bg-acento px-4 py-2 text-sm font-medium text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
+        class="inline-flex h-9 items-center gap-1.5 rounded-full bg-acento px-4 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
       >
         <Plus class="size-4" stroke-width={2.5} />
         Publicar evento
@@ -119,7 +171,7 @@ const links = [
             type="button"
             aria-haspopup="true"
             aria-expanded="false"
-            class="inline-flex items-center gap-1.5 rounded-full border border-linea bg-superficie px-3.5 py-2 text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento"
+            class="inline-flex h-9 items-center gap-1.5 rounded-full border border-linea bg-superficie px-3.5 text-sm font-semibold tracking-[0.02em] text-texto transition active:scale-[0.97] hover:border-acento"
           >
             Iniciar sesión
             <ChevronDown id="nodo-login-chevron" class="size-3.5 transition-transform" stroke-width={2} />
@@ -175,7 +227,7 @@ const links = [
       )}
     </div>
   </nav>
-  <div class="cinta-gen" aria-hidden="true"></div>
+  <div class="cinta-gen rounded-b-3xl" aria-hidden="true"></div>
 </header>
 
 <script>
