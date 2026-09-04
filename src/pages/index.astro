@@ -76,6 +76,11 @@ const collage = [
   { src: '/banner/tecnologia.webp', ancho: 700, alto: 581, lado: 'derecha', sitio: 'left-0 bottom-2 w-[250px] -rotate-4' },
 ];
 
+// Ilustracion de fondo de la tarjeta de cierre. Vacio hasta que exista el
+// archivo: sin el, la tarjeta cae en las manchas de GEN, que ya se ven
+// terminadas. Meetup usa una sola imagen de 1200x465 para lo mismo.
+const FONDO_UNETE = '';
+
 const pasos = [
   {
     color: 'rojo' as const,
@@ -369,14 +374,52 @@ if (MOSTRAR_PUBLICACIONES) {
         </section>
       )}
 
-      <div class="pt-20">
-        <Franja
-          titulo="¿Tu comunidad organiza algo?"
-          cta="Publicar evento"
-          href="/eventos/nuevo"
-          color="azul"
-        />
-      </div>
+      {/*
+        Sustituye a la franja azul que iba aqui. Las dos decian lo mismo -"tu
+        comunidad organiza algo, publicalo"- y ponerlas seguidas era repetir la
+        llamada dos veces en el mismo scroll.
+
+        Medidas del bloque equivalente de Meetup: tarjeta de 1200x408 con radio
+        48, titulo 40/48, parrafo 18/28 en una columna de 500 y boton de 40px.
+
+        La decoracion es una sola ilustracion de fondo, como la suya (1200x465),
+        y el texto va encima centrado. Mientras no exista el archivo, la tarjeta
+        se sostiene sola con las manchas de color de GEN: se ve terminada, no
+        rota, y sustituirla es cambiar FONDO_UNETE por la ruta de la imagen.
+      */}
+      <section class="mx-auto max-w-[1200px] px-6 pt-20">
+        <div class="relative flex min-h-[408px] items-center justify-center overflow-hidden rounded-[48px] bg-superficie px-6 shadow-[var(--c-sombra)]">
+          {FONDO_UNETE ? (
+            <img
+              src={FONDO_UNETE}
+              alt=""
+              aria-hidden="true"
+              class="pointer-events-none absolute inset-0 size-full object-cover"
+            />
+          ) : (
+            <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+              <div class="absolute -left-16 -top-10 size-64 rounded-[46%_54%_57%_43%/49%_44%_56%_51%] bg-[var(--gen-rojo-suave)]"></div>
+              <div class="absolute -right-12 -top-16 size-72 rounded-[38%_62%_51%_49%/55%_39%_61%_45%] bg-[var(--gen-azul-suave)]"></div>
+              <div class="absolute -bottom-16 left-24 size-56 rounded-[52%_48%_44%_56%/47%_53%_47%_53%] bg-[var(--gen-amarillo-suave)]"></div>
+              <div class="absolute -bottom-12 right-28 size-52 rounded-[43%_57%_49%_51%/52%_46%_54%_48%] bg-[var(--gen-magenta-suave)]"></div>
+            </div>
+          )}
+
+          <div class="relative py-16 text-center">
+            <h2 class="text-[40px] font-bold leading-[48px] text-texto">Súmate a la cartelera</h2>
+            <p class="mx-auto mt-4 max-w-[500px] text-lg leading-7 text-suave">
+              Las comunidades de la red usan Nodo para contar lo que organizan y llegar a quien
+              todavía no las conoce. Publicar es gratis.
+            </p>
+            <a
+              href="/eventos/nuevo"
+              class="mt-8 inline-flex h-10 items-center rounded-full bg-acento px-5 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
+            >
+              Publicar evento
+            </a>
+          </div>
+        </div>
+      </section>
 
       <!--
         Las categorias salen de las etiquetas reales de los eventos publicados,
