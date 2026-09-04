@@ -14,7 +14,10 @@ export const firebaseApp = getApps().length ? getApps()[0]! : initializeApp(fire
 
 export const auth = getAuth(firebaseApp);
 
-async function completeSignIn(provider: AuthProvider): Promise<void> {
+// redirectTo existe para quien entra desde el modal de sesion: sin el se
+// recargaria la pagina de la que salio, y quien pulso "Publicar evento"
+// acabaria de vuelta donde estaba en vez de en el formulario.
+async function completeSignIn(provider: AuthProvider, redirectTo?: string): Promise<void> {
   const credential = await signInWithPopup(auth, provider);
   const idToken = await credential.user.getIdToken();
 
@@ -38,18 +41,23 @@ async function completeSignIn(provider: AuthProvider): Promise<void> {
     return;
   }
 
+  if (redirectTo) {
+    window.location.href = redirectTo;
+    return;
+  }
+
   window.location.reload();
 }
 
-export function loginWithGoogle(): Promise<void> {
-  return completeSignIn(new GoogleAuthProvider());
+export function loginWithGoogle(redirectTo?: string): Promise<void> {
+  return completeSignIn(new GoogleAuthProvider(), redirectTo);
 }
 
-export function loginWithMicrosoft(): Promise<void> {
+export function loginWithMicrosoft(redirectTo?: string): Promise<void> {
   // Cubre cuentas Microsoft personales y de organización (incluye tenants
   // educativos/corporativos como el de la UTB), siempre que el registro de
   // la app en Azure tenga habilitado "cualquier tenant + cuentas personales".
-  return completeSignIn(new OAuthProvider('microsoft.com'));
+  return completeSignIn(new OAuthProvider('microsoft.com'), redirectTo);
 }
 
 export async function logout(): Promise<void> {

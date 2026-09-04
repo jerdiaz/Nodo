@@ -2,6 +2,8 @@
 import '../styles/global.css';
 import Navbar from '../components/common/Navbar.astro';
 import Footer from '../components/common/Footer.astro';
+import LoginModal from '../components/common/LoginModal.astro';
+import { getCurrentUser } from '../lib/auth';
 
 interface Props {
   title?: string;
@@ -16,6 +18,12 @@ const {
   image,
   type = 'website',
 } = Astro.props;
+
+// Solo hace falta saber si hay sesion, no quien es: getCurrentUser verifica
+// la cookie y ya esta, sin leer el perfil de Firestore como getDisplayUser.
+// El dato viaja en el body porque la cookie es httpOnly y el navegador no
+// puede consultarla por su cuenta.
+const haySesion = (await getCurrentUser(Astro.cookies)) !== null;
 
 const siteOrigin = Astro.site?.origin ?? Astro.url.origin;
 const canonicalUrl = new URL(Astro.url.pathname, siteOrigin).toString();
@@ -85,11 +93,15 @@ const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
   </head>
-  <body class="flex min-h-screen flex-col bg-fondo text-texto antialiased">
+  <body
+    class="flex min-h-screen flex-col bg-fondo text-texto antialiased"
+    data-sesion={haySesion ? 'activa' : 'inactiva'}
+  >
     <Navbar />
     <main class="flex-1">
       <slot />
     </main>
     <Footer />
+    <LoginModal />
   </body>
 </html>
