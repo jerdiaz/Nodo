@@ -3,6 +3,7 @@ import { Upload } from '@lucide/astro';
 import Card from '../ui/Card.astro';
 import Button from '../ui/Button.astro';
 import type { NodoEvent } from '../../types/event';
+import DateTimePicker from './DateTimePicker.astro';
 
 interface Props {
   event?: NodoEvent;
@@ -144,21 +145,8 @@ const inputClass =
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2">
-      <div>
-        <label for="startDate" class="block text-sm font-medium text-texto">Inicio</label>
-        <input
-          id="startDate"
-          name="startDate"
-          type="datetime-local"
-          required
-          class={inputClass}
-          value={startValue}
-        />
-      </div>
-      <div>
-        <label for="endDate" class="block text-sm font-medium text-texto">Fin</label>
-        <input id="endDate" name="endDate" type="datetime-local" required class={inputClass} value={endValue} />
-      </div>
+      <DateTimePicker id="startDate" name="startDate" label="Inicio" value={startValue} class={inputClass} />
+      <DateTimePicker id="endDate" name="endDate" label="Fin" value={endValue} class={inputClass} />
     </div>
 
     <div>
@@ -269,6 +257,12 @@ const inputClass =
     const finSugerido = new Date(inicioSugerido);
     finSugerido.setHours(finSugerido.getHours() + 1);
     endDateInput.value = toLocalInputValue(finSugerido);
+
+    // Asignar .value por codigo no dispara change, y el selector de fecha se
+    // entera de los cambios justamente por ahi: sin este aviso, los campos
+    // tendrian valor pero seguirian mostrando "Elegir fecha".
+    startDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+    endDateInput.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   // El fin nunca puede quedar antes que el inicio: el minimo del campo se
@@ -285,6 +279,7 @@ const inputClass =
       const inicio = new Date(startDateInput.value);
       inicio.setHours(inicio.getHours() + 1);
       endDateInput.value = toLocalInputValue(inicio);
+      endDateInput.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
 
