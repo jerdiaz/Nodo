@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/ui/Button.astro';
+---
+
+<BaseLayout title="Contacto — Nodo" description="Cómo ponerte en contacto con Red Global y con GEN.">
+  <section class="mx-auto max-w-2xl px-6 pb-24 pt-16">
+    <p class="text-sm font-medium text-acento-texto">Nodo</p>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight text-texto">Contacto</h1>
+    <p class="mt-3 text-suave">
+      Nodo no tiene un equipo de soporte propio: es la cartelera de Red Global. Estos son los canales de la
+      comunidad y de la red.
+    </p>
+
+    <div class="mt-10 space-y-6">
+      <div class="rounded-3xl border border-linea bg-superficie p-6 shadow-[var(--c-sombra)]">
+        <h2 class="text-sm font-medium uppercase tracking-wide text-tenue">Red Global Colombia</h2>
+        <p class="mt-2 text-suave">La vía más directa para temas de la comunidad y de los eventos publicados aquí.</p>
+        <Button variant="secondary" href="https://www.instagram.com/redglobalcol/" target="_blank" rel="noopener noreferrer" class="mt-4">
+          @redglobalcol en Instagram
+        </Button>
+      </div>
+
+      <div class="rounded-3xl border border-linea bg-superficie p-6 shadow-[var(--c-sombra)]">
+        <h2 class="text-sm font-medium uppercase tracking-wide text-tenue">Global Entrepreneurship Network</h2>
+        <p class="mt-2 text-suave">
+          Red Global es el capítulo colombiano de GEN. Para asuntos de la red global: formulario de contacto o
+          +1 (202) 683-4100.
+        </p>
+        <Button variant="secondary" href="https://genglobal.org/contact" target="_blank" rel="noopener noreferrer" class="mt-4">
+          Formulario de contacto de GEN
+        </Button>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,65 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Privacidad — Nodo" description="Qué información recoge Nodo y cómo la usa.">
+  <section class="mx-auto max-w-2xl px-6 pb-24 pt-16">
+    <p class="text-sm font-medium text-acento-texto">Nodo</p>
+    <h1 class="mt-2 text-3xl font-bold tracking-tight text-texto">Privacidad</h1>
+    <p class="mt-3 text-suave">Qué información recoge Nodo, para qué la usa y qué control tienes sobre ella.</p>
+
+    <div class="mt-10 space-y-10 text-base leading-relaxed text-suave">
+      <div>
+        <h2 class="text-lg font-semibold text-texto">Qué información recogemos</h2>
+        <ul class="mt-3 list-disc space-y-2 pl-5">
+          <li>Al iniciar sesión con Google o Microsoft: tu nombre, correo y foto de perfil, tal como los entrega el proveedor.</li>
+          <li>Al completar tu perfil: nombre de usuario, biografía y los enlaces a tus redes sociales que decidas agregar.</li>
+          <li>Al publicar un evento: título, descripción, fecha, lugar o enlace de conexión, etiquetas y una imagen de portada, si subes una.</li>
+          <li>Al confirmar asistencia a un evento: el registro de que tu cuenta asiste a ese evento.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-semibold text-texto">Cómo la usamos</h2>
+        <ul class="mt-3 list-disc space-y-2 pl-5">
+          <li>Para mostrar el catálogo público de eventos y tu perfil a otras personas de la comunidad.</li>
+          <li>Para mantener tu sesión iniciada.</li>
+          <li>Para revisar automáticamente que las imágenes que se suban no infrinjan las normas básicas de la comunidad, antes de publicarlas.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-semibold text-texto">Con quién la compartimos</h2>
+        <p class="mt-3">
+          Con Firebase y Google Cloud, que alojan la aplicación, la autenticación y la base de datos, y con Google
+          Cloud Vision, que revisa automáticamente las imágenes subidas. No vendemos ni compartimos tu información
+          con terceros de publicidad — Nodo no tiene anuncios ni rastreo publicitario.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-semibold text-texto">Cookies</h2>
+        <p class="mt-3">
+          Nodo usa una sola cookie, de sesión, para saber que iniciaste sesión. Es <code class="rounded bg-fondo-alt px-1.5 py-0.5 text-sm">httpOnly</code>
+          (JavaScript no puede leerla) y expira a los cinco días. No hay cookies de analítica ni de publicidad.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-semibold text-texto">Tu cuenta y tus datos</h2>
+        <p class="mt-3">
+          Puedes editar tu perfil en cualquier momento desde Configuración. También puedes eliminar tu cuenta de
+          forma permanente: puedes elegir entre transferir los eventos que hayas publicado a otra cuenta, o
+          eliminarlos junto con la tuya. La eliminación borra también las imágenes que hayas subido.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-semibold text-texto">Preguntas</h2>
+        <p class="mt-3">
+          Si tienes preguntas sobre esta página, escríbenos por los canales en <a href="/contacto" class="text-acento-texto hover:underline">Contacto</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
