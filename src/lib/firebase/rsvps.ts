@@ -1,3 +1,4 @@
+import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb } from './server';
 
 export interface RsvpInfo {
@@ -32,13 +33,68 @@ export async function getAttendedEventIds(uid: string, eventIds: string[]): Prom
 }
 
 export async function getRsvpInfo(eventId: string, uid?: string): Promise<RsvpInfo> {
+  const db = getAdminDb();
+  const eventRef = db.collection('events').doc(eventId);
   const rsvpsRef = rsvpsCollection(eventId);
+  const eventDoc = await eventRef.get();
+  const stored = eventDoc.data()?.rsvpCount;
+
+  // Los eventos anteriores a la desnormalizacion no llevan rsvpCount: se cae a
+  // count() solo para esos, hasta que corra el backfill.
+  const count =
+    typeof stored === 'number' ? stored : (await rsvpsRef.count().get()).data().count;
 
   if (!uid) {
-    const countSnapshot = await rsvpsRef.count().get();
-    return { count: countSnapshot.data().count, attending: false };
+    return { count, attending: false };
   }
 
-  const [doc, countSnapshot] = await Promise.all([rsvpsRef.doc(uid).get(), rsvpsRef.count().get()]);
-  return { count: countSnapshot.data().count, attending: doc.exists };
+  const doc = await rsvpsRef.doc(uid).get();
+  return { count, attending: doc.exists };
+}
+
+// Toggle de asistencia con el contador desnormalizado: la escritura del
+// documento de rsvp y la del contador van en la misma transaccion, asi que no
+// pueden descuadrarse aunque dos personas confirmen a la vez.
+export async function setRsvp(eventId: string, uid: string): Promise<{ attending: true; count: number }> {
+  const db = getAdminDb();
+  const eventRef = db.collection('events').doc(eventId);
+  const rsvpRef = rsvpsCollection(eventId).doc(uid);
+
+  const count = await db.runTransaction(async (transaction) => {
+    const eventDoc = await transaction.get(eventRef);
+    const current = typeof eventDoc.data()?.rsvpCount === 'number' ? (eventDoc.data()!.rsvpCount as number) : 0;
+    const existing = await transaction.get(rsvpRef);
+
+    if (!existing.exists) {
+      transaction.set(rsvpRef, { uid, createdAt: FieldValue.serverTimestamp() });
+      transaction.update(eventRef, { rsvpCount: current + 1 });
+      return current + 1;
+    }
+
+    return current;
+  });
+
+  return { attending: true, count };
+}
+
+export async function clearRsvp(eventId: string, uid: string): Promise<{ attending: false; count: number }> {
+  const db = getAdminDb();
+  const eventRef = db.collection('events').doc(eventId);
+  const rsvpRef = rsvpsCollection(eventId).doc(uid);
+
+  const count = await db.runTransaction(async (transaction) => {
+    const eventDoc = await transaction.get(eventRef);
+    const current = typeof eventDoc.data()?.rsvpCount === 'number' ? (eventDoc.data()!.rsvpCount as number) : 0;
+    const existing = await transaction.get(rsvpRef);
+
+    if (existing.exists) {
+      transaction.delete(rsvpRef);
+      transaction.update(eventRef, { rsvpCount: Math.max(0, current - 1) });
+      return Math.max(0, current - 1);
+    }
+
+    return current;
+  });
+
+  return { attending: false, count };
 }

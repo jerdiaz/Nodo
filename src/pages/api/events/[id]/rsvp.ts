@@ -1,8 +1,19 @@
 import type { APIRoute } from 'astro';
-import { FieldValue } from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 import { jsonResponse } from '../../../../lib/api';
 import { getCurrentUser } from '../../../../lib/auth';
 import { getAdminDb } from '../../../../lib/firebase/server';
+import { clearRsvp, setRsvp } from '../../../../lib/firebase/rsvps';
+
+function toDate(value: unknown): Date | null {
+  if (value instanceof Timestamp) {
+    return value.toDate();
+  }
+  if (value instanceof Date) {
+    return value;
+  }
+  return null;
+}
 
 export const POST: APIRoute = async ({ params, cookies }) => {
   const user = await getCurrentUser(cookies);
@@ -24,11 +35,13 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     return jsonResponse({ error: 'Evento no encontrado.' }, 404);
   }
 
-  const rsvpsRef = eventRef.collection('rsvps');
-  await rsvpsRef.doc(user.uid).set({ uid: user.uid, createdAt: FieldValue.serverTimestamp() });
+  const endDate = toDate(event.data()?.endDate);
+  if (endDate && endDate.getTime() < Date.now()) {
+    return jsonResponse({ error: 'Este evento ya terminó.' }, 400);
+  }
 
-  const countSnapshot = await rsvpsRef.count().get();
-  return jsonResponse({ attending: true, count: countSnapshot.data().count }, 200);
+  const result = await setRsvp(id, user.uid);
+  return jsonResponse({ attending: result.attending, count: result.count }, 200);
 };
 
 export const DELETE: APIRoute = async ({ params, cookies }) => {
@@ -51,9 +64,6 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
     return jsonResponse({ error: 'Evento no encontrado.' }, 404);
   }
 
-  const rsvpsRef = eventRef.collection('rsvps');
-  await rsvpsRef.doc(user.uid).delete();
-
-  const countSnapshot = await rsvpsRef.count().get();
-  return jsonResponse({ attending: false, count: countSnapshot.data().count }, 200);
+  const result = await clearRsvp(id, user.uid);
+  return jsonResponse({ attending: result.attending, count: result.count }, 200);
 };

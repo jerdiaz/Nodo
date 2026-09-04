@@ -11,7 +11,8 @@
     "preview": "node --env-file-if-exists=.env node_modules/astro/bin/astro.mjs preview",
     "check": "astro check",
     "astro": "astro",
-    "db:seed": "node --env-file-if-exists=.env scripts/seed.mjs"
+    "db:seed": "node --env-file-if-exists=.env scripts/seed.mjs",
+    "db:backfill-rsvps": "node --env-file-if-exists=.env scripts/backfill-rsvp-counts.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.5",

@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { buildIcsCalendar } from '../../../lib/calendar';
-import { getEvents } from '../../../lib/firebase/events';
+import { filterEvents, getEvents } from '../../../lib/firebase/events';
 import { getAttendedEventIds } from '../../../lib/firebase/rsvps';
 import { getUidByCalendarToken } from '../../../lib/firebase/users';
 
@@ -27,12 +27,18 @@ export const GET: APIRoute = async ({ params }) => {
   }
 
   const allEvents = await getEvents();
+
+  // Solo eventos futuros: una suscripcion de calendario no necesita el
+  // historial, y asi quien recibe el enlace no ve la agenda completa de
+  // asistencia pasada de la persona. De paso, la lectura de asistencias (una
+  // por evento) solo se paga sobre lo que viene, no sobre todo el catalogo.
+  const upcoming = filterEvents(allEvents, { timeframe: 'upcoming' });
   const attendedIds = await getAttendedEventIds(
     uid,
-    allEvents.map((event) => event.id),
+    upcoming.map((event) => event.id),
   );
 
-  const mine = allEvents.filter(
+  const mine = upcoming.filter(
     (event) => event.organizer.uid === uid || attendedIds.has(event.id),
   );
 
