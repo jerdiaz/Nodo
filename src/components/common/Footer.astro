@@ -41,9 +41,13 @@ const columns = [
 ---
 
 {/*
-  Tarjeta flotante, no franja a sangre. Las medidas estan tomadas del pie de
-  Meetup y no puestas a ojo: margen de 20px por los cuatro lados, radio de
-  48px, interior de 1200px como maximo y 28px de padding lateral.
+  Tarjeta flotante desde sm, con las medidas del pie de Meetup y no puestas a
+  ojo: margen de 20px por los cuatro lados, radio de 48px, interior de 1200px
+  como maximo y 28px de padding lateral.
+
+  En movil llega a los filos y solo redondea arriba, tambien como el suyo: una
+  tarjeta con margen lateral en una pantalla de 375px desperdicia ancho y deja
+  dos franjas de fondo que no aportan nada.
 
   El margen superior es mt-5 y no mt-auto: main ya lleva flex-1, que por si
   solo empuja el pie al fondo en paginas cortas, asi que mt-auto no sumaba
@@ -60,7 +64,7 @@ const columns = [
   aqui no llegarian a contraste, asi que el acento del lema usa la variante
   del tema oscuro.
 */}
-<footer class="mx-5 mb-5 mt-5 overflow-hidden rounded-[48px] bg-[#232326] px-7 text-white">
+<footer class="mt-5 overflow-hidden rounded-t-[32px] bg-[#232326] px-7 text-white sm:mx-5 sm:mb-5 sm:rounded-[48px]">
   {/* -mx-7 para que la cinta llegue a los filos de la tarjeta y el radio la
       recorte: es la firma de GEN, que Meetup no tiene y aqui se conserva. */}
   <div class="cinta-gen -mx-7" aria-hidden="true"></div>
@@ -105,7 +109,7 @@ const columns = [
     {/* El separador de Meetup es #353538: gris propio, no un blanco con alfa. */}
     <div class="mt-[45px] border-t border-[#353538]"></div>
 
-    <div class="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="mt-12 grid grid-cols-2 gap-10 lg:grid-cols-4">
       {columns.map((column) => (
         <div>
           {/*
