@@ -85,14 +85,40 @@ const enResultados =
         aria-hidden="true"
       ></span>
 
-      <input
-        type="text"
-        name="ciudad"
-        value={searchCity}
-        placeholder="Ciudad"
-        aria-label="Filtrar por ciudad"
-        class="hidden h-9 min-w-0 flex-[0.85] rounded-full bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none transition placeholder:text-tenue focus:bg-superficie focus:shadow-[var(--c-sombra)] lg:block"
-      />
+      {/*
+        El campo de ciudad sugiere mientras se escribe. La lista sale del
+        catalogo, no de Places: esto filtra eventos, y ofrecer una ciudad sin
+        eventos lleva a un listado vacio. Aqui cada sugerencia devuelve
+        resultados por construccion.
+
+        relative sobre un contenedor propio y no sobre el input porque el
+        desplegable cuelga de el; la cabecera ya es relative y z-50, asi que no
+        queda por debajo del contenido.
+      */}
+      <div class="relative hidden min-w-0 flex-[0.85] lg:block">
+        <input
+          id="nodo-ciudad"
+          type="text"
+          name="ciudad"
+          value={searchCity}
+          placeholder="Ciudad"
+          aria-label="Filtrar por ciudad"
+          autocomplete="off"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="nodo-ciudad-lista"
+          aria-autocomplete="list"
+          class="h-9 w-full min-w-0 rounded-full bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none transition placeholder:text-tenue focus:bg-superficie focus:shadow-[var(--c-sombra)]"
+        />
+
+        <ul
+          id="nodo-ciudad-lista"
+          role="listbox"
+          aria-label="Ciudades con eventos"
+          hidden
+          class="absolute left-0 top-full z-50 mt-2 max-h-72 w-64 overflow-auto rounded-2xl border border-linea bg-superficie p-1.5 shadow-[var(--c-sombra-alta)]"
+        ></ul>
+      </div>
       <button
         type="submit"
         aria-label="Buscar"
@@ -468,4 +494,170 @@ const enResultados =
     menus.find((menu) => menu.trigger.id === 'nodo-menu-trigger')?.setOpen(false);
     (document.getElementById('nodo-modal-sesion') as HTMLDialogElement | null)?.showModal();
   });
+
+  // --- Ciudad: sugerencias mientras se escribe ---
+  //
+  // La lista entera se pide una sola vez, la primera vez que alguien toca el
+  // campo, y se filtra en el navegador: son unas pocas decenas de nombres y
+  // asi cada tecla no cuesta un viaje al servidor. El endpoint deja cachear
+  // cinco minutos, asi que ni siquiera se repite entre paginas.
+  const ciudadInput = document.getElementById('nodo-ciudad') as HTMLInputElement | null;
+  const ciudadLista = document.getElementById('nodo-ciudad-lista') as HTMLUListElement | null;
+
+  if (ciudadInput && ciudadLista) {
+    interface Ciudad {
+      nombre: string;
+      eventos: number;
+    }
+
+    let ciudades: Ciudad[] | null = null;
+    let cargando: Promise<void> | null = null;
+    let activo = -1;
+
+    // Sin tildes ni mayusculas, la misma regla que usa el filtro del servidor:
+    // quien escribe "bogota" tiene que encontrar "Bogotá".
+    const clave = (valor: string): string =>
+      valor.normalize('NFD').replace(/[^\x00-\x7F]/g, '').toLowerCase().trim();
+
+    async function cargarCiudades(): Promise<void> {
+      if (ciudades || cargando) {
+        return cargando ?? undefined;
+      }
+
+      cargando = (async () => {
+        try {
+          const response = await fetch('/api/ciudades');
+          const result = await response.json();
+          ciudades = result.ciudades ?? [];
+        } catch {
+          // Sin sugerencias el campo sigue siendo un texto libre que funciona:
+          // se envia igual y el servidor filtra por lo que se haya escrito.
+          ciudades = [];
+        }
+      })();
+
+      return cargando;
+    }
+
+    function cerrar(): void {
+      ciudadLista!.hidden = true;
+      ciudadInput!.setAttribute('aria-expanded', 'false');
+      activo = -1;
+    }
+
+    function marcarActivo(): void {
+      [...ciudadLista!.children].forEach((item, indice) => {
+        const boton = item.firstElementChild as HTMLElement;
+        const esActivo = indice === activo;
+        boton.classList.toggle('bg-fondo-alt', esActivo);
+        boton.setAttribute('aria-selected', String(esActivo));
+      });
+    }
+
+    function elegir(nombre: string): void {
+      ciudadInput!.value = nombre;
+      cerrar();
+      ciudadInput!.form?.requestSubmit();
+    }
+
+    function pintar(): void {
+      const escrito = clave(ciudadInput!.value);
+      const encontradas = (ciudades ?? [])
+        .filter((ciudad) => !escrito || clave(ciudad.nombre).includes(escrito))
+        .slice(0, 8);
+
+      ciudadLista!.innerHTML = '';
+      activo = -1;
+
+      if (encontradas.length === 0) {
+        // Decirlo es mejor que no abrir nada: quien escribe una ciudad sin
+        // eventos merece saber que el catalogo no la tiene, no un silencio
+        // que parece que el campo esta roto.
+        const vacio = document.createElement('li');
+        vacio.className = 'px-3 py-2.5 text-sm text-suave';
+        vacio.textContent = escrito
+          ? 'Todavía no hay eventos en esa ciudad'
+          : 'Aún no hay eventos con ciudad';
+        ciudadLista!.appendChild(vacio);
+      }
+
+      encontradas.forEach((ciudad) => {
+        const item = document.createElement('li');
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', 'false');
+
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className =
+          'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-texto transition hover:bg-fondo-alt';
+
+        const nombre = document.createElement('span');
+        nombre.className = 'truncate font-medium';
+        nombre.textContent = ciudad.nombre;
+
+        const total = document.createElement('span');
+        total.className = 'shrink-0 text-xs text-tenue';
+        total.textContent = String(ciudad.eventos);
+
+        boton.append(nombre, total);
+        // mousedown y no click: el blur del campo cierra la lista antes de que
+        // el click llegue a dispararse.
+        boton.addEventListener('mousedown', (evento) => {
+          evento.preventDefault();
+          elegir(ciudad.nombre);
+        });
+
+        item.appendChild(boton);
+        ciudadLista!.appendChild(item);
+      });
+
+      ciudadLista!.hidden = false;
+      ciudadInput!.setAttribute('aria-expanded', 'true');
+    }
+
+    ciudadInput.addEventListener('focus', async () => {
+      await cargarCiudades();
+      pintar();
+    });
+
+    ciudadInput.addEventListener('input', async () => {
+      await cargarCiudades();
+      pintar();
+    });
+
+    ciudadInput.addEventListener('keydown', (evento) => {
+      const opciones = ciudadLista.querySelectorAll('li[role="option"]');
+
+      if (evento.key === 'Escape') {
+        cerrar();
+        return;
+      }
+
+      if (opciones.length === 0 || ciudadLista.hidden) {
+        return;
+      }
+
+      if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+        evento.preventDefault();
+        const paso = evento.key === 'ArrowDown' ? 1 : -1;
+        activo = (activo + paso + opciones.length) % opciones.length;
+        marcarActivo();
+        opciones[activo]?.scrollIntoView({ block: 'nearest' });
+        return;
+      }
+
+      // Enter con una sugerencia marcada la elige; sin marcar deja que el
+      // formulario se envie con lo que se haya escrito a mano.
+      if (evento.key === 'Enter' && activo >= 0) {
+        evento.preventDefault();
+        const texto = opciones[activo]?.querySelector('span')?.textContent;
+        if (texto) elegir(texto);
+      }
+    });
+
+    ciudadInput.addEventListener('blur', () => {
+      // Un respiro para que un click sobre la lista llegue a su destino.
+      setTimeout(cerrar, 120);
+    });
+  }
 </script>
