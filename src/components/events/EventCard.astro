@@ -1,6 +1,7 @@
 ---
 import { MapPin, Video } from '@lucide/astro';
 import Badge from '../ui/Badge.astro';
+import VerifiedBadge from '../ui/VerifiedBadge.astro';
 import { formatEventDay, formatEventMonthShort, getEventLocationLabel } from '../../lib/format';
 import { genColorForEvent } from '../../lib/genColor';
 import type { EventModality, NodoEvent } from '../../types/event';
@@ -70,6 +71,15 @@ const color = genColorForEvent(event);
             </div>
           )}
           <span class="truncate text-xs text-suave">{autor.name}</span>
+
+          {/*
+            La palomita es siempre de quien publico el evento, tambien cuando
+            en la tarjeta manda el nombre de la comunidad: lo que esta
+            verificado es la cuenta, no el colectivo.
+          */}
+          {event.organizer.verification && (
+            <VerifiedBadge type={event.organizer.verification} class="size-3.5 shrink-0" />
+          )}
         </div>
 
         {firstTag && (

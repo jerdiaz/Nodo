@@ -1,0 +1,156 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Card from '../../../components/ui/Card.astro';
+import Button from '../../../components/ui/Button.astro';
+import ImageCropper from '../../../components/ui/ImageCropper.astro';
+import { getCurrentUser } from '../../../lib/auth';
+import { getCommunityBySlug } from '../../../lib/firebase/communities';
+
+const user = await getCurrentUser(Astro.cookies);
+
+if (!user) {
+  return Astro.redirect('/?login=required');
+}
+
+const community = await getCommunityBySlug(Astro.params.slug ?? '');
+
+if (!community) {
+  return Astro.redirect('/comunidades');
+}
+
+// Quien no la administra se va a la ficha publica, que es lo que si puede ver.
+// La API vuelve a comprobarlo: esto solo evita enseñar un formulario que no
+// llevaria a ninguna parte.
+if (community.ownerUid !== user.uid) {
+  return Astro.redirect(`/comunidades/${community.slug}`);
+}
+
+const inputClass =
+  'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus-visible:outline-none focus:ring-2 focus:ring-acento';
+---
+
+<BaseLayout title={`Editar ${community.name} — Nodo`} description={`Edita la información de ${community.name}.`}>
+  <div class="mx-auto max-w-2xl px-6 pb-24 pt-12">
+    <h1 class="text-[32px] font-bold leading-tight text-texto">Editar comunidad</h1>
+    <p class="mt-3 text-suave">
+      El nombre y la foto se actualizan también en los eventos que ya has publicado. La dirección
+      <span class="text-texto">/comunidades/{community.slug}</span> no cambia, para que los enlaces
+      que ya circulan sigan funcionando.
+    </p>
+
+    <Card class="mt-8 p-6">
+      <form id="community-form" data-slug={community.slug} class="space-y-5">
+        <ImageCropper
+          id="avatarUrl"
+          name="avatarUrl"
+          kind="avatar"
+          label="Foto de la comunidad"
+          value={community.avatarUrl ?? ''}
+          fallback={community.name.charAt(0).toUpperCase()}
+        />
+
+        <div>
+          <label for="name" class="block text-sm font-medium text-texto">Nombre</label>
+          <input
+            id="name"
+            name="name"
+            required
+            minlength="3"
+            maxlength="60"
+            class={inputClass}
+            value={community.name}
+          />
+        </div>
+
+        <div>
+          <label for="description" class="block text-sm font-medium text-texto">Descripción</label>
+          <textarea
+            id="description"
+            name="description"
+            rows="4"
+            maxlength="400"
+            class={inputClass}
+            placeholder="¿Qué organiza tu comunidad y para quién?"
+          >{community.description ?? ''}</textarea>
+        </div>
+
+        <p id="community-error" class="hidden text-sm text-acento-texto" role="alert"></p>
+
+        <div class="flex gap-3">
+          <a
+            href={`/comunidades/${community.slug}`}
+            class="flex h-10 flex-1 items-center justify-center rounded-full border border-linea text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento"
+          >
+            Cancelar
+          </a>
+          <Button type="submit" id="community-submit" class="flex-1">Guardar cambios</Button>
+        </div>
+      </form>
+    </Card>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById('community-form') as HTMLFormElement | null;
+  const error = document.getElementById('community-error');
+  const submit = document.getElementById('community-submit') as HTMLButtonElement | null;
+
+  async function subirAvatar(dataUrl: string): Promise<string> {
+    const recorte = await (await fetch(dataUrl)).blob();
+
+    // Cuerpo binario, no FormData: multipart dispara la comprobacion de origen
+    // de Astro y responde 403 detras del proxy de produccion.
+    const respuesta = await fetch('/api/imagenes?kind=avatar', {
+      method: 'POST',
+      headers: { 'Content-Type': recorte.type || 'image/jpeg' },
+      body: recorte,
+    });
+
+    const cuerpo = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok || !cuerpo.url) {
+      throw new Error(cuerpo.error ?? 'No se pudo subir la foto.');
+    }
+
+    return cuerpo.url as string;
+  }
+
+  form?.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    error?.classList.add('hidden');
+    if (submit) submit.disabled = true;
+
+    const datos = new FormData(form);
+    const foto = String(datos.get('avatarUrl') ?? '');
+
+    try {
+      // Una foto recien recortada llega como data URL; la que ya estaba, como
+      // la URL de Storage, que no hay que volver a subir.
+      const avatarUrl = foto.startsWith('data:') ? await subirAvatar(foto) : foto || undefined;
+
+      const respuesta = await fetch(`/api/comunidades/${form.dataset.slug}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: String(datos.get('name') ?? ''),
+          description: String(datos.get('description') ?? ''),
+          avatarUrl,
+        }),
+      });
+
+      const cuerpo = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        throw new Error(cuerpo.error ?? 'No se pudieron guardar los cambios.');
+      }
+
+      window.location.href = `/comunidades/${cuerpo.slug}`;
+    } catch (fallo) {
+      if (error) {
+        error.textContent = fallo instanceof Error ? fallo.message : 'No se pudieron guardar los cambios.';
+        error.classList.remove('hidden');
+      }
+      if (submit) submit.disabled = false;
+    }
+  });
+</script>

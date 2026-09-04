@@ -7,7 +7,7 @@ import { getCurrentUser } from '../../lib/auth';
 import { getCommunityBySlug, getMemberCount, isMember } from '../../lib/firebase/communities';
 import { getEvents } from '../../lib/firebase/events';
 import { formatMonthYear } from '../../lib/format';
-import { CalendarDays, Users } from '@lucide/astro';
+import { CalendarDays, Pencil, Users } from '@lucide/astro';
 import type { NodoEvent } from '../../types/event';
 
 const community = await getCommunityBySlug(Astro.params.slug ?? '');
@@ -71,9 +71,18 @@ const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => fa
         </div>
       </div>
 
-      <div class="shrink-0">
+      <div class="flex shrink-0 items-center gap-3">
         {esDueno ? (
-          <Button href="/eventos/nuevo">Publicar evento</Button>
+          <>
+            <a
+              href={`/comunidades/${community.slug}/editar`}
+              class="flex h-10 items-center gap-2 rounded-full border border-linea px-4 text-sm font-semibold text-texto transition active:scale-[0.97] hover:border-acento"
+            >
+              <Pencil class="size-4" stroke-width={1.75} />
+              Editar
+            </a>
+            <Button href="/eventos/nuevo">Publicar evento</Button>
+          </>
         ) : (
           <button
             id="community-join"

@@ -70,6 +70,7 @@ async function enrichOrganizers(events: NodoEvent[]): Promise<NodoEvent[]> {
         ...event.organizer,
         name: currentName || event.organizer.name,
         avatarUrl: profile.avatarUrl ?? event.organizer.avatarUrl,
+        verification: profile.verification,
       },
     };
   });

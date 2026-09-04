@@ -109,12 +109,24 @@ export async function createCommunity(input: CreateCommunityInput): Promise<Nodo
 
 // Renombrar o cambiar el avatar tiene que arrastrar los eventos ya publicados,
 // porque su copia de la comunidad es la que se pinta en la cartelera.
+//
+// Los campos opcionales que llegan sin valor se borran en vez de ignorarse:
+// el formulario de edicion manda siempre los tres, asi que un hueco significa
+// que se ha vaciado a proposito y con { merge: true } se quedaria el anterior.
 export async function updateCommunity(
   communityId: string,
-  cambios: { name?: string; description?: string; avatarUrl?: string },
+  cambios: { name: string; description?: string; avatarUrl?: string },
 ): Promise<void> {
   const db = getAdminDb();
-  await communitiesCollection().doc(communityId).set(cambios, { merge: true });
+
+  await communitiesCollection().doc(communityId).set(
+    {
+      name: cambios.name,
+      description: cambios.description ?? FieldValue.delete(),
+      avatarUrl: cambios.avatarUrl ?? FieldValue.delete(),
+    },
+    { merge: true },
+  );
 
   const doc = await communitiesCollection().doc(communityId).get();
   const comunidad = toEventCommunity(mapDoc(doc));

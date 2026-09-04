@@ -1,4 +1,5 @@
 import type { EventCommunity } from './community';
+import type { VerificationType } from './profile';
 
 export type EventModality = 'presencial' | 'virtual' | 'hibrido';
 
@@ -6,6 +7,10 @@ export interface EventOrganizer {
   uid: string;
   name: string;
   avatarUrl?: string;
+  // No se guarda en el evento: lo pone enrichOrganizers leyendo el perfil, en
+  // el mismo viaje que ya hace para el nombre y la foto. Guardarlo seria
+  // congelar una palomita que el panel de administracion puede retirar.
+  verification?: VerificationType;
 }
 
 export interface NodoEvent {
