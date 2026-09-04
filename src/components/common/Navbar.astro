@@ -16,6 +16,18 @@ const links = [
 // viendo su ciudad escrita al navegar a la ficha de un evento y volver.
 const searchQuery = Astro.url.searchParams.get('q') ?? '';
 const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
+
+// La cabecera cambia de forma en movil segun se este en la portada o en el
+// listado de resultados, como hace Meetup: la portada se queda en logotipo,
+// Calendario y sesion, y el listado saca el buscador y recoge lo demas en la
+// hamburguesa, que es donde uno esta afinando una busqueda.
+//
+// La condicion es la misma que decide la vista en index.astro: modalidad,
+// busqueda o pasados. La ciudad no cuenta, porque filtra el carril sin sacar
+// de la portada.
+const enResultados =
+  Boolean(Astro.url.searchParams.get('modalidad') || searchQuery) ||
+  Astro.url.searchParams.get('tiempo') === 'pasados';
 ---
 
 {/*
@@ -48,7 +60,10 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       method="get"
       action="/"
       role="search"
-      class="group flex h-11 w-full min-w-0 max-w-[500px] items-center gap-1 rounded-full bg-superficie p-1 shadow-[var(--c-sombra)] transition focus-within:bg-fondo-alt focus-within:shadow-none"
+      class:list={[
+        'group h-11 w-full min-w-0 max-w-[500px] items-center gap-1 rounded-full bg-superficie p-1 shadow-[var(--c-sombra)] transition focus-within:bg-fondo-alt focus-within:shadow-none',
+        enResultados ? 'flex' : 'hidden lg:flex',
+      ]}
     >
       <input
         type="text"
@@ -80,9 +95,15 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       </button>
     </form>
 
-    <ul class="ml-auto hidden shrink-0 items-center gap-7 text-sm font-medium tracking-[0.02em] text-suave lg:flex">
+    <ul
+      class:list={[
+        'ml-auto shrink-0 items-center gap-7 text-sm font-medium tracking-[0.02em] text-suave lg:flex',
+        enResultados ? 'hidden' : 'flex',
+      ]}
+    >
+      {/* En la portada movil solo sobrevive Calendario; el resto, desde lg. */}
       {links.map((link) => (
-        <li>
+        <li class:list={[link.href === '/calendario' ? '' : 'hidden lg:block']}>
           <a href={link.href} class="transition hover:text-texto">
             {link.label}
           </a>
@@ -95,7 +116,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       enlaces no caben en 375px junto a la pastilla, y repartirlos entre la
       cabecera y el pie obligaba a recordar cual esta donde.
     */}
-    <div class="relative shrink-0 lg:hidden" data-menu>
+    <div class:list={['relative shrink-0 lg:hidden', enResultados ? '' : 'hidden']} data-menu>
       <button
         id="nodo-menu-trigger"
         type="button"
@@ -182,7 +203,12 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       </div>
     </div>
 
-    <div class="ml-auto hidden shrink-0 items-center gap-3 lg:ml-0 lg:flex">
+    <div
+      class:list={[
+        'ml-auto shrink-0 items-center gap-3 lg:ml-0 lg:flex',
+        enResultados ? 'hidden' : 'flex',
+      ]}
+    >
       {user ? (
         <div class="relative" data-menu>
           <button
