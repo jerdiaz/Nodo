@@ -61,7 +61,10 @@ const events = filterEvents(allEvents, { modality: modalidad, city: ciudad, time
 // tocar nada. En cuanto hay un filtro, una busqueda o se piden los pasados, pasa
 // a ser una pagina de resultados: un solo listado, que es lo que se espera
 // cuando uno ha preguntado algo concreto.
-const vistaResultados = Boolean(modalidad || query) || timeframe === 'past';
+const vistaResultados =
+  Astro.url.searchParams.get('ver') === 'todos' ||
+  Boolean(modalidad || query) ||
+  timeframe === 'past';
 
 const proximos = filterEvents(allEvents, { timeframe: 'upcoming' });
 
@@ -526,7 +529,7 @@ if (MOSTRAR_PUBLICACIONES) {
 
             {presenciales.length > LIMITE_CARRIL && (
               <a
-                href={buildFilterHref({ modality: 'presencial', city: ciudad })}
+                href={buildFilterHref({ modality: 'presencial', city: ciudad, list: true })}
                 class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
               >
                 Ver todos los eventos
@@ -550,7 +553,7 @@ if (MOSTRAR_PUBLICACIONES) {
           {presenciales.length > LIMITE_MOVIL && (
             <div class="mt-8 sm:hidden">
               <a
-                href={buildFilterHref({ modality: 'presencial', city: ciudad })}
+                href={buildFilterHref({ modality: 'presencial', city: ciudad, list: true })}
                 class="flex h-11 w-full items-center justify-center rounded-full border border-linea bg-superficie text-sm font-semibold tracking-[0.02em] text-texto transition active:scale-[0.98] hover:border-acento"
               >
                 Ver más eventos
@@ -573,7 +576,7 @@ if (MOSTRAR_PUBLICACIONES) {
 
             {virtuales.length > LIMITE_CARRIL && (
               <a
-                href={buildFilterHref({ modality: 'virtual' })}
+                href={buildFilterHref({ modality: 'virtual', list: true })}
                 class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
               >
                 Ver todos los eventos
@@ -592,7 +595,7 @@ if (MOSTRAR_PUBLICACIONES) {
           {virtuales.length > LIMITE_MOVIL && (
             <div class="mt-8 sm:hidden">
               <a
-                href={buildFilterHref({ modality: 'virtual' })}
+                href={buildFilterHref({ modality: 'virtual', list: true })}
                 class="flex h-11 w-full items-center justify-center rounded-full border border-linea bg-superficie text-sm font-semibold tracking-[0.02em] text-texto transition active:scale-[0.98] hover:border-acento"
               >
                 Ver más eventos

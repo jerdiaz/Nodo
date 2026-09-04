@@ -30,6 +30,9 @@ const modalities: { label: string; value?: string }[] = [
           city: nextCity,
           timeframe: selectedTimeframe,
           search: selectedSearch,
+          // Estas pestañas solo se ven dentro del listado, asi que ninguna
+          // debe sacar de el: "Todos" quita la modalidad pero no la vista.
+          list: true,
         })}
         class={cn(
           'rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-[0.97]',

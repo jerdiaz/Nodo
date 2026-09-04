@@ -22,10 +22,11 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
 // Calendario y sesion, y el listado saca el buscador y recoge lo demas en la
 // hamburguesa, que es donde uno esta afinando una busqueda.
 //
-// La condicion es la misma que decide la vista en index.astro: modalidad,
-// busqueda o pasados. La ciudad no cuenta, porque filtra el carril sin sacar
-// de la portada.
+// La condicion es la misma que decide la vista en index.astro: el listado
+// pedido a mano, modalidad, busqueda o pasados. La ciudad no cuenta, porque
+// filtra el carril sin sacar de la portada.
 const enResultados =
+  Astro.url.searchParams.get('ver') === 'todos' ||
   Boolean(Astro.url.searchParams.get('modalidad') || searchQuery) ||
   Astro.url.searchParams.get('tiempo') === 'pasados';
 ---

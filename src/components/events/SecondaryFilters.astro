@@ -19,7 +19,7 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
   {showCityFilter && cities.length > 0 && (
     <div class="flex flex-wrap justify-end gap-2">
       <a
-        href={buildFilterHref({ modality: selectedModality, timeframe: selectedTimeframe, search: selectedSearch })}
+        href={buildFilterHref({ modality: selectedModality, timeframe: selectedTimeframe, search: selectedSearch, list: true })}
         class={cn(
           'rounded-full px-3 py-1 text-xs font-medium transition active:scale-[0.97]',
           !selectedCity
@@ -36,6 +36,7 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
             city,
             timeframe: selectedTimeframe,
             search: selectedSearch,
+            list: true,
           })}
           class={cn(
             'rounded-full px-3 py-1 text-xs font-medium transition active:scale-[0.97]',
@@ -53,8 +54,8 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
   <a
     href={
       selectedTimeframe === 'past'
-        ? buildFilterHref({ modality: selectedModality, city: selectedCity, search: selectedSearch })
-        : buildFilterHref({ modality: selectedModality, city: selectedCity, timeframe: 'past', search: selectedSearch })
+        ? buildFilterHref({ modality: selectedModality, city: selectedCity, search: selectedSearch, list: true })
+        : buildFilterHref({ modality: selectedModality, city: selectedCity, timeframe: 'past', search: selectedSearch, list: true })
     }
     class="text-xs text-tenue underline-offset-2 transition hover:text-suave hover:underline"
   >
