@@ -10,8 +10,6 @@ import {
   ArrowUpRight,
   BookOpen,
   Briefcase,
-  CalendarCheck,
-  Compass,
   Dumbbell,
   Film,
   Gamepad2,
@@ -19,13 +17,15 @@ import {
   Heart,
   Laptop,
   MapPin,
-  Megaphone,
+  Send,
   Music,
   Palette,
   PartyPopper,
   Pencil,
   Scissors,
   Sparkles,
+  Telescope,
+  Ticket,
   Users,
   UtensilsCrossed,
   Video,
@@ -153,7 +153,7 @@ const FONDO_UNETE = '/banner/unete.webp';
 const pasos = [
   {
     color: 'rojo' as const,
-    Icono: Compass,
+    Icono: Telescope,
     titulo: 'Descubre lo que pasa cerca',
     texto: 'Talleres, encuentros y convocatorias de las comunidades de la red, en un solo sitio.',
     enlace: 'Explorar eventos',
@@ -161,7 +161,7 @@ const pasos = [
   },
   {
     color: 'azul' as const,
-    Icono: CalendarCheck,
+    Icono: Ticket,
     titulo: 'Confirma tu asistencia',
     texto: 'Guarda el evento en tu calendario y suscríbete para no perderte lo que viene.',
     enlace: 'Ver el calendario',
@@ -169,7 +169,7 @@ const pasos = [
   },
   {
     color: 'magenta' as const,
-    Icono: Megaphone,
+    Icono: Send,
     titulo: 'Publica lo tuyo',
     texto: '¿Organizas algo? Publícalo y llega a quien todavía no te conoce.',
     enlace: 'Publicar evento',
@@ -708,17 +708,20 @@ if (MOSTRAR_PUBLICACIONES) {
                     posicionesPaso[indice],
                   ]}
                 >
-                  <div class="flex size-11 items-center justify-center rounded-2xl bg-[var(--g-suave)] text-[var(--g-texto)]">
-                    <paso.Icono class="size-5" stroke-width={2} />
+                  <div class="flex items-start gap-4">
+                    <paso.Icono class="size-8 shrink-0 text-[var(--g)]" stroke-width={1.75} />
+
+                    <div>
+                      <h3 class="text-base font-bold leading-snug text-texto">{paso.titulo}</h3>
+                      <p class="mt-1 text-sm leading-6 text-suave">{paso.texto}</p>
+                      <a
+                        href={paso.href}
+                        class="mt-2 inline-block text-sm font-semibold text-[var(--g-texto)] transition hover:opacity-80"
+                      >
+                        {paso.enlace}
+                      </a>
+                    </div>
                   </div>
-                  <h3 class="mt-4 text-base font-bold text-texto">{paso.titulo}</h3>
-                  <p class="mt-1 text-sm leading-6 text-suave">{paso.texto}</p>
-                  <a
-                    href={paso.href}
-                    class="mt-3 inline-block text-sm font-semibold text-[var(--g-texto)] transition hover:opacity-80"
-                  >
-                    {paso.enlace}
-                  </a>
                 </li>
               ))}
             </ol>
