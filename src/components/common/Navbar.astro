@@ -20,26 +20,21 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
 
 {/*
   Medidas tomadas de la cabecera de Meetup: 80px de alto, contenido a 1200px,
-  esquinas inferiores redondeadas a 24px y la barra de busqueda como pastilla
-  de 500x44 con los dos campos separados por un filo de 1px.
+  logotipo de 34px arrancando a 40px del filo y esquinas inferiores a 24px.
 
-  El radio va sin overflow-hidden a proposito. El fondo se recorta igual
-  -border-radius siempre recorta el fondo del propio elemento- pero los menus
-  desplegables de sesion y de cuenta son absolute dentro de la cabecera: con
-  overflow-hidden se cortarian y no se verian al abrirlos.
-*/}
-{/*
-  Se va con la pagina, como la cabecera de la home de Meetup, que es static y
-  no queda pegada arriba.
-
+  Se va con la pagina, como la suya, que es static y no queda pegada arriba.
   Sigue siendo relative y con z-50 aunque no se ancle: los menus de sesion y de
   cuenta son absolute dentro de ella, y sin un ancestro posicionado que levante
-  la capa se colarian por debajo del contenido de la pagina al abrirlos.
+  la capa se colarian por debajo del contenido al abrirlos. Por lo mismo no
+  lleva overflow-hidden, que los recortaria.
+
+  Quien dibuja el redondeo es el borde inferior, que sigue la curva. El fondo
+  tambien se recorta, pero contra el blanco de la pagina eso no se ve.
 */}
 <header class="relative z-50 rounded-b-3xl border-b border-linea bg-fondo/80 backdrop-blur-xl">
-  <nav class="mx-auto flex h-20 max-w-[1200px] items-center gap-4 px-6">
-    <a href="/" class="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-texto">
-      <img src="/logo-icon.png" alt="" class="size-7" />
+  <nav class="mx-auto flex h-20 max-w-[1200px] items-center gap-6 px-6 xl:px-14">
+    <a href="/" class="flex shrink-0 items-center gap-2.5 text-2xl font-bold tracking-tight text-texto">
+      <img src="/logo-icon.png" alt="" class="size-8" />
       <span>Nodo<span class="text-acento-texto">.</span></span>
     </a>
 
@@ -52,7 +47,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       method="get"
       action="/"
       role="search"
-      class="hidden h-11 w-full max-w-[500px] items-center rounded-full border border-linea bg-superficie pl-5 pr-1.5 shadow-[var(--c-sombra)] transition focus-within:border-acento lg:flex"
+      class="hidden h-11 w-full min-w-0 max-w-[500px] items-center gap-1 rounded-full bg-fondo-alt p-1 lg:flex"
     >
       <input
         type="text"
@@ -60,7 +55,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
         value={searchQuery}
         placeholder="Buscar eventos..."
         aria-label="Buscar eventos"
-        class="min-w-0 flex-1 border-r border-linea-suave bg-transparent pr-4 text-sm tracking-[0.02em] text-texto outline-none placeholder:text-tenue"
+        class="h-9 min-w-0 flex-1 rounded-full bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none transition placeholder:text-tenue focus:bg-superficie focus:shadow-[var(--c-sombra)]"
       />
       <input
         type="text"
@@ -68,7 +63,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
         value={searchCity}
         placeholder="Ciudad"
         aria-label="Filtrar por ciudad"
-        class="min-w-0 flex-1 bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none placeholder:text-tenue"
+        class="h-9 min-w-0 flex-[0.85] rounded-full bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none transition placeholder:text-tenue focus:bg-superficie focus:shadow-[var(--c-sombra)]"
       />
       <button
         type="submit"
@@ -235,7 +230,6 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       )}
     </div>
   </nav>
-  <div class="cinta-gen rounded-b-3xl" aria-hidden="true"></div>
 </header>
 
 <script>
