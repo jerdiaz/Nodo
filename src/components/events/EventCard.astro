@@ -1,8 +1,13 @@
 ---
-import { MapPin, Video } from '@lucide/astro';
+import { MapPin, Users, Video } from '@lucide/astro';
 import Badge from '../ui/Badge.astro';
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
-import { formatEventDay, formatEventMonthShort, formatEventPrice, getEventLocationLabel } from '../../lib/format';
+import {
+  formatEventDate,
+  formatEventPrice,
+  formatEventTime,
+  getEventLocationLabel,
+} from '../../lib/format';
 import { genColorForEvent } from '../../lib/genColor';
 import type { EventModality, NodoEvent } from '../../types/event';
 
@@ -25,49 +30,49 @@ const ModalityIcon = event.modality === 'virtual' ? Video : MapPin;
 const autor = event.community ?? event.organizer;
 const locationLabel = getEventLocationLabel(event);
 const firstTag = event.tags[0];
-// El filo de color dice de que va el evento: sale de su primera etiqueta, no
-// de su posicion, asi que no cambia al filtrar ni al reordenar.
+// El color dice de que va el evento: sale de su primera etiqueta, no de su
+// posicion, asi que no cambia al filtrar ni al reordenar.
 const color = genColorForEvent(event);
+const asistentes = event.rsvpCount ?? 0;
 ---
 
 {/*
+  La imagen va suelta y el texto debajo, sin caja alrededor: sin borde, sin
+  fondo y sin sombra, como la cartelera de Meetup. Lo que separa una tarjeta de
+  la siguiente es el aire de la rejilla, no un marco.
+
+  El filo de color de arriba se fue con la caja -no habia donde apoyarlo-, asi
+  que el color del evento vive ahora en su etiqueta y en el titulo al pasar por
+  encima.
+
   h-full para que la tarjeta ocupe toda su celda: las de una fila miden lo que
-  la mas alta, y sin esto cada una se quedaba con el alto de su propio texto y
-  la fila salia dentada.
+  la mas alta, y sin esto cada una se quedaba con el alto de su propio texto.
 */}
-<article
-  data-gen={color}
-  class="group flex h-full flex-col overflow-hidden rounded-3xl border border-linea bg-superficie shadow-[var(--c-sombra)] transition duration-200 active:scale-[0.98] hover:border-[var(--g)]"
->
-  <div class="h-1 w-full bg-[var(--g)]" aria-hidden="true"></div>
+<article data-gen={color} class="group flex h-full flex-col">
   <a href={`/eventos/${event.slug}`} class="flex flex-1 flex-col">
-    <div class="relative aspect-[16/9] w-full overflow-hidden">
+    <div class="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-fondo-alt">
       {event.bannerUrl ? (
-        <img src={event.bannerSmallUrl ?? event.bannerUrl} alt="" class="h-full w-full object-cover" loading="lazy" />
+        <img
+          src={event.bannerSmallUrl ?? event.bannerUrl}
+          alt=""
+          class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+          loading="lazy"
+        />
       ) : (
         <div class="h-full w-full bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave" />
       )}
 
       {/*
-        Solo los de pago llevan chapa. Una que dijera "Gratis" iria en casi
-        todas las tarjetas de la cartelera, y lo que se repite en todas deja
-        de leerse: el precio importa justo cuando lo hay.
+        La chapa se dice tambien cuando es gratis. Sin caja que enmarque la
+        tarjeta, el precio es lo unico que se lee sobre la imagen, y una chapa
+        que solo aparece a veces obliga a interpretar su ausencia.
       */}
-      {event.price && (
-        <span class="absolute right-3 top-3 rounded-full bg-superficie px-2.5 py-1 text-xs font-semibold text-texto shadow-[var(--c-sombra)]">
-          {formatEventPrice(event)}
-        </span>
-      )}
-
-      <div class="absolute left-3 top-3 flex flex-col items-center rounded-xl bg-[#111113]/75 px-2.5 py-1.5 leading-none backdrop-blur-xl">
-        <span class="text-[10px] font-semibold uppercase tracking-wide text-white/80">
-          {formatEventMonthShort(event.startDate, event.timezone)}
-        </span>
-        <span class="text-sm font-bold text-white">{formatEventDay(event.startDate, event.timezone)}</span>
-      </div>
+      <span class="absolute left-3 top-3 rounded-full bg-superficie px-2.5 py-1 text-xs font-semibold text-texto shadow-[var(--c-sombra)]">
+        {formatEventPrice(event)}
+      </span>
     </div>
 
-    <div class="flex flex-1 flex-col p-5">
+    <div class="flex flex-1 flex-col pt-3">
       {/*
         Dos lineas como maximo y como minimo: el recorte evita que un titulo
         largo estire la fila entera, y el alto reservado hace que una tarjeta
@@ -76,45 +81,53 @@ const color = genColorForEvent(event);
 
         min-h-14 son las dos lineas de text-lg (28px cada una).
       */}
-      <h3 class="line-clamp-2 min-h-14 text-lg font-semibold text-texto">
+      <h3 class="line-clamp-2 min-h-14 text-lg font-semibold text-texto transition group-hover:text-[var(--g-texto)]">
         {event.title}
       </h3>
 
-      <div class="mt-3 flex items-center gap-1.5 text-sm text-suave">
-        <ModalityIcon class="size-4 shrink-0" stroke-width={1.75} />
-        <span class="line-clamp-1">{modalityLabel[event.modality]}{locationLabel && ` · ${locationLabel}`}</span>
-      </div>
+      <p class="mt-1 text-sm text-suave first-letter:uppercase">
+        {formatEventDate(event.startDate, event.timezone)} · {formatEventTime(event.startDate, event.timezone)}
+      </p>
 
-      {/* mt-auto empuja el pie al fondo cuando sobra sitio; el margen de
+      <p class="mt-1 flex items-center gap-1.5 text-sm text-suave">
+        <ModalityIcon class="size-4 shrink-0" stroke-width={1.75} />
+        <span class="line-clamp-1">
+          {modalityLabel[event.modality]}{locationLabel && ` · ${locationLabel}`}
+        </span>
+      </p>
+
+      <p class="mt-1 flex min-w-0 items-center gap-1.5 text-sm text-suave">
+        <span class="truncate">por {autor.name}</span>
+
+        {/*
+          La palomita es siempre de quien publico el evento, tambien cuando en
+          la tarjeta manda el nombre de la comunidad: lo que esta verificado es
+          la cuenta, no el colectivo.
+        */}
+        {event.organizer.verification && (
+          <VerifiedBadge type={event.organizer.verification} class="size-3.5 shrink-0" />
+        )}
+      </p>
+
+      {/* mt-auto empuja esta fila al fondo cuando sobra sitio; el margen de
           dentro es el que garantiza el aire cuando no sobra. */}
       <div class="mt-auto">
-      <div class="mt-4 flex items-center justify-between gap-3 border-t border-linea pt-3">
-        <div class="flex min-w-0 items-center gap-2">
-          {autor.avatarUrl ? (
-            <img src={autor.avatarUrl} alt="" class="size-6 shrink-0 rounded-full object-cover" />
+        <div class="mt-3 flex items-center justify-between gap-3">
+          {asistentes > 0 ? (
+            <span class="flex items-center gap-1.5 text-sm text-suave">
+              <Users class="size-4 shrink-0" stroke-width={1.75} />
+              {asistentes} {asistentes === 1 ? 'asistente' : 'asistentes'}
+            </span>
           ) : (
-            <div class="flex size-6 shrink-0 items-center justify-center rounded-full bg-fondo-alt text-[10px] font-medium text-suave">
-              {autor.name.charAt(0).toUpperCase()}
-            </div>
+            <span />
           )}
-          <span class="truncate text-xs text-suave">{autor.name}</span>
 
-          {/*
-            La palomita es siempre de quien publico el evento, tambien cuando
-            en la tarjeta manda el nombre de la comunidad: lo que esta
-            verificado es la cuenta, no el colectivo.
-          */}
-          {event.organizer.verification && (
-            <VerifiedBadge type={event.organizer.verification} class="size-3.5 shrink-0" />
+          {firstTag && (
+            <Badge variant="auto" seed={firstTag} class="shrink-0">
+              {firstTag}
+            </Badge>
           )}
         </div>
-
-        {firstTag && (
-          <Badge variant="auto" seed={firstTag} class="shrink-0">
-            {firstTag}
-          </Badge>
-        )}
-      </div>
       </div>
     </div>
   </a>
