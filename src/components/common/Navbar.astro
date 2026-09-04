@@ -1,5 +1,5 @@
 ---
-import { ChevronDown, LogOut, Search, Settings, User } from '@lucide/astro';
+import { ChevronDown, LogOut, Menu, Plus, Search, Settings, User } from '@lucide/astro';
 import { getDisplayUser } from '../../lib/auth';
 import ProviderIcon from '../ui/ProviderIcon.astro';
 
@@ -16,6 +16,18 @@ const links = [
 // viendo su ciudad escrita al navegar a la ficha de un evento y volver.
 const searchQuery = Astro.url.searchParams.get('q') ?? '';
 const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
+
+// La cabecera cambia de forma en movil segun se este en la portada o en el
+// listado de resultados, como hace Meetup: la portada se queda en logotipo,
+// Calendario y sesion, y el listado saca el buscador y recoge lo demas en la
+// hamburguesa, que es donde uno esta afinando una busqueda.
+//
+// La condicion es la misma que decide la vista en index.astro: modalidad,
+// busqueda o pasados. La ciudad no cuenta, porque filtra el carril sin sacar
+// de la portada.
+const enResultados =
+  Boolean(Astro.url.searchParams.get('modalidad') || searchQuery) ||
+  Astro.url.searchParams.get('tiempo') === 'pasados';
 ---
 
 {/*
@@ -36,7 +48,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
   <nav class="flex h-20 w-full items-center gap-6 px-6 lg:px-10">
     <a href="/" class="flex shrink-0 items-center gap-2.5 text-2xl font-bold tracking-tight text-texto">
       <img src="/logo-icon.png" alt="" class="size-8" />
-      <span>Nodo<span class="text-acento-texto">.</span></span>
+      <span class="hidden sm:inline">Nodo<span class="text-acento-texto">.</span></span>
     </a>
 
     {/*
@@ -48,7 +60,10 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       method="get"
       action="/"
       role="search"
-      class="group hidden h-11 w-full min-w-0 max-w-[500px] items-center gap-1 rounded-full bg-superficie p-1 shadow-[var(--c-sombra)] transition lg:flex focus-within:bg-fondo-alt focus-within:shadow-none"
+      class:list={[
+        'group h-11 w-full min-w-0 max-w-[500px] items-center gap-1 rounded-full bg-superficie p-1 shadow-[var(--c-sombra)] transition focus-within:bg-fondo-alt focus-within:shadow-none',
+        enResultados ? 'flex' : 'hidden lg:flex',
+      ]}
     >
       <input
         type="text"
@@ -59,7 +74,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
         class="h-9 min-w-0 flex-1 rounded-full bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none transition placeholder:text-tenue focus:bg-superficie focus:shadow-[var(--c-sombra)]"
       />
       <span
-        class="h-5 w-px shrink-0 bg-linea transition group-focus-within:bg-transparent"
+        class="hidden h-5 w-px shrink-0 bg-linea transition group-focus-within:bg-transparent lg:block"
         aria-hidden="true"
       ></span>
 
@@ -69,7 +84,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
         value={searchCity}
         placeholder="Ciudad"
         aria-label="Filtrar por ciudad"
-        class="h-9 min-w-0 flex-[0.85] rounded-full bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none transition placeholder:text-tenue focus:bg-superficie focus:shadow-[var(--c-sombra)]"
+        class="hidden h-9 min-w-0 flex-[0.85] rounded-full bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none transition placeholder:text-tenue focus:bg-superficie focus:shadow-[var(--c-sombra)] lg:block"
       />
       <button
         type="submit"
@@ -80,13 +95,13 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       </button>
     </form>
 
-    {/*
-      Calendario es el unico enlace que sobrevive en movil, junto al boton de
-      sesion. Los demas no caben ahi y siguen a un toque desde el pie; este se
-      queda porque es la otra forma de mirar la cartelera, y sin el, en movil la
-      cabecera se reduce a logotipo y sesion.
-    */}
-    <ul class="ml-auto flex shrink-0 items-center gap-7 text-sm font-medium tracking-[0.02em] text-suave">
+    <ul
+      class:list={[
+        'ml-auto shrink-0 items-center gap-7 text-sm font-medium tracking-[0.02em] text-suave lg:flex',
+        enResultados ? 'hidden' : 'flex',
+      ]}
+    >
+      {/* En la portada movil solo sobrevive Calendario; el resto, desde lg. */}
       {links.map((link) => (
         <li class:list={[link.href === '/calendario' ? '' : 'hidden lg:block']}>
           <a href={link.href} class="transition hover:text-texto">
@@ -96,7 +111,104 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       ))}
     </ul>
 
-    <div class="ml-auto flex shrink-0 items-center gap-3 lg:ml-0">
+    {/*
+      En movil, todo lo que no es logotipo ni buscador se recoge aqui: los
+      enlaces no caben en 375px junto a la pastilla, y repartirlos entre la
+      cabecera y el pie obligaba a recordar cual esta donde.
+    */}
+    <div class:list={['relative shrink-0 lg:hidden', enResultados ? '' : 'hidden']} data-menu>
+      <button
+        id="nodo-menu-trigger"
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-label="Abrir menu"
+        class="flex size-11 items-center justify-center rounded-full border border-linea bg-superficie text-texto transition active:scale-[0.95] hover:border-acento"
+      >
+        <Menu class="size-5" stroke-width={2} />
+      </button>
+
+      <div
+        id="nodo-menu-panel"
+        role="menu"
+        aria-labelledby="nodo-menu-trigger"
+        class="absolute right-0 top-full z-50 mt-2 hidden w-60 overflow-hidden rounded-2xl border border-linea bg-superficie p-2 shadow-[var(--c-sombra)]"
+      >
+        <a
+          href="/"
+          role="menuitem"
+          class="block rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+        >
+          Explorar
+        </a>
+        {links.map((link) => (
+          <a
+            href={link.href}
+            role="menuitem"
+            class="block rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+          >
+            {link.label}
+          </a>
+        ))}
+
+        <div class="my-2 h-px bg-linea"></div>
+
+        <a
+          href="/eventos/nuevo"
+          role="menuitem"
+          class="flex items-center gap-2 rounded-xl bg-acento px-3 py-2.5 text-sm font-semibold text-acento-contraste transition active:scale-[0.98] hover:opacity-90"
+        >
+          <Plus class="size-4" stroke-width={2.5} />
+          Publicar evento
+        </a>
+
+        {user ? (
+          <>
+            <a
+              href="/perfil"
+              role="menuitem"
+              class="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+            >
+              <User class="size-4 shrink-0" stroke-width={1.75} />
+              Ver perfil
+            </a>
+            <a
+              href="/configuracion"
+              role="menuitem"
+              class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+            >
+              <Settings class="size-4 shrink-0" stroke-width={1.75} />
+              Configuración
+            </a>
+            <button
+              id="nodo-logout-movil"
+              type="button"
+              role="menuitem"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-texto transition hover:bg-fondo-alt disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <LogOut class="size-4 shrink-0" stroke-width={1.75} />
+              Cerrar sesión
+            </button>
+          </>
+        ) : (
+          <button
+            id="nodo-entrar-movil"
+            type="button"
+            role="menuitem"
+            class="mt-1 w-full rounded-xl border border-linea px-3 py-2.5 text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento"
+          >
+            Iniciar sesión
+          </button>
+        )}
+      </div>
+    </div>
+
+    <div
+      class:list={[
+        'ml-auto shrink-0 items-center gap-3 lg:ml-0 lg:flex',
+        enResultados ? 'hidden' : 'flex',
+      ]}
+    >
       {user ? (
         <div class="relative" data-menu>
           <button
@@ -254,6 +366,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
   const menus = [
     createMenu('nodo-login-trigger', 'nodo-login-panel', 'nodo-login-chevron'),
     createMenu('nodo-user-trigger', 'nodo-user-panel'),
+    createMenu('nodo-menu-trigger', 'nodo-menu-panel'),
   ].filter((menu): menu is Menu => menu !== null);
 
   document.addEventListener('click', (event) => {
@@ -310,5 +423,22 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
   logoutButton?.addEventListener('click', async () => {
     logoutButton.disabled = true;
     await logout();
+  });
+
+  // Los equivalentes del panel movil. Son botones distintos y no los mismos
+  // reposicionados: los dos existen a la vez en el HTML y un id repetido
+  // dejaria a uno de ellos sin escuchar.
+  const logoutMovil = document.getElementById('nodo-logout-movil') as HTMLButtonElement | null;
+
+  logoutMovil?.addEventListener('click', async () => {
+    logoutMovil.disabled = true;
+    await logout();
+  });
+
+  // Entrar desde el movil abre el modal, que ya trae los dos proveedores, en
+  // vez de repetirlos dentro de un panel que ya va lleno.
+  document.getElementById('nodo-entrar-movil')?.addEventListener('click', () => {
+    menus.find((menu) => menu.trigger.id === 'nodo-menu-trigger')?.setOpen(false);
+    (document.getElementById('nodo-modal-sesion') as HTMLDialogElement | null)?.showModal();
   });
 </script>
