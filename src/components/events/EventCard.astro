@@ -30,12 +30,17 @@ const firstTag = event.tags[0];
 const color = genColorForEvent(event);
 ---
 
+{/*
+  h-full para que la tarjeta ocupe toda su celda: las de una fila miden lo que
+  la mas alta, y sin esto cada una se quedaba con el alto de su propio texto y
+  la fila salia dentada.
+*/}
 <article
   data-gen={color}
-  class="group overflow-hidden rounded-3xl border border-linea bg-superficie shadow-[var(--c-sombra)] transition duration-200 active:scale-[0.98] hover:border-[var(--g)]"
+  class="group flex h-full flex-col overflow-hidden rounded-3xl border border-linea bg-superficie shadow-[var(--c-sombra)] transition duration-200 active:scale-[0.98] hover:border-[var(--g)]"
 >
   <div class="h-1 w-full bg-[var(--g)]" aria-hidden="true"></div>
-  <a href={`/eventos/${event.slug}`} class="block">
+  <a href={`/eventos/${event.slug}`} class="flex flex-1 flex-col">
     <div class="relative aspect-[16/9] w-full overflow-hidden">
       {event.bannerUrl ? (
         <img src={event.bannerSmallUrl ?? event.bannerUrl} alt="" class="h-full w-full object-cover" loading="lazy" />
@@ -62,17 +67,28 @@ const color = genColorForEvent(event);
       </div>
     </div>
 
-    <div class="space-y-3 p-5">
-      <h3 class="text-lg font-semibold text-texto transition group-hover:text-texto">
+    <div class="flex flex-1 flex-col p-5">
+      {/*
+        Dos lineas como maximo y como minimo: el recorte evita que un titulo
+        largo estire la fila entera, y el alto reservado hace que una tarjeta
+        de titulo corto siga midiendo lo mismo que las demas, tambien cuando
+        estan en filas distintas.
+
+        min-h-14 son las dos lineas de text-lg (28px cada una).
+      */}
+      <h3 class="line-clamp-2 min-h-14 text-lg font-semibold text-texto">
         {event.title}
       </h3>
 
-      <div class="flex items-center gap-1.5 text-sm text-suave">
+      <div class="mt-3 flex items-center gap-1.5 text-sm text-suave">
         <ModalityIcon class="size-4 shrink-0" stroke-width={1.75} />
-        <span>{modalityLabel[event.modality]}{locationLabel && ` · ${locationLabel}`}</span>
+        <span class="line-clamp-1">{modalityLabel[event.modality]}{locationLabel && ` · ${locationLabel}`}</span>
       </div>
 
-      <div class="flex items-center justify-between gap-3 border-t border-linea pt-3">
+      {/* mt-auto empuja el pie al fondo cuando sobra sitio; el margen de
+          dentro es el que garantiza el aire cuando no sobra. */}
+      <div class="mt-auto">
+      <div class="mt-4 flex items-center justify-between gap-3 border-t border-linea pt-3">
         <div class="flex min-w-0 items-center gap-2">
           {autor.avatarUrl ? (
             <img src={autor.avatarUrl} alt="" class="size-6 shrink-0 rounded-full object-cover" />
@@ -98,6 +114,7 @@ const color = genColorForEvent(event);
             {firstTag}
           </Badge>
         )}
+      </div>
       </div>
     </div>
   </a>
