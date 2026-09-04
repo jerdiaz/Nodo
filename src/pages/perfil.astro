@@ -17,7 +17,7 @@ import type { SocialKey, UserProfile } from '../types/profile';
 const user = await getCurrentUser(Astro.cookies);
 
 if (!user) {
-  return Astro.redirect('/?login=required');
+  return Astro.redirect(`/?login=required&destino=${encodeURIComponent(Astro.url.pathname)}`);
 }
 
 let allEvents: NodoEvent[] = [];

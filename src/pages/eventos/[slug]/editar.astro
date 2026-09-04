@@ -15,7 +15,7 @@ if (!event) {
 const user = await getCurrentUser(Astro.cookies);
 
 if (!user) {
-  return Astro.redirect('/?login=required');
+  return Astro.redirect(`/?login=required&destino=${encodeURIComponent(Astro.url.pathname)}`);
 }
 
 if (user.uid !== event.organizer.uid) {

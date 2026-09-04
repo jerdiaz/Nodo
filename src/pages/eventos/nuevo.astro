@@ -7,7 +7,7 @@ import { getCommunityByOwner } from '../../lib/firebase/communities';
 const user = await getCurrentUser(Astro.cookies);
 
 if (!user) {
-  return Astro.redirect('/?login=required');
+  return Astro.redirect(`/?login=required&destino=${encodeURIComponent(Astro.url.pathname)}`);
 }
 
 // Si no administra ninguna, el formulario no dibuja el selector y el evento

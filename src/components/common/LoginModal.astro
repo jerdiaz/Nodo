@@ -78,8 +78,9 @@ import ProviderIcon from '../ui/ProviderIcon.astro';
 </style>
 
 <script>
-  import { loginWithGoogle, loginWithMicrosoft } from '../../lib/firebase/client';
-
+  // El SDK de Firebase Auth solo se importa al pulsar un proveedor (import
+  // dinamico): es el asset mas pesado del sitio y no hace falta en paginas
+  // donde nadie va a entrar.
   const modal = document.getElementById('nodo-modal-sesion') as HTMLDialogElement | null;
 
   if (modal) {
@@ -94,21 +95,57 @@ import ProviderIcon from '../ui/ProviderIcon.astro';
       modal.showModal();
     };
 
-    // Se enganchan todos los enlaces a publicar evento en vez de marcarlos uno
-    // a uno: hay uno en el banner, otro en la franja, otro en el estado vacio y
-    // otro en el pie, y marcarlos a mano garantiza olvidarse de alguno.
-    document.querySelectorAll<HTMLAnchorElement>('a[href="/eventos/nuevo"]').forEach((enlace) => {
-      enlace.addEventListener('click', (evento) => {
-        // El atributo lo pone el servidor, que es el unico que puede leer la
-        // cookie de sesion: es httpOnly y el navegador no la ve.
-        if (document.body.dataset.sesion === 'activa') {
-          return;
-        }
+    // Se engancha todo enlace que pida sesion en vez de marcarlos uno a uno:
+    // los CTAs de publicar (banner, franja, estado vacio, pie), el "Inicia
+    // sesion" de la ficha de evento y cualquier pagina protegida abierta en
+    // directo que el servidor haya devuelto a /?login=required.
+    const pideSesion = (enlace: HTMLAnchorElement): boolean =>
+      enlace.matches(
+        'a[href="/eventos/nuevo"], a[data-login-required], a[href*="login=required"]',
+      );
 
-        evento.preventDefault();
-        abrir(enlace.getAttribute('href') ?? '/eventos/nuevo');
-      });
+    document.addEventListener('click', (evento) => {
+      if (document.body.dataset.sesion === 'activa') {
+        return;
+      }
+
+      const blanco = evento.target as Element;
+      const enlace = blanco.closest?.('a');
+
+      if (!enlace || !pideSesion(enlace)) {
+        return;
+      }
+
+      // Si el enlace apunta a /?login=required (el CTA de RSVP, por ejemplo),
+      // "despues de entrar" es volver a la pagina en la que estaba: la URL
+      // actual ya es el destino. Los demas llevan el suyo en el href.
+      const irA = enlace.href.includes('login=required')
+        ? window.location.pathname + window.location.search
+        : (enlace.getAttribute('href') ?? '/eventos/nuevo');
+
+      evento.preventDefault();
+      abrir(irA);
     });
+
+    // El servidor redirige aqui a quien abrio una pagina protegida sin sesion,
+    // con su destino original en ?destino. Se abre el modal con ese destino y
+    // se limpia la URL para que recargar no vuelva a pedir el login.
+    const parametros = new URLSearchParams(window.location.search);
+
+    if (parametros.get('login') === 'required') {
+      const destinoParam = parametros.get('destino');
+      const ir = destinoParam ? decodeURIComponent(destinoParam) : '/eventos/nuevo';
+
+      history.replaceState(null, '', window.location.pathname);
+
+      if (document.body.dataset.sesion === 'activa') {
+        // Ya habia sesion (cookie que acaba de vencer, por ejemplo): se sigue
+        // al destino sin pasar por el modal.
+        window.location.replace(ir);
+      } else {
+        abrir(ir);
+      }
+    }
 
     document.getElementById('nodo-modal-cerrar')?.addEventListener('click', () => modal.close());
 
@@ -127,21 +164,22 @@ import ProviderIcon from '../ui/ProviderIcon.astro';
       }
     });
 
-    const botones = [
-      { id: 'nodo-modal-google', entrar: loginWithGoogle },
-      { id: 'nodo-modal-microsoft', entrar: loginWithMicrosoft },
+    const proveedores = [
+      { id: 'nodo-modal-google', modulo: () => import('../../lib/firebase/client').then((m) => m.loginWithGoogle) },
+      { id: 'nodo-modal-microsoft', modulo: () => import('../../lib/firebase/client').then((m) => m.loginWithMicrosoft) },
     ];
 
-    for (const { id, entrar } of botones) {
+    for (const { id, modulo } of proveedores) {
       const boton = document.getElementById(id) as HTMLButtonElement | null;
 
       boton?.addEventListener('click', async () => {
-        botones.forEach(({ id: otro }) => {
+        proveedores.forEach(({ id: otro }) => {
           (document.getElementById(otro) as HTMLButtonElement | null)?.setAttribute('disabled', '');
         });
         error?.classList.add('hidden');
 
         try {
+          const entrar = await modulo();
           await entrar(destino);
         } catch (fallo) {
           console.error('No se pudo iniciar sesión:', fallo);
@@ -149,7 +187,7 @@ import ProviderIcon from '../ui/ProviderIcon.astro';
             error.textContent = 'No se pudo iniciar sesión. Inténtalo de nuevo.';
             error.classList.remove('hidden');
           }
-          botones.forEach(({ id: otro }) => {
+          proveedores.forEach(({ id: otro }) => {
             (document.getElementById(otro) as HTMLButtonElement | null)?.removeAttribute('disabled');
           });
         }

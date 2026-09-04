@@ -9,7 +9,7 @@ import { VERIFICATION_LABEL } from '../types/profile';
 const user = await getCurrentUser(Astro.cookies);
 
 if (!user) {
-  return Astro.redirect('/?login=required');
+  return Astro.redirect(`/?login=required&destino=${encodeURIComponent(Astro.url.pathname)}`);
 }
 
 // Un 404 y no un 403: quien no es administrador no tiene por que enterarse de

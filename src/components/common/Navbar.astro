@@ -119,6 +119,18 @@ const enResultados =
     </ul>
 
     {/*
+      La accion principal del producto en desktop. En movil vive dentro de la
+      hamburguesa; aqui va a la vista para no obligar a abrir un menu.
+    */}
+    <a
+      href="/eventos/nuevo"
+      class="hidden h-9 shrink-0 items-center gap-1.5 rounded-full bg-acento px-4 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90 lg:inline-flex"
+    >
+      <Plus class="size-4" stroke-width={2.5} />
+      Publicar evento
+    </a>
+
+    {/*
       En movil, todo lo que no es logotipo ni buscador se recoge aqui: los
       enlaces no caben en 375px junto a la pastilla, y repartirlos entre la
       cabecera y el pie obligaba a recordar cual esta donde.
@@ -334,7 +346,15 @@ const enResultados =
 </header>
 
 <script>
-  import { loginWithGoogle, loginWithMicrosoft, logout } from '../../lib/firebase/client';
+  // El SDK de Firebase Auth no se carga en paginas publicas: se importa bajo
+  // demanda al primer clic de sesion/cierre. Sin esto, cada pagina arrastra el
+  // asset de auth mas pesado del sitio aunque nadie vaya a entrar.
+  let firebaseLib: Promise<typeof import('../../lib/firebase/client')> | null = null;
+
+  function cargarFirebase(): Promise<typeof import('../../lib/firebase/client')> {
+    firebaseLib ??= import('../../lib/firebase/client');
+    return firebaseLib;
+  }
 
   // Solo uno de los dos menus existe en cada render (segun haya sesion o no),
   // pero la mecanica -abrir, cerrar al pulsar fuera, cerrar con Escape- es la
@@ -406,11 +426,11 @@ const enResultados =
     menus.find((menu) => menu.trigger.id === 'nodo-login-trigger')?.setOpen(open);
   }
 
-  async function handleLogin(button: HTMLButtonElement, login: () => Promise<void>): Promise<void> {
+  async function handleLogin(button: HTMLButtonElement, entrar: () => Promise<void>): Promise<void> {
     button.disabled = true;
 
     try {
-      await login();
+      await entrar();
     } catch (error) {
       console.error('No se pudo iniciar sesión:', error);
       button.disabled = false;
@@ -419,17 +439,17 @@ const enResultados =
 
   googleButton?.addEventListener('click', () => {
     setLoginMenuOpen(false);
-    handleLogin(googleButton, loginWithGoogle);
+    void handleLogin(googleButton, async () => (await cargarFirebase()).loginWithGoogle());
   });
 
   microsoftButton?.addEventListener('click', () => {
     setLoginMenuOpen(false);
-    handleLogin(microsoftButton, loginWithMicrosoft);
+    void handleLogin(microsoftButton, async () => (await cargarFirebase()).loginWithMicrosoft());
   });
 
   logoutButton?.addEventListener('click', async () => {
     logoutButton.disabled = true;
-    await logout();
+    await (await cargarFirebase()).logout();
   });
 
   // Los equivalentes del panel movil. Son botones distintos y no los mismos
@@ -439,7 +459,7 @@ const enResultados =
 
   logoutMovil?.addEventListener('click', async () => {
     logoutMovil.disabled = true;
-    await logout();
+    await (await cargarFirebase()).logout();
   });
 
   // Entrar desde el movil abre el modal, que ya trae los dos proveedores, en
