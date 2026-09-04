@@ -1,6 +1,5 @@
 ---
 import { X } from '@lucide/astro';
-import ProviderIcon from '../ui/ProviderIcon.astro';
 ---
 
 {/*
@@ -8,53 +7,47 @@ import ProviderIcon from '../ui/ProviderIcon.astro';
   decida si lo muestra antes de que haya pintado nada: revelarlo con JS tras
   pintarlo visible causaria un parpadeo, y quedarse oculto no lo causa.
 
-  Posicion y medidas calcadas del recuadro de acceso de Meetup en la captura
-  que trajo el pedido: flotante bajo la cabecera, pegado al filo derecho a
-  20px (mismo margen que usa el pie), tarjeta de 360px.
+  Barra al pie, como la de Meetup en movil, y no la tarjeta flotante que habia
+  arriba a la derecha: aquella aparecia nada mas cargar y tapaba contenido antes
+  de que nadie hubiera visto de que va el sitio. Esta espera a que se baje.
+
+  Los dos proveedores no caben en una barra, asi que el boton abre el modal de
+  sesion, que ya los tiene. Es un boton y no un enlace porque no navega.
 */}
 <div
   id="nodo-banner-acceso"
   role="dialog"
   aria-labelledby="nodo-banner-acceso-titulo"
   hidden
-  class="fixed right-5 top-24 z-40 w-[calc(100vw-2.5rem)] max-w-[360px] rounded-3xl border border-linea bg-superficie p-5 shadow-[var(--c-sombra)]"
+  class="fixed inset-x-0 bottom-0 z-40 border-t border-linea bg-superficie px-5 py-4 shadow-[0_-8px_28px_-12px_rgb(17_17_19_/_0.18)]"
 >
-  <button
-    id="nodo-banner-cerrar"
-    type="button"
-    aria-label="Cerrar"
-    class="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-suave transition hover:bg-fondo-alt hover:text-texto"
-  >
-    <X class="size-4" stroke-width={2} />
-  </button>
+  <div class="mx-auto flex max-w-[1200px] flex-col items-center gap-3 sm:flex-row sm:justify-between">
+    <p id="nodo-banner-acceso-titulo" class="text-center text-base font-semibold text-texto sm:text-left">
+      Únete a Nodo y encuentra tu comunidad
+    </p>
 
-  <h2 id="nodo-banner-acceso-titulo" class="pr-8 text-base font-semibold text-texto">Accede a Nodo</h2>
-  <p class="mt-1 text-sm leading-5 tracking-[0.02em] text-suave">Guarda eventos y publica los tuyos.</p>
+    <div class="flex w-full items-center gap-2 sm:w-auto">
+      <button
+        id="nodo-banner-entrar"
+        type="button"
+        class="h-11 flex-1 rounded-full bg-acento px-6 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.98] hover:opacity-90 sm:flex-none"
+      >
+        Iniciar sesión
+      </button>
 
-  <div class="mt-4 space-y-2">
-    <button
-      id="nodo-banner-google"
-      type="button"
-      class="flex h-11 w-full items-center justify-center gap-2.5 rounded-full border border-linea bg-superficie text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      <ProviderIcon name="google" class="size-4" />
-      Continuar con Google
-    </button>
-
-    <button
-      id="nodo-banner-microsoft"
-      type="button"
-      class="flex h-11 w-full items-center justify-center gap-2.5 rounded-full border border-linea bg-superficie text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      <ProviderIcon name="microsoft" class="size-4" />
-      Continuar con Microsoft
-    </button>
+      <button
+        id="nodo-banner-cerrar"
+        type="button"
+        aria-label="Cerrar"
+        class="flex size-11 shrink-0 items-center justify-center rounded-full text-suave transition hover:bg-fondo-alt hover:text-texto"
+      >
+        <X class="size-5" stroke-width={2} />
+      </button>
+    </div>
   </div>
 </div>
 
 <script>
-  import { loginWithGoogle, loginWithMicrosoft } from '../../lib/firebase/client';
-
   const banner = document.getElementById('nodo-banner-acceso');
 
   if (banner) {
@@ -62,38 +55,31 @@ import ProviderIcon from '../ui/ProviderIcon.astro';
     // vez mientras sigue navegando, pero no es un rechazo permanente que
     // deba perseguirlo en cada visita futura.
     const CERRADO = 'nodo-anuncio-acceso-cerrado';
+    let cerrado = sessionStorage.getItem(CERRADO) === '1';
 
-    if (sessionStorage.getItem(CERRADO) !== '1') {
-      banner.hidden = false;
-    }
+    // Aparece al llegar a la mitad de la pagina, no al cargar: antes de eso
+    // nadie ha visto todavia que ofrece el sitio, y una barra pidiendo cuenta
+    // de entrada solo estorba.
+    const revisar = (): void => {
+      if (cerrado) return;
+      const recorrido = window.scrollY + window.innerHeight;
+      banner.hidden = recorrido < document.documentElement.scrollHeight * 0.5;
+    };
 
     document.getElementById('nodo-banner-cerrar')?.addEventListener('click', () => {
+      cerrado = true;
       banner.hidden = true;
       sessionStorage.setItem(CERRADO, '1');
     });
 
-    const botones = [
-      { id: 'nodo-banner-google', entrar: loginWithGoogle },
-      { id: 'nodo-banner-microsoft', entrar: loginWithMicrosoft },
-    ];
+    // El modal ya trae Google y Microsoft; la barra solo lo abre.
+    document.getElementById('nodo-banner-entrar')?.addEventListener('click', () => {
+      const modal = document.getElementById('nodo-modal-sesion') as HTMLDialogElement | null;
+      modal?.showModal();
+    });
 
-    for (const { id, entrar } of botones) {
-      const boton = document.getElementById(id) as HTMLButtonElement | null;
-
-      boton?.addEventListener('click', async () => {
-        botones.forEach(({ id: otro }) => {
-          (document.getElementById(otro) as HTMLButtonElement | null)?.setAttribute('disabled', '');
-        });
-
-        try {
-          await entrar();
-        } catch (error) {
-          console.error('No se pudo iniciar sesión:', error);
-          botones.forEach(({ id: otro }) => {
-            (document.getElementById(otro) as HTMLButtonElement | null)?.removeAttribute('disabled');
-          });
-        }
-      });
-    }
+    window.addEventListener('scroll', revisar, { passive: true });
+    window.addEventListener('resize', revisar);
+    revisar();
   }
 </script>

@@ -76,6 +76,10 @@ const virtuales = proximos.filter((event) => event.modality === 'virtual');
 // vive detras de "Ver todos los eventos", que lleva al listado completo.
 const LIMITE_CARRIL = 4;
 
+// En telefono las tarjetas van en una sola columna, asi que la cuarta solo
+// alarga el scroll antes de llegar al resto de la pagina.
+const LIMITE_MOVIL = 3;
+
 // Las etiquetas se guardan tal como las teclea quien publica, asi que "fiesta"
 // y "Fiesta" conviven y salian como dos categorias distintas. Se agrupan sin
 // distinguir mayusculas ni tildes -misma regla que ya usa la ciudad- y se
@@ -463,11 +467,29 @@ if (MOSTRAR_PUBLICACIONES) {
             )}
           </div>
 
+          {/*
+            En telefono se muestran tres y no cuatro: apiladas en una columna,
+            la cuarta solo alarga el scroll antes de llegar al resto de la
+            pagina. El boton de debajo lleva al listado completo.
+          */}
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {presenciales.slice(0, LIMITE_CARRIL).map((event) => (
-              <EventCard event={event} />
+            {presenciales.slice(0, LIMITE_CARRIL).map((event, indice) => (
+              <div class:list={[indice >= LIMITE_MOVIL ? 'hidden sm:block' : '']}>
+                <EventCard event={event} />
+              </div>
             ))}
           </div>
+
+          {presenciales.length > LIMITE_MOVIL && (
+            <div class="mt-8 sm:hidden">
+              <a
+                href={buildFilterHref({ modality: 'presencial', city: ciudad })}
+                class="flex h-11 w-full items-center justify-center rounded-full border border-linea bg-superficie text-sm font-semibold tracking-[0.02em] text-texto transition active:scale-[0.98] hover:border-acento"
+              >
+                Ver más eventos
+              </a>
+            </div>
+          )}
         </section>
       )}
 
@@ -493,10 +515,23 @@ if (MOSTRAR_PUBLICACIONES) {
           </div>
 
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {virtuales.slice(0, LIMITE_CARRIL).map((event) => (
-              <EventCard event={event} />
+            {virtuales.slice(0, LIMITE_CARRIL).map((event, indice) => (
+              <div class:list={[indice >= LIMITE_MOVIL ? 'hidden sm:block' : '']}>
+                <EventCard event={event} />
+              </div>
             ))}
           </div>
+
+          {virtuales.length > LIMITE_MOVIL && (
+            <div class="mt-8 sm:hidden">
+              <a
+                href={buildFilterHref({ modality: 'virtual' })}
+                class="flex h-11 w-full items-center justify-center rounded-full border border-linea bg-superficie text-sm font-semibold tracking-[0.02em] text-texto transition active:scale-[0.98] hover:border-acento"
+              >
+                Ver más eventos
+              </a>
+            </div>
+          )}
         </section>
       )}
 
@@ -572,13 +607,13 @@ if (MOSTRAR_PUBLICACIONES) {
             pantalla en vez de cortarse en el margen del contenedor, que es lo
             que delata que hay mas contenido a la derecha.
           */}
-          <div class="-mx-6 mt-8 flex snap-x gap-5 overflow-x-auto px-6 pb-6 pt-3">
+          <div class="mt-8 grid grid-cols-2 gap-4 pb-4 sm:-mx-6 sm:flex sm:snap-x sm:gap-5 sm:overflow-x-auto sm:px-6 sm:pb-6 sm:pt-3">
             {categorias.map((categoria, indice) => (
               <a
                 href={buildFilterHref({ search: categoria.nombre })}
                 data-gen={categoria.color}
                 class:list={[
-                  'group relative flex h-[150px] w-[230px] shrink-0 snap-start flex-col justify-between rounded-3xl bg-superficie p-5 shadow-[var(--c-sombra)] transition hover:-translate-y-1',
+                  'group relative flex h-[150px] w-full shrink-0 snap-start flex-col justify-between rounded-3xl bg-superficie p-5 shadow-[var(--c-sombra)] transition hover:-translate-y-1 sm:w-[230px]',
                   indice % 2 === 0 ? '' : 'lg:translate-y-6 lg:hover:translate-y-5',
                 ]}
               >
