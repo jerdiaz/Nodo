@@ -866,48 +866,36 @@ function textoAsistentes(total: number): string {
 </script>
 
 <script>
-  // Aparicion de la barra. Dos observadores en vez de escuchar el scroll: el
-  // navegador ya sabe cuando un elemento entra o sale, y preguntarselo en cada
-  // pixel de scroll obligaria a medir posiciones a mano en cada evento.
+  // Aparicion de la barra: entra cuando el boton de asistir se va de la
+  // pantalla y se queda hasta el final. Un observador y no el evento de
+  // scroll, porque el navegador ya sabe cuando un elemento entra o sale y
+  // preguntarselo en cada pixel obligaria a medir posiciones a mano.
+  //
+  // Antes tambien se escondia al llegar al pie, y eso era el problema: el pie
+  // es alto, asi que la barra desaparecia a media pagina y volvia al subir
+  // unos pixeles. Ahora no se esconde nunca una vez ha salido; que no tape el
+  // pie lo resuelve el hueco que BaseLayout deja debajo cuando la pagina
+  // declara barraInferior.
   const barra = document.getElementById('barra-evento');
   const ancla = document.getElementById('rsvp-anchor');
-  const pie = document.querySelector('footer');
 
   if (barra && ancla) {
-    let anclaVisible = true;
-    let pieVisible = false;
-
-    const pintar = (): void => {
-      const mostrar = !anclaVisible && !pieVisible;
-      barra.classList.toggle('invisible', !mostrar);
-      barra.classList.toggle('translate-y-full', !mostrar);
-      barra.classList.toggle('opacity-0', !mostrar);
-    };
-
     new IntersectionObserver(
       ([entrada]) => {
-        anclaVisible = entrada?.isIntersecting ?? true;
-        pintar();
+        // No basta con que el bloque no se vea: hay que mirar por donde no se
+        // ve. Al cargar la pagina el boton todavia esta mas abajo -tampoco se
+        // ve- y con solo isIntersecting la barra salia de entrada, se ocultaba
+        // al llegar al boton y volvia a salir despues. Se pide ademas que el
+        // bloque haya quedado por encima, que es lo que significa "ya pasaste
+        // el boton".
+        const rect = entrada?.boundingClientRect;
+        const mostrar = Boolean(entrada && !entrada.isIntersecting && rect && rect.top < 0);
+        barra.classList.toggle('invisible', !mostrar);
+        barra.classList.toggle('translate-y-full', !mostrar);
+        barra.classList.toggle('opacity-0', !mostrar);
       },
-      // El bloque cuenta como visible hasta que su ultimo pixel se va por
-      // arriba; asi la barra no entra mientras todavia se lee el boton.
       { threshold: 0 },
     ).observe(ancla);
-
-    if (pie) {
-      new IntersectionObserver(
-        ([entrada]) => {
-          pieVisible = entrada?.isIntersecting ?? false;
-          pintar();
-        },
-        // El pie no cuenta como visible en cuanto asoma, sino cuando sube
-        // hasta donde esta la barra: recortar 96px por abajo -su alto con el
-        // margen- deja que la barra siga ahi mientras todavia no se tocan.
-        // Sin este recorte, en una ficha corta el pie entra antes de que el
-        // boton de asistir se haya ido y la barra no aparecia nunca.
-        { threshold: 0, rootMargin: '0px 0px -96px 0px' },
-      ).observe(pie);
-    }
   }
 
   // Compartir desde la barra. No reutiliza el boton de la tarjeta porque

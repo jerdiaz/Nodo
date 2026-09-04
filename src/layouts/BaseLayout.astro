@@ -116,6 +116,16 @@ const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
       <slot />
     </main>
     <Footer />
+
+    {/*
+      Hueco al final para las paginas con barra fija: la barra flota sobre el
+      contenido, asi que sin esto taparia para siempre la ultima franja del
+      pie -el aviso de copyright y sus enlaces- una vez llegado al final.
+      Antes se resolvia escondiendo la barra al ver el pie, pero el pie es
+      alto y la barra acababa desapareciendo a media pagina.
+    */}
+    {barraInferior && <div class="h-24" aria-hidden="true"></div>}
+
     <LoginModal />
     {!haySesion && !barraInferior && <LoginBanner />}
   </body>
