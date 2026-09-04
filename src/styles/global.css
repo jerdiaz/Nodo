@@ -118,6 +118,16 @@
   }
 }
 
+/* Lo unico que CSS alcanza del calendario nativo de datetime-local: el dia
+   seleccionado y los controles pasan del morado del sistema al rojo de marca.
+   La forma, la tipografia y la disposicion del desplegable las pone el sistema
+   operativo y no hay selector que llegue a ellas.
+
+   De paso tinta casillas, radios y barras de rango, que usan el mismo valor. */
+:root {
+  accent-color: var(--c-acento);
+}
+
 body {
   background: var(--c-fondo);
   color: var(--c-texto);
