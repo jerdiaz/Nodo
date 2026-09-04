@@ -304,27 +304,6 @@ if (MOSTRAR_PUBLICACIONES) {
     </div>
 
     <div class="relative mx-auto max-w-[680px] text-center">
-      {/*
-        En telefono no cabe uno a cada lado de cada linea: el titular pasa de
-        tres lineas a seis y la mas larga se come 301 de los 327px de la
-        columna. Se reparten igualmente por las cuatro esquinas, pero apoyados
-        en los dos sitios que si estan vacios a cualquier ancho: la franja
-        sobre el titular y los costados del boton.
-      */}
-      {iconosBanner.slice(0, 2).map(({ Icono, color, giro }, indice) => (
-        <div
-          data-gen={color}
-          aria-hidden="true"
-          class:list={[
-            'pointer-events-none absolute -top-16 grid size-10 place-items-center rounded-2xl bg-superficie shadow-[var(--c-sombra)] sm:size-12 md:hidden',
-            indice === 0 ? 'left-0' : 'right-0',
-            giro,
-          ]}
-        >
-          <Icono class="size-4 text-[var(--g)] sm:size-5" stroke-width={1.75} />
-        </div>
-      ))}
-
       {/* Desde md hay aire de sobra a los lados del titular y se reparten. */}
       {iconosBanner.map(({ Icono, color, giro, sitio }) => (
         <div
@@ -347,7 +326,34 @@ if (MOSTRAR_PUBLICACIONES) {
         seccion Que es Nodo, pero es una propuesta: el copy de marca lo decide
         la casa, y cambiarlo aqui no toca ninguna medida.
       */}
-      <h1 class="text-[40px] font-bold leading-[48px] text-texto">
+      <h1 class="relative text-[40px] font-bold leading-[48px] text-texto">
+        {/*
+          En telefono van a las cuatro esquinas del titular, colgados del
+          propio <h1> y no de una altura en pixeles: ahi reparte seis lineas en
+          vez de tres y su alto cambia con el ancho de la pantalla. La primera
+          linea y la ultima son las cortas, asi que las esquinas son
+          precisamente el sitio que queda libre.
+
+          Entre 432 y 559 desaparecen: en esa franja el titular se reparte en
+          cuatro lineas que ocupan casi todo el ancho -a 480 la primera deja
+          25px libres a cada lado- y no hay esquina donde ponerlos sin pisar el
+          texto. Medido ancho por ancho; por debajo y por encima sobra sitio.
+        */}
+        {iconosBanner.map(({ Icono, color, giro }, indice) => (
+          <span
+            data-gen={color}
+            aria-hidden="true"
+            class:list={[
+              'pointer-events-none absolute grid size-10 place-items-center rounded-2xl bg-superficie shadow-[var(--c-sombra)] min-[432px]:max-[559px]:hidden md:hidden',
+              indice % 2 === 0 ? 'left-0' : 'right-0',
+              indice < 2 ? 'top-0' : 'bottom-0',
+              giro,
+            ]}
+          >
+            <Icono class="size-4 text-[var(--g)]" stroke-width={1.75} />
+          </span>
+        ))}
+
         Talleres, encuentros<br />
         y convocatorias de la red,<br />
         en <span class="text-acento-texto">una sola cartelera</span>.
@@ -359,21 +365,7 @@ if (MOSTRAR_PUBLICACIONES) {
         confirma tu asistencia.
       </p>
 
-      <div class="relative mt-8">
-        {iconosBanner.slice(2).map(({ Icono, color, giro }, indice) => (
-          <div
-            data-gen={color}
-            aria-hidden="true"
-            class:list={[
-              'pointer-events-none absolute top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-2xl bg-superficie shadow-[var(--c-sombra)] sm:size-12 md:hidden',
-              indice === 0 ? 'left-0' : 'right-0',
-              giro,
-            ]}
-          >
-            <Icono class="size-4 text-[var(--g)] sm:size-5" stroke-width={1.75} />
-          </div>
-        ))}
-
+      <div class="mt-8">
         <a
           href="/eventos/nuevo"
           class="inline-flex h-[46px] items-center rounded-full bg-acento px-6 text-base font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
