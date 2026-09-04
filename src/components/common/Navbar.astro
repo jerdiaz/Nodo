@@ -4,6 +4,12 @@ import { getDisplayUser } from '../../lib/auth';
 
 const user = await getDisplayUser(Astro.cookies);
 
+const links = [
+  { href: '/calendario', label: 'Calendario' },
+  { href: '/comunidades', label: 'Comunidades' },
+  ...(user ? [{ href: '/mis-eventos', label: 'Mis eventos' }] : []),
+];
+
 // La cabecera va en todas las paginas, asi que la busqueda se rellena con lo
 // que haya en la URL y no con estado propio: quien filtra por ciudad sigue
 // viendo su ciudad escrita al navegar a la ficha de un evento y volver.
@@ -73,7 +79,17 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       </button>
     </form>
 
-    <div class="ml-auto flex shrink-0 items-center gap-3">
+    <ul class="ml-auto hidden shrink-0 items-center gap-7 text-sm font-medium tracking-[0.02em] text-suave lg:flex">
+      {links.map((link) => (
+        <li>
+          <a href={link.href} class="transition hover:text-texto">
+            {link.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <div class="ml-auto flex shrink-0 items-center gap-3 lg:ml-0">
       {user ? (
         <div class="relative" data-menu>
           <button
