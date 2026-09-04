@@ -149,53 +149,42 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
           value={event?.venue ?? ''}
         />
       </div>
+      {/*
+        La direccion es el buscador. Antes habia dos cajas -la direccion a mano
+        y un "Ubicacion exacta" aparte- y nada obligaba a que dijeran lo mismo:
+        quien escribia "utb" en las dos se quedaba con "utb, utb, Cartagena" en
+        la ficha. Con una sola, elegir de la lista rellena a la vez la
+        direccion, el lugar, la ciudad y el punto del mapa.
+
+        Sigue admitiendo texto a mano y enlaces de Maps pegados: lo primero se
+        publica sin punto, como siempre, y lo segundo lo resuelve
+        /api/ubicacion, que distingue un enlace de una busqueda.
+      */}
       <div>
         <label for="address" class="block text-sm font-medium text-texto">Dirección</label>
         <input
           id="address"
           name="address"
           type="text"
+          autocomplete="off"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="place-results"
+          aria-autocomplete="list"
           class={inputClass}
-          placeholder="Cra 13 #45-12"
+          placeholder="Empieza a escribir la dirección o el sitio"
           value={event?.address ?? ''}
         />
-      </div>
-
-      {/*
-        El punto exacto. Buscar por nombre y pegar un enlace de Maps son la
-        misma caja a proposito: quien tiene el enlace lo pega, quien no, teclea
-        el sitio. Lo resuelve /api/ubicacion, que distingue las dos cosas.
-
-        Sin punto el evento se sigue publicando: el mapa de la ficha cae a
-        buscar por la direccion escrita, como hasta ahora.
-      */}
-      <div>
-        <label for="place-search" class="block text-sm font-medium text-texto">Ubicación exacta</label>
-        <div class="mt-1.5 flex gap-2">
-          <input
-            id="place-search"
-            type="text"
-            autocomplete="off"
-            class={`${inputClassFila} min-w-0 flex-1`}
-            placeholder="Busca el sitio o pega un enlace de Google Maps"
-          />
-          <button
-            type="button"
-            id="place-search-button"
-            class="shrink-0 rounded-xl border border-linea bg-superficie px-4 text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Buscar
-          </button>
-        </div>
         <p class="mt-1.5 text-xs text-tenue">
-          Escribe el nombre del sitio, o ábrelo en Google Maps y pega aquí el enlace. El punto que
-          elijas es el que verá quien vaya.
+          Escribe y elige de la lista para fijar el punto exacto. También puedes pegar el enlace del
+          sitio en Google Maps.
         </p>
 
         <p id="place-error" class="mt-1.5 hidden text-xs text-acento-texto"></p>
 
         <ul
           id="place-results"
+          role="listbox"
           class="mt-2 hidden divide-y divide-linea overflow-hidden rounded-xl border border-linea bg-superficie"
         ></ul>
 
@@ -559,8 +548,6 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
 
   const latitudeInput = document.getElementById('latitude') as HTMLInputElement;
   const longitudeInput = document.getElementById('longitude') as HTMLInputElement;
-  const placeSearch = document.getElementById('place-search') as HTMLInputElement;
-  const placeButton = document.getElementById('place-search-button') as HTMLButtonElement;
   const placeResults = document.getElementById('place-results') as HTMLUListElement;
   const placeError = document.getElementById('place-error') as HTMLParagraphElement;
   const placeMap = document.getElementById('place-map') as HTMLElement;
@@ -632,7 +619,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
   }
 
   async function elegirSitio(sitio: Sitio): Promise<void> {
-    placeResults.classList.add('hidden');
+    cerrarResultados();
     placeError.classList.add('hidden');
 
     // Una sugerencia de Google no trae coordenadas todavia: se piden ahora,
@@ -672,10 +659,11 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     guardarPunto(elegido.latitude!, elegido.longitude!);
     const sitio2 = elegido;
 
-    // Se rellenan solo los campos vacios: quien ya escribio el nombre del
-    // sitio a su manera no quiere que la busqueda se lo pise.
+    // La direccion si se pisa: es el campo donde se acaba de elegir, y dejar
+    // lo escrito a medias seria contradecir la eleccion. El lugar y la ciudad
+    // solo si estaban vacios, que ahi quien escribio a su manera manda.
+    addressInput.value = sitio2.direccion || sitio2.nombre;
     if (!venueInput.value && sitio2.nombre) venueInput.value = sitio2.nombre;
-    if (!addressInput.value && sitio2.direccion) addressInput.value = sitio2.direccion;
     if (!cityInput.value && sitio2.ciudad) cityInput.value = sitio2.ciudad;
 
     await pintarMapa(sitio2.latitude!, sitio2.longitude!);
@@ -704,32 +692,45 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
         boton.appendChild(linea);
       }
 
-      boton.addEventListener('click', () => void elegirSitio(sitio));
+      boton.addEventListener('mousedown', (evento) => {
+        evento.preventDefault();
+        void elegirSitio(sitio);
+      });
       item.appendChild(boton);
       placeResults.appendChild(item);
     });
 
     placeResults.classList.remove('hidden');
+    addressInput.setAttribute('aria-expanded', 'true');
+  }
+
+  function cerrarResultados(): void {
+    placeResults.classList.add('hidden');
+    addressInput.setAttribute('aria-expanded', 'false');
   }
 
   async function buscarSitio(): Promise<void> {
-    const consulta = placeSearch.value.trim();
+    const consulta = addressInput.value.trim();
     placeError.classList.add('hidden');
 
-    if (consulta.length < 3) {
-      mostrarErrorSitio('Escribe al menos tres letras, o pega el enlace del sitio.');
+    if (consulta.length < 4) {
+      cerrarResultados();
       return;
     }
 
-    const textoOriginal = placeButton.textContent;
-    placeButton.disabled = true;
-    placeButton.textContent = 'Buscando…';
+    // La respuesta que llega tarde no puede pisar a la de una consulta mas
+    // reciente: se descarta comparando contra lo que hay escrito ahora.
+    const consultaLanzada = consulta;
 
     try {
       const response = await fetch(
         `/api/ubicacion?q=${encodeURIComponent(consulta)}&sesion=${sesionBusqueda}`,
       );
       const result = await response.json();
+
+      if (addressInput.value.trim() !== consultaLanzada) {
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(result.error ?? 'No se pudo buscar la ubicación.');
@@ -738,13 +739,12 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
       const sitios: Sitio[] = result.resultados ?? [];
 
       if (sitios.length === 0) {
-        placeResults.classList.add('hidden');
-        mostrarErrorSitio('No se encontró ese sitio. Prueba con el nombre y la ciudad.');
+        cerrarResultados();
         return;
       }
 
       // Un enlace de Maps resuelve a un unico punto: no hay nada que elegir.
-      if (sitios.length === 1) {
+      if (sitios.length === 1 && sitios[0]!.latitude !== undefined) {
         await elegirSitio(sitios[0]!);
         return;
       }
@@ -752,21 +752,36 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
       pintarResultados(sitios);
     } catch (error) {
       mostrarErrorSitio(error instanceof Error ? error.message : 'No se pudo buscar la ubicación.');
-    } finally {
-      placeButton.disabled = false;
-      placeButton.textContent = textoOriginal;
     }
   }
 
-  placeButton.addEventListener('click', () => void buscarSitio());
+  // Se espera a que pare de teclear: sin esto, escribir una direccion de
+  // treinta letras serian treinta consultas, y Places se paga por llamada.
+  let temporizadorBusqueda: ReturnType<typeof setTimeout> | undefined;
+
+  addressInput.addEventListener('input', () => {
+    clearTimeout(temporizadorBusqueda);
+    temporizadorBusqueda = setTimeout(() => void buscarSitio(), 350);
+  });
 
   // El formulario lleva novalidate y su propio submit: sin esto, un Enter en
   // este campo publicaria el evento en mitad de la busqueda.
-  placeSearch.addEventListener('keydown', (evento) => {
+  addressInput.addEventListener('keydown', (evento) => {
     if (evento.key === 'Enter') {
       evento.preventDefault();
+      clearTimeout(temporizadorBusqueda);
       void buscarSitio();
+      return;
     }
+
+    if (evento.key === 'Escape') {
+      cerrarResultados();
+    }
+  });
+
+  addressInput.addEventListener('blur', () => {
+    // Un respiro para que el mousedown de la lista llegue a su destino.
+    setTimeout(cerrarResultados, 150);
   });
 
   placeClear.addEventListener('click', () => {
@@ -775,7 +790,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     placeMap.classList.add('hidden');
     placeChosen.classList.add('hidden');
     placeChosen.classList.remove('flex');
-    placeResults.classList.add('hidden');
+    cerrarResultados();
   });
 
   // Al editar, el evento ya trae punto: se pinta de entrada.
