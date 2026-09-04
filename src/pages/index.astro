@@ -606,8 +606,13 @@ if (MOSTRAR_PUBLICACIONES) {
             -mx-6 px-6 hace que el desplazamiento llegue hasta el filo de la
             pantalla en vez de cortarse en el margen del contenedor, que es lo
             que delata que hay mas contenido a la derecha.
+
+            El hueco inferior es holgado a proposito: overflow-x en auto pone el
+            eje vertical tambien en auto, asi que los 24px que baja la tarjeta
+            escalonada mas los 6 que sobresale su barra de color dibujaban una
+            barra de desplazamiento vertical al pasar por la seccion.
           */}
-          <div class="mt-8 grid grid-cols-2 gap-4 pb-4 sm:-mx-6 sm:flex sm:snap-x sm:gap-5 sm:overflow-x-auto sm:px-6 sm:pb-6 sm:pt-3">
+          <div class="mt-8 grid grid-cols-2 gap-4 pb-4 sm:-mx-6 sm:flex sm:snap-x sm:gap-5 sm:overflow-x-auto sm:px-6 sm:pb-10 sm:pt-3">
             {categorias.map((categoria, indice) => (
               <a
                 href={buildFilterHref({ search: categoria.nombre })}
