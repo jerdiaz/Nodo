@@ -3,7 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { jsonResponse } from '../../../../lib/api';
 import { getCurrentUser } from '../../../../lib/auth';
 import { getAdminDb } from '../../../../lib/firebase/server';
-import { clearRsvp, setRsvp } from '../../../../lib/firebase/rsvps';
+import { AFORO_COMPLETO, clearRsvp, setRsvp } from '../../../../lib/firebase/rsvps';
 
 function toDate(value: unknown): Date | null {
   if (value instanceof Timestamp) {
@@ -40,8 +40,16 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     return jsonResponse({ error: 'Este evento ya terminó.' }, 400);
   }
 
-  const result = await setRsvp(id, user.uid);
-  return jsonResponse({ attending: result.attending, count: result.count }, 200);
+  try {
+    const result = await setRsvp(id, user.uid);
+    return jsonResponse({ attending: result.attending, count: result.count }, 200);
+  } catch (error) {
+    if (error instanceof Error && error.message === AFORO_COMPLETO) {
+      return jsonResponse({ error: 'Este evento ya llenó su aforo.' }, 409);
+    }
+
+    throw error;
+  }
 };
 
 export const DELETE: APIRoute = async ({ params, cookies }) => {

@@ -65,9 +65,20 @@ export async function getRsvpInfo(eventId: string, uid?: string): Promise<RsvpIn
   return { count, attending: doc.exists };
 }
 
+// Lo lanza setRsvp cuando ya no quedan lugares. Es un mensaje centinela, como
+// el USERNAME_TAKEN de claimUsername: la transaccion no puede devolver un
+// resultado a medias, tiene que abortar, y quien la llama lo traduce a una
+// respuesta HTTP.
+export const AFORO_COMPLETO = 'AFORO_COMPLETO';
+
 // Toggle de asistencia con el contador desnormalizado: la escritura del
 // documento de rsvp y la del contador van en la misma transaccion, asi que no
 // pueden descuadrarse aunque dos personas confirmen a la vez.
+//
+// El aforo se comprueba aqui dentro y no antes por lo mismo: dos personas
+// pidiendo el ultimo lugar a la vez pasarian las dos una comprobacion previa
+// y el evento acabaria con un asistente de mas. Dentro de la transaccion, la
+// segunda relee el contador ya actualizado y se cae.
 export async function setRsvp(eventId: string, uid: string): Promise<{ attending: true; count: number }> {
   const db = getAdminDb();
   const eventRef = db.collection('events').doc(eventId);
@@ -76,9 +87,14 @@ export async function setRsvp(eventId: string, uid: string): Promise<{ attending
   const count = await db.runTransaction(async (transaction) => {
     const eventDoc = await transaction.get(eventRef);
     const current = typeof eventDoc.data()?.rsvpCount === 'number' ? (eventDoc.data()!.rsvpCount as number) : 0;
+    const capacity = typeof eventDoc.data()?.capacity === 'number' ? (eventDoc.data()!.capacity as number) : null;
     const existing = await transaction.get(rsvpRef);
 
     if (!existing.exists) {
+      if (capacity !== null && current >= capacity) {
+        throw new Error(AFORO_COMPLETO);
+      }
+
       transaction.set(rsvpRef, { uid, createdAt: FieldValue.serverTimestamp() });
       transaction.update(eventRef, { rsvpCount: current + 1 });
       return current + 1;
