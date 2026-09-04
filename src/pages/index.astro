@@ -51,12 +51,22 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 // Publicaciones de Instagram, cacheadas en Firestore por /api/instagram/sync.
 // Se lee de ahi y no de Instagram: consultar en cada visita gastaria cuota y
 // ataria el tiempo de respuesta de la home a un servicio ajeno.
+//
+// Apagado a proposito hasta que existan las credenciales de la Graph API.
+// Es un interruptor explicito y no "se oculta si no hay datos": asi la seccion
+// no aparece sola el dia que alguien sincronice, y encenderla es esta linea.
+// Con el interruptor apagado tampoco se consulta Firestore, que es una lectura
+// menos en cada carga de la home.
+const MOSTRAR_PUBLICACIONES = false;
+
 let posts: InstagramPost[] = [];
 
-try {
-  posts = await getInstagramPosts(10);
-} catch (error) {
-  console.warn('No se pudieron obtener las publicaciones de Instagram:', error);
+if (MOSTRAR_PUBLICACIONES) {
+  try {
+    posts = await getInstagramPosts(10);
+  } catch (error) {
+    console.warn('No se pudieron obtener las publicaciones de Instagram:', error);
+  }
 }
 ---
 
