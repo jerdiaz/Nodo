@@ -6,7 +6,7 @@ import EventFilter from '../components/events/EventFilter.astro';
 import SecondaryFilters from '../components/events/SecondaryFilters.astro';
 import StatusToast from '../components/common/StatusToast.astro';
 import Franja from '../components/common/Franja.astro';
-import { CalendarCheck, Compass, MapPin, Megaphone, Pencil, Video } from '@lucide/astro';
+import { ArrowUpRight, CalendarCheck, Compass, MapPin, Megaphone, Pencil, Video } from '@lucide/astro';
 import { filterEvents, getEvents, getFilterCities } from '../lib/firebase/events';
 import { buildFilterHref } from '../lib/eventFilterHref';
 import { genColor } from '../lib/genColor';
@@ -53,7 +53,20 @@ const virtuales = proximos.filter((event) => event.modality === 'virtual');
 // vive detras de "Ver todos los eventos", que lleva al listado completo.
 const LIMITE_CARRIL = 4;
 
-const categorias = [...new Set(proximos.flatMap((event) => event.tags))]
+// Las etiquetas se guardan tal como las teclea quien publica, asi que "fiesta"
+// y "Fiesta" conviven y salian como dos categorias distintas. Se agrupan sin
+// distinguir mayusculas ni tildes -misma regla que ya usa la ciudad- y se
+// muestra la primera forma que aparecio, que el CSS capitaliza.
+const categorias = [
+  ...proximos
+    .flatMap((event) => event.tags)
+    .reduce((mapa, etiqueta) => {
+      const clave = etiqueta.normalize('NFD').replace(/[^\x00-\x7F]/g, '').toLowerCase().trim();
+      if (clave && !mapa.has(clave)) mapa.set(clave, etiqueta.trim());
+      return mapa;
+    }, new Map<string, string>())
+    .values(),
+]
   .sort((a, b) => a.localeCompare(b, 'es'))
   .slice(0, 12);
 
@@ -109,6 +122,23 @@ const pasos = [
     href: '/eventos/nuevo',
   },
 ];
+
+const GEN_DESTACADAS = ['rojo', 'azul', 'magenta'] as const;
+
+// Quien mas publica va primero. Se agrupa sobre los eventos que ya estan en
+// memoria, asi que esta seccion no cuesta ninguna lectura extra de Firestore.
+const comunidades = [...proximos.reduce((mapa, evento) => {
+  const actual = mapa.get(evento.organizer.uid);
+  if (actual) {
+    actual.total += 1;
+  } else {
+    mapa.set(evento.organizer.uid, { organizador: evento.organizer, total: 1, proximo: evento });
+  }
+  return mapa;
+}, new Map<string, { organizador: NodoEvent['organizer']; total: number; proximo: NodoEvent }>()).values()]
+  .sort((a, b) => b.total - a.total)
+  .slice(0, 3)
+  .map((entrada, indice) => ({ ...entrada, color: GEN_DESTACADAS[indice]! }));
 
 // El zigzag sobre una rejilla de 12: arriba a la izquierda, arriba a la derecha
 // un poco mas abajo, y el tercero centrado debajo. Es lo que hace que se lean
@@ -455,15 +485,35 @@ if (MOSTRAR_PUBLICACIONES) {
       -->
       {categorias.length > 0 && (
         <section class="mx-auto max-w-6xl px-6 py-16">
-          <h2 class="text-2xl font-bold tracking-tight text-texto">Explora por categoría</h2>
-          <div class="mt-6 flex flex-wrap gap-3">
-            {categorias.map((categoria) => (
+          <h2 class="text-[32px] font-bold leading-tight text-texto">Explora las categorías</h2>
+
+          {/*
+            Fila que se desplaza en horizontal, como la suya, en vez de chips
+            que hacen saltos de linea. Las tarjetas se alternan arriba y abajo
+            para que la fila no se lea como una tabla.
+
+            -mx-6 px-6 hace que el desplazamiento llegue hasta el filo de la
+            pantalla en vez de cortarse en el margen del contenedor, que es lo
+            que delata que hay mas contenido a la derecha.
+          */}
+          <div class="-mx-6 mt-8 flex snap-x gap-5 overflow-x-auto px-6 pb-6 pt-3">
+            {categorias.map((categoria, indice) => (
               <a
                 href={buildFilterHref({ search: categoria })}
                 data-gen={genColor(categoria)}
-                class="rounded-full border-2 border-[var(--g)] bg-[var(--g-suave)] px-4 py-2 text-sm font-medium text-[var(--g-texto)] shadow-sm transition active:scale-[0.97] hover:-translate-y-0.5 hover:shadow-md"
+                class:list={[
+                  'group relative flex h-[150px] w-[230px] shrink-0 snap-start flex-col justify-between rounded-3xl bg-superficie p-5 shadow-[var(--c-sombra)] transition hover:-translate-y-1',
+                  indice % 2 === 0 ? '' : 'lg:translate-y-6 lg:hover:translate-y-5',
+                ]}
               >
-                {categoria}
+                <h3 class="text-base font-bold capitalize leading-snug text-texto">{categoria}</h3>
+                <ArrowUpRight class="size-5 text-tenue transition group-hover:text-[var(--g-texto)]" stroke-width={2} />
+
+                {/* La barra sobresale por debajo, como en las suyas. */}
+                <span
+                  class="absolute inset-x-4 -bottom-1.5 h-3 rounded-b-2xl bg-[var(--g)]"
+                  aria-hidden="true"
+                ></span>
               </a>
             ))}
           </div>
@@ -549,6 +599,70 @@ if (MOSTRAR_PUBLICACIONES) {
           </div>
         </div>
       </section>
+
+      {/*
+        Titular a la izquierda y parrafo a la derecha, y debajo tres piezas con
+        imagen y texto, como "En Meetup surgen amistades". Ellos ponen ahi
+        articulos de su blog; Nodo no tiene blog, asi que van las comunidades
+        que mas publican, que es contenido real y ademas dice algo cierto sobre
+        la red en vez de rellenar el hueco.
+
+        El bloque de color va desplazado detras de la foto, como el suyo: es lo
+        que le da el aire de recorte pegado en vez de imagen dentro de una caja.
+      */}
+      {comunidades.length > 0 && (
+        <section class="mx-auto max-w-[1200px] px-6 py-20">
+          <div class="grid gap-6 lg:grid-cols-2 lg:gap-16">
+            <h2 class="text-[32px] font-bold leading-tight text-texto">
+              En Nodo se encuentran<br />
+              las comunidades
+            </h2>
+            <p class="max-w-prose text-suave lg:pt-2">
+              Detrás de cada evento hay alguien que lo organiza. Estas son las comunidades que más
+              están publicando ahora mismo en la cartelera: mira lo que preparan y súmate a lo que
+              te interese.
+            </p>
+          </div>
+
+          <div class="mt-14 grid gap-10 md:grid-cols-3">
+            {comunidades.map((comunidad) => (
+              <article data-gen={comunidad.color}>
+                <a href="/comunidades" class="group block">
+                  <div class="relative">
+                    {/* El bloque de color asoma por abajo y por la izquierda. */}
+                    <div class="absolute -bottom-3 -left-3 h-full w-full rounded-3xl bg-[var(--g)]" aria-hidden="true"></div>
+
+                    <div class="relative flex aspect-[16/10] items-center justify-center overflow-hidden rounded-3xl bg-[var(--g-suave)]">
+                      {comunidad.organizador.avatarUrl ? (
+                        <img
+                          src={comunidad.organizador.avatarUrl}
+                          alt=""
+                          loading="lazy"
+                          class="size-24 rounded-full object-cover ring-4 ring-superficie transition duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <span class="flex size-24 items-center justify-center rounded-full bg-superficie text-3xl font-bold text-[var(--g-texto)] ring-4 ring-superficie">
+                          {comunidad.organizador.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <h3 class="mt-8 text-lg font-bold leading-snug text-texto">
+                    {comunidad.organizador.name}
+                  </h3>
+                  <p class="mt-2 text-sm leading-6 text-suave">
+                    {comunidad.total === 1
+                      ? 'Tiene un evento próximo en la cartelera'
+                      : `Tiene ${comunidad.total} eventos próximos en la cartelera`}, y el siguiente es{' '}
+                    <span class="text-texto">{comunidad.proximo.title}</span>.
+                  </p>
+                </a>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </>
   )}
 
