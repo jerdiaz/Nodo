@@ -41,58 +41,74 @@ const columns = [
 ---
 
 {/*
-  El pie es oscuro en los dos temas, no sigue a los tokens: el logotipo de
-  Sentra Labs solo existe en su variante para fondo oscuro (el texto "SENTRA
-  LABS" es blanco) y sobre el fondo claro del sitio desapareceria. Es la misma
-  solucion que usa funconceptos, que tambien es un sitio claro con pie oscuro.
+  Tarjeta flotante, no franja a sangre. Las medidas estan tomadas del pie de
+  Meetup y no puestas a ojo: margen de 20px por los tres lados, radio de 48px,
+  interior de 1200px como maximo y 28px de padding lateral.
 
-  Como el fondo es fijo, los colores de aqui son literales y no tokens: los
-  --gen-* claros son los del tema claro, pensados para texto oscuro sobre
-  blanco, y sobre este negro no llegarian a contraste. Se usan las variantes
-  del tema oscuro directamente.
+  El fondo es #232326 y no el #111113 del sitio: sobre el tema oscuro el pie
+  tiene que leerse como una superficie elevada, y si fuera del mismo color que
+  la pagina la tarjeta desapareceria. Es lo mismo que hace Meetup, cuyo pie es
+  mas claro que su fondo.
+
+  Los colores van literales y no por tokens porque la tarjeta es oscura en
+  ambos temas: los --gen-* claros estan calculados para texto sobre blanco y
+  aqui no llegarian a contraste, asi que el acento del lema usa la variante
+  del tema oscuro.
 */}
-<footer class="mt-auto bg-[#111113] text-[#c9c9d0]">
-  <div class="cinta-gen" aria-hidden="true"></div>
+<footer class="mt-auto mx-5 mb-5 overflow-hidden rounded-[48px] bg-[#232326] px-7 text-white">
+  {/* -mx-7 para que la cinta llegue a los filos de la tarjeta y el radio la
+      recorte: es la firma de GEN, que Meetup no tiene y aqui se conserva. */}
+  <div class="cinta-gen -mx-7" aria-hidden="true"></div>
 
-  <div class="mx-auto max-w-6xl px-6 py-14">
+  <div class="mx-auto max-w-[1200px] py-14">
     {/*
       Fila superior a la manera de Meetup: la marca con su lema a la izquierda
-      y una sola llamada a la accion a la derecha, en el mismo cuerpo grande.
-      El pie deja de ser solo un mapa de enlaces y se lleva una conversion.
+      y una sola llamada a la accion a la derecha, ambas a 24px en negrita. El
+      pie deja de ser solo un mapa de enlaces y se lleva una conversion.
     */}
     <div class="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-      <a href="/" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xl font-bold tracking-tight text-white">
+      <a href="/" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xl font-bold text-white">
         <span class="flex items-center gap-2">
           <img src="/logo-icon.png" alt="" class="size-7" />
           Nodo<span class="text-[#ff6b6b]">.</span>
         </span>
-        <span class="text-[#8b8b93]">
+        <span class="text-white/50">
           La cartelera de <span class="text-[#f06bb8]">las comunidades</span>
         </span>
       </a>
 
       <a
         href="/eventos/nuevo"
-        class="group inline-flex shrink-0 items-center gap-2 text-xl font-bold tracking-tight text-white"
+        class="group inline-flex shrink-0 items-center gap-3 text-2xl font-bold text-white"
       >
         ¿Tu comunidad organiza algo?
-        <span class="inline-flex items-center gap-1.5 text-[#8b8b93] transition group-hover:text-white">
+        <span class="inline-flex items-center gap-2 text-white/50 transition group-hover:text-white">
           Publícalo
-          <ArrowRight class="size-5 transition group-hover:translate-x-1" stroke-width={2.25} />
+          <ArrowRight class="size-6 transition group-hover:translate-x-1" stroke-width={2.25} />
         </span>
       </a>
     </div>
 
-    <div class="mt-10 border-t border-white/10"></div>
+    {/* El separador de Meetup es #353538: gris propio, no un blanco con alfa. */}
+    <div class="mt-10 border-t border-[#353538]"></div>
 
-    <div class="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
       {columns.map((column) => (
         <div>
-          <h3 class="text-base font-bold text-white">{column.title}</h3>
+          {/*
+            tracking positivo, al reves que en los titulares: Meetup abre 0.28px
+            sobre 14px (+0.02em) en todo el texto pequeno del pie, y aprieta
+            -0.02em solo en los cuerpos grandes. Hay que declararlo porque la
+            regla global de h1/h2/h3 ya puso el valor negativo.
+          */}
+          <h3 class="text-sm font-semibold tracking-[0.02em] text-white">{column.title}</h3>
           <ul class="mt-5 space-y-3">
             {column.links.map((link) => (
               <li>
-                <a href={link.href} class="text-[#8b8b93] transition hover:text-white">
+                <a
+                  href={link.href}
+                  class="text-sm leading-5 tracking-[0.02em] text-white/50 transition hover:text-white"
+                >
                   {link.label}
                 </a>
               </li>
@@ -102,7 +118,9 @@ const columns = [
       ))}
 
       <div>
-        <h3 class="text-base font-bold text-white">Síguenos</h3>
+        <h3 class="text-sm font-semibold tracking-[0.02em] text-white">Síguenos</h3>
+
+        {/* 44px y borde tenue, sin relleno: el circulo de Meetup es un contorno. */}
         <div class="mt-5 flex items-center gap-3">
           {socialLinks.map((social) => (
             <a
@@ -110,24 +128,24 @@ const columns = [
               target="_blank"
               rel="noopener noreferrer"
               aria-label={social.label}
-              class="flex size-11 items-center justify-center rounded-full bg-white/[0.06] text-[#c9c9d0] transition active:scale-[0.95] hover:bg-white/15 hover:text-white"
+              class="flex size-11 items-center justify-center rounded-full border border-white/20 text-white/70 transition active:scale-[0.95] hover:border-white/50 hover:text-white"
             >
               <SocialIcon name={social.key} class="size-5" />
             </a>
           ))}
         </div>
 
-        <p class="mt-6 max-w-xs text-sm text-[#8b8b93]">
+        <p class="mt-6 max-w-xs text-sm leading-5 tracking-[0.02em] text-white/50">
           La cartelera comunitaria para descubrir y organizar eventos locales.
         </p>
       </div>
     </div>
 
-    <div class="mt-16 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm text-[#8b8b93] sm:flex-row sm:items-center sm:justify-between">
+    <div class="mt-16 flex flex-col gap-4 border-t border-[#353538] pt-8 text-sm tracking-[0.02em] text-white/50 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
         <p>© {year} Nodo</p>
-        <a href="/privacidad" class="transition hover:text-white">Privacidad</a>
-        <a href="/contacto" class="transition hover:text-white">Contacto</a>
+        <a href="/privacidad" class="font-medium transition hover:text-white">Privacidad</a>
+        <a href="/contacto" class="font-medium transition hover:text-white">Contacto</a>
       </div>
 
       <a
@@ -135,7 +153,7 @@ const columns = [
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Sitio desarrollado por Sentra Labs, abre sentralabs.co"
-        class="inline-flex items-center gap-2 text-[#8b8b93] transition hover:text-white"
+        class="inline-flex items-center gap-2 transition hover:text-white"
       >
         Desarrollado por
         <img src="/logo/sentralabs.png" alt="Sentra Labs" width="1458" height="513" class="h-5 w-auto" />

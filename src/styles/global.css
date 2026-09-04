@@ -123,9 +123,16 @@ body {
 
 /* NeuSans aprieta bastante en titulares grandes: el h1 de Meetup va a 40px
    con -0.8px, es decir -0.02em. Inter por defecto es mas suelta, asi que los
-   titulares llevan ese tracking para que el bloque tenga la misma densidad. */
-h1, h2, h3 {
-  letter-spacing: -0.02em;
+   titulares llevan ese tracking para que el bloque tenga la misma densidad.
+
+   Va en @layer base y no suelto: el CSS sin capa gana a @layer utilities
+   pase lo que pase con la especificidad, asi que sin esto un tracking-[...]
+   de Tailwind sobre un h3 no tendria forma de ganar. Es justo lo que hace
+   falta en el pie, donde el texto pequeno abre en vez de apretar. */
+@layer base {
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
+  }
 }
 
 ::selection {
