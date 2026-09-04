@@ -4,13 +4,6 @@ import { getDisplayUser } from '../../lib/auth';
 
 const user = await getDisplayUser(Astro.cookies);
 
-const links = [
-  { href: '/', label: 'Explorar' },
-  { href: '/calendario', label: 'Calendario' },
-  { href: '/comunidades', label: 'Comunidades' },
-  ...(user ? [{ href: '/mis-eventos', label: 'Mis eventos' }] : []),
-];
-
 // La cabecera va en todas las paginas, asi que la busqueda se rellena con lo
 // que haya en la URL y no con estado propio: quien filtra por ciudad sigue
 // viendo su ciudad escrita al navegar a la ficha de un evento y volver.
@@ -20,7 +13,8 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
 
 {/*
   Medidas tomadas de la cabecera de Meetup: 80px de alto, contenido a 1200px,
-  logotipo de 34px arrancando a 40px del filo y esquinas inferiores a 24px.
+  logotipo de 34px y esquinas inferiores a 24px. El contenido no va en una
+  caja centrada: el logotipo se ancla al filo izquierdo y la sesion al derecho.
 
   Se va con la pagina, como la suya, que es static y no queda pegada arriba.
   Sigue siendo relative y con z-50 aunque no se ancle: los menus de sesion y de
@@ -32,7 +26,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
   tambien se recorta, pero contra el blanco de la pagina eso no se ve.
 */}
 <header class="relative z-50 rounded-b-3xl bg-fondo transition-colors duration-200 focus-within:bg-superficie focus-within:shadow-[var(--c-sombra)]">
-  <nav class="mx-auto flex h-20 max-w-[1200px] items-center gap-6 px-6 xl:px-0">
+  <nav class="flex h-20 w-full items-center gap-6 px-6 lg:px-10">
     <a href="/" class="flex shrink-0 items-center gap-2.5 text-2xl font-bold tracking-tight text-texto">
       <img src="/logo-icon.png" alt="" class="size-8" />
       <span>Nodo<span class="text-acento-texto">.</span></span>
@@ -79,17 +73,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       </button>
     </form>
 
-    <ul class="ml-auto hidden shrink-0 items-center gap-7 text-sm font-medium tracking-[0.02em] text-suave xl:flex">
-      {links.map((link) => (
-        <li>
-          <a href={link.href} class="transition hover:text-texto">
-            {link.label}
-          </a>
-        </li>
-      ))}
-    </ul>
-
-    <div class="ml-auto flex shrink-0 items-center gap-3 xl:ml-0">
+    <div class="ml-auto flex shrink-0 items-center gap-3">
       {user ? (
         <div class="relative" data-menu>
           <button
