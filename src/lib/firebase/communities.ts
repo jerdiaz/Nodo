@@ -85,7 +85,9 @@ export async function createCommunity(input: CreateCommunityInput): Promise<Nodo
   const db = getAdminDb();
   const ref = communitiesCollection().doc(input.slug);
 
-  await ref.set({ ...input, createdAt: FieldValue.serverTimestamp() });
+  // create() falla si el slug ya esta tomado, y el fallo es atomico: dos
+  // peticiones simultaneas con el mismo nombre no pueden pisarse entre si.
+  await ref.create({ ...input, createdAt: FieldValue.serverTimestamp() });
 
   // Quien la crea queda dentro sin tener que unirse aparte: es su comunidad, y
   // que el recuento arrancara en cero seria mentir sobre cuanta gente hay.
@@ -105,6 +107,28 @@ export async function createCommunity(input: CreateCommunityInput): Promise<Nodo
 
   const creada = await ref.get();
   return mapDoc(creada);
+}
+
+// Borra la comunidad entera: documento y miembros (un borrado no arrastra las
+// subcolecciones) y la copia desnormalizada que sus eventos llevan en el campo
+// `community`. Sin esto, los eventos publicados en su nombre quedarian
+// apuntando a una comunidad que ya no existe.
+export async function deleteCommunity(communityId: string): Promise<void> {
+  const db = getAdminDb();
+  const ref = communitiesCollection().doc(communityId);
+
+  const members = await ref.collection('members').listDocuments();
+  await Promise.all(members.map((member) => member.delete()));
+
+  const eventos = await db.collection('events').where('community.id', '==', communityId).get();
+
+  if (!eventos.empty) {
+    const lote = db.batch();
+    eventos.docs.forEach((doc) => lote.update(doc.ref, { community: FieldValue.delete() }));
+    await lote.commit();
+  }
+
+  await ref.delete();
 }
 
 // Renombrar o cambiar el avatar tiene que arrastrar los eventos ya publicados,

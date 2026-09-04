@@ -19,6 +19,10 @@ export interface NodoEvent {
   title: string;
   description: string;
   bannerUrl?: string;
+  // Variante reducida del banner (tarjetas y miniaturas). Se guarda en el
+  // evento en el mismo viaje que bannerUrl: los eventos anteriores a la
+  // variante no la tienen y caen a la imagen completa.
+  bannerSmallUrl?: string;
   modality: EventModality;
   city?: string;
   venue?: string;
@@ -29,6 +33,10 @@ export interface NodoEvent {
   timezone: string;
   tags: string[];
   organizer: EventOrganizer;
+  // Contador de asistentes, desnormalizado en el documento para no pagar un
+  // count() por evento en cada listado. Lo mantiene el toggle de RSVP; los
+  // eventos anteriores a la desnormalizacion no lo tienen y caen a count().
+  rsvpCount?: number;
   // Cuando el evento se publica en nombre de una comunidad, la cartelera
   // muestra a la comunidad y la ficha sigue mostrando a quien lo creo.
   community?: EventCommunity;

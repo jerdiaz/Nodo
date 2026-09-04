@@ -85,12 +85,24 @@ export async function setCalendarToken(uid: string, token: string): Promise<void
 
 // Consulta de igualdad sobre un campo suelto de una coleccion normal, que
 // Firestore indexa por su cuenta: a diferencia del collectionGroup sobre
-// rsvps, esta no necesita crear ningun indice.
+// rsvps, esta no necesita crear ningun indice. Se usa para resolver a quien
+// pertenece un username (transferencia, verificacion) — no para garantizar la
+// unicidad, que vive en la coleccion `usernames` (ver claimUsername).
 export async function isUsernameTaken(username: string, ownUid: string): Promise<boolean> {
   const snapshot = await usersCollection().where('username', '==', username).limit(1).get();
   const [match] = snapshot.docs;
 
-  return Boolean(match) && match!.id !== ownUid;
+  if (match && match.id !== ownUid) {
+    return true;
+  }
+
+  // Tambien cuenta el claim de `usernames`, la fuente de verdad de la
+  // unicidad: puede existir un claim sin que el perfil haya terminado de
+  // guardarse, y sin esto el endpoint de disponibilidad diria "libre" un
+  // nombre que el guardado real acabaria rechazando.
+  const claim = await getAdminDb().collection('usernames').doc(username).get();
+
+  return claim.exists && claim.data()?.uid !== ownUid;
 }
 
 export async function getUidByUsername(username: string): Promise<string | null> {
@@ -122,11 +134,86 @@ export async function getDeletionCode(uid: string): Promise<DeletionCode | null>
 }
 
 export async function deleteUserProfile(uid: string): Promise<void> {
-  await usersCollection().doc(uid).delete();
+  const doc = await usersCollection().doc(uid).get();
+  const batch = getAdminDb().batch();
+
+  batch.delete(usersCollection().doc(uid));
+
+  // Sin esto, el claim de `usernames` quedaria tomado por un perfil inexistente
+  // y nadie podria volver a usar ese nombre.
+  const username = doc.data()?.username;
+  if (typeof username === 'string' && username) {
+    batch.delete(getAdminDb().collection('usernames').doc(username));
+  }
+
+  await batch.commit();
 }
 
 export async function saveUserProfile(uid: string, profile: Omit<UserProfile, 'uid'>): Promise<void> {
   // merge para no borrar campos que se añadan al documento mas adelante y que
-  // este formulario todavia no conozca.
-  await usersCollection().doc(uid).set({ ...profile, updatedAt: new Date() }, { merge: true });
+  // este formulario todavia no conozca. Pero undefined no borra: con
+  // ignoreUndefinedProperties activo, un campo que se vacia a proposito (bio,
+  // avatar...) se quedaria con el valor anterior. Los que llegan sin valor se
+  // marcan para borrarse de forma explicita.
+  const data: Record<string, unknown> = { ...profile, updatedAt: new Date() };
+
+  for (const key of Object.keys(profile)) {
+    if (data[key] === undefined) {
+      data[key] = FieldValue.delete();
+    }
+  }
+
+  await usersCollection().doc(uid).set(data, { merge: true });
+}
+
+// La unicidad del username no la puede imponer Firestore por si solo: no hay
+// indices unicos. Se garantiza con una coleccion `usernames` cuyo id es el
+// propio username y cuyo documento dice quien lo tiene. Reclamarlo es una
+// transaccion sobre ese documento fijo, asi que dos personas que pidan el
+// mismo nombre a la vez chocan en esa escritura y solo una gana — no hace
+// falta comparar contra toda la coleccion de perfiles.
+export async function claimUsername(
+  uid: string,
+  next: string | undefined,
+  previous: string | undefined,
+): Promise<void> {
+  const db = getAdminDb();
+  const claims = db.collection('usernames');
+
+  const prevRef = previous && previous !== next ? claims.doc(previous) : null;
+  const nextRef = next ? claims.doc(next) : null;
+
+  await db.runTransaction(async (transaction) => {
+    // Suelta el claim anterior solo si es suyo.
+    if (prevRef) {
+      const prev = await transaction.get(prevRef);
+      if (prev.exists && prev.data()?.uid === uid) {
+        transaction.delete(prevRef);
+      }
+    }
+
+    if (!nextRef) {
+      return;
+    }
+
+    const claim = await transaction.get(nextRef);
+
+    if (claim.exists && claim.data()?.uid !== uid) {
+      throw new Error('USERNAME_TAKEN');
+    }
+
+    // Los perfiles creados antes de existir `usernames` no tienen claim todavia:
+    // se comprueba la coleccion como respaldo para que esa primera reclamacion
+    // tampoco pueda robarle el nombre a nadie.
+    const legacy = await transaction.get(usersCollection().where('username', '==', next).limit(1));
+
+    if (!legacy.empty) {
+      const [match] = legacy.docs;
+      if (match!.id !== uid) {
+        throw new Error('USERNAME_TAKEN');
+      }
+    }
+
+    transaction.set(nextRef, { uid, claimedAt: new Date() });
+  });
 }

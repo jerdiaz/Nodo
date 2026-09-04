@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from './server';
 import { getUserProfiles } from './users';
 import { normalizeCityName } from '../eventValidation';
@@ -20,8 +21,21 @@ function normalizeForSearch(text: string): string {
     .toLowerCase();
 }
 
-function mapDocToEvent(doc: FirebaseFirestore.QueryDocumentSnapshot): NodoEvent {
-  const data = doc.data();
+// Un documento corrupto en la coleccion (fecha ausente o mal escrita, por un
+// fallo parcial o una escritura que no paso por las rutas) no debe tumbar el
+// listado entero para todos: se degrada a una fecha neutra en vez de lanzar.
+function toSafeDate(value: unknown): Date {
+  if (value instanceof Timestamp) {
+    return value.toDate();
+  }
+  if (value instanceof Date) {
+    return value;
+  }
+  return new Date(0);
+}
+
+function mapDocToEvent(doc: FirebaseFirestore.DocumentSnapshot): NodoEvent {
+  const data = doc.data() ?? {};
 
   return {
     id: doc.id,
@@ -29,17 +43,19 @@ function mapDocToEvent(doc: FirebaseFirestore.QueryDocumentSnapshot): NodoEvent 
     title: data.title,
     description: data.description,
     bannerUrl: data.bannerUrl,
+    bannerSmallUrl: data.bannerSmallUrl,
     modality: data.modality,
     city: data.city,
     venue: data.venue,
     address: data.address,
     meetingUrl: data.meetingUrl,
-    startDate: data.startDate.toDate(),
-    endDate: data.endDate.toDate(),
+    startDate: toSafeDate(data.startDate),
+    endDate: toSafeDate(data.endDate),
     timezone: data.timezone ?? 'America/Bogota',
     tags: data.tags ?? [],
     organizer: data.organizer,
     community: data.community,
+    rsvpCount: typeof data.rsvpCount === 'number' ? data.rsvpCount : undefined,
   };
 }
 
@@ -137,20 +153,54 @@ export function getFilterCities(events: NodoEvent[]): string[] {
 
 export async function getEvents(filters?: EventFilters): Promise<NodoEvent[]> {
   const db = getAdminDb();
+
+  // Quien pide solo lo suyo (Mis eventos, el contador de la cuenta) no necesita
+  // que se lea el catalogo entero: una igualdad sobre un campo suelto usa el
+  // indice que Firestore mantiene solo, sin compuesto. El orden se repone en
+  // memoria, que es lo que la consulta con orderBy exigiria de todos modos.
+  if (filters?.organizerUid) {
+    const snapshot = await db.collection('events').where('organizer.uid', '==', filters.organizerUid).get();
+    const events = await enrichOrganizers(snapshot.docs.map(mapDocToEvent));
+    events.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+    return filterEvents(events, filters);
+  }
+
   const snapshot = await db.collection('events').orderBy('startDate', 'asc').get();
   const events = await enrichOrganizers(snapshot.docs.map(mapDocToEvent));
 
   return filterEvents(events, filters);
 }
 
+// Solo los slugs, para el sitemap: no hace falta el perfil de cada organizador
+// (enrichOrganizers) ni traer el documento entero.
+export async function getEventSlugs(): Promise<string[]> {
+  const db = getAdminDb();
+  const snapshot = await db.collection('events').select('slug').get();
+  return snapshot.docs.map((doc) => doc.data()?.slug ?? doc.id);
+}
+
+// El id del documento y el slug siempre son el mismo (asi se crea: .doc(slug)),
+// asi que la lectura es directa, sin query de por medio.
 export async function getEventBySlug(slug: string): Promise<NodoEvent | null> {
   const db = getAdminDb();
-  const snapshot = await db.collection('events').where('slug', '==', slug).limit(1).get();
+  const doc = await db.collection('events').doc(slug).get();
 
-  if (snapshot.empty) {
+  if (!doc.exists) {
     return null;
   }
 
-  const [event] = await enrichOrganizers([mapDocToEvent(snapshot.docs[0]!)]);
+  const [event] = await enrichOrganizers([mapDocToEvent(doc)]);
   return event ?? null;
+}
+
+// Borrar un documento no borra sus subcolecciones: los rsvps de un evento
+// sobreviven a su documento si no se recorren a mano. listDocuments() no trae
+// los datos, solo las referencias, asi que no se paga una lectura por asistente.
+export async function deleteEventWithRsvps(eventId: string): Promise<void> {
+  const db = getAdminDb();
+  const eventRef = db.collection('events').doc(eventId);
+  const rsvps = await eventRef.collection('rsvps').listDocuments();
+
+  await Promise.all(rsvps.map((doc) => doc.delete()));
+  await eventRef.delete();
 }

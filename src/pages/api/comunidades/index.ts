@@ -34,7 +34,20 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return jsonResponse({ error: 'Ya existe una comunidad con ese nombre.' }, 409);
   }
 
-  const community = await createCommunity({ slug, ...validated.data, ownerUid: user.uid });
+  const community = await createCommunity({ slug, ...validated.data, ownerUid: user.uid }).catch(
+    (error: unknown) => {
+      // create() falla de forma atomica si el slug se tomo entre la
+      // comprobacion y la escritura: es la misma colision, detectada tarde.
+      if ((error as { code?: string } | undefined)?.code === 'already-exists') {
+        return null;
+      }
+      throw error;
+    },
+  );
+
+  if (!community) {
+    return jsonResponse({ error: 'Ya existe una comunidad con ese nombre.' }, 409);
+  }
 
   return jsonResponse({ slug: community.slug }, 201);
 };

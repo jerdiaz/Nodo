@@ -25,6 +25,10 @@ const SPECS: Record<ImageKind, { prefix: string; width: number; height: number; 
   publicacion: { prefix: 'instagram', width: 1080, height: 1080, maxBytes: TOPE },
 };
 
+// La variante pequena del banner, para tarjetas y miniaturas de calendario:
+// sin ella, una tarjeta de ~280px descarga el JPEG completo de 1600px.
+const BANNER_SMALL = { width: 640, height: 360 };
+
 let visionClient: ImageAnnotatorClient | null = null;
 
 function getVisionClient(): ImageAnnotatorClient {
@@ -139,12 +143,15 @@ export async function recordModeration(
 
 export async function processImage(content: Buffer, kind: ImageKind): Promise<Buffer> {
   const spec = SPECS[kind];
+  return resizeBuffer(content, spec.width, spec.height);
+}
 
-  // JPEG y no WebP a proposito: el banner acaba en og:image y algunos
-  // rastreadores de redes sociales todavia no previsualizan WebP.
+// JPEG y no WebP a proposito: el banner acaba en og:image y algunos
+// rastreadores de redes sociales todavia no previsualizan WebP.
+async function resizeBuffer(content: Buffer, width: number, height: number): Promise<Buffer> {
   return sharp(content)
     .rotate() // respeta la orientacion EXIF antes de recortar
-    .resize(spec.width, spec.height, { fit: 'cover', position: 'attention' })
+    .resize(width, height, { fit: 'cover', position: 'attention' })
     .jpeg({ quality: 82, mozjpeg: true })
     .toBuffer();
 }
@@ -160,6 +167,35 @@ export async function uploadImage(uid: string, kind: ImageKind, content: Buffer)
   const path = `${SPECS[kind].prefix}/${uid}/${Date.now()}-${randomUUID().slice(0, 8)}.jpg`;
   const token = randomUUID();
 
+  await saveJpeg(bucket, path, content, token);
+
+  return downloadUrl(bucket, path, token);
+}
+
+// El banner se sube en dos tamanos: el grande (para la ficha y og:image) y uno
+// reducido para tarjetas y miniaturas. Comparten el mismo token de descarga,
+// asi que una sola URL publica alcanza a los dos archivos.
+export async function uploadBanner(uid: string, content: Buffer): Promise<{ url: string; urlSmall: string }> {
+  const bucket = getBucket();
+  const full = await processImage(content, 'banner');
+  const small = await resizeBuffer(content, BANNER_SMALL.width, BANNER_SMALL.height);
+  const base = `${Date.now()}-${randomUUID().slice(0, 8)}`;
+  const fullPath = `${SPECS.banner.prefix}/${uid}/${base}.jpg`;
+  const smallPath = `${SPECS.banner.prefix}/${uid}/${base}-sm.jpg`;
+  const token = randomUUID();
+
+  await Promise.all([
+    saveJpeg(bucket, fullPath, full, token),
+    saveJpeg(bucket, smallPath, small, token),
+  ]);
+
+  return {
+    url: downloadUrl(bucket, fullPath, token),
+    urlSmall: downloadUrl(bucket, smallPath, token),
+  };
+}
+
+async function saveJpeg(bucket: ReturnType<typeof getBucket>, path: string, content: Buffer, token: string): Promise<void> {
   await bucket.file(path).save(content, {
     contentType: 'image/jpeg',
     metadata: {
@@ -169,7 +205,9 @@ export async function uploadImage(uid: string, kind: ImageKind, content: Buffer)
       cacheControl: 'public, max-age=31536000, immutable',
     },
   });
+}
 
+function downloadUrl(bucket: ReturnType<typeof getBucket>, path: string, token: string): string {
   return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
 }
 
@@ -203,6 +241,24 @@ export async function deleteImageByUrl(url: string | undefined): Promise<void> {
     // Que el archivo ya no exista no es un problema; el objetivo es que no quede.
     console.warn('No se pudo borrar la imagen:', path, error);
   }
+}
+
+// Borra una imagen solo si cuelga de la carpeta de quien la subio. Sin esta
+// comprobacion, cualquiera podria apuntar su evento/perfil a la URL publica de
+// la imagen de otro y luego, al cambiarla o al borrar lo suyo, destruir el
+// archivo ajeno en el bucket.
+export async function deleteOwnedImage(
+  url: string | undefined,
+  kind: ImageKind,
+  ownerUid: string,
+): Promise<void> {
+  const path = pathFromDownloadUrl(url ?? '');
+
+  if (!path || !path.startsWith(`${SPECS[kind].prefix}/${ownerUid}/`)) {
+    return;
+  }
+
+  await deleteImageByUrl(url);
 }
 
 // `prefixes` no es un detalle: al transferir los eventos a otra cuenta, sus

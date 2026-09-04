@@ -40,32 +40,43 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const comunidad = publishAs === 'persona' ? null : await getCommunityByOwner(user.uid);
 
   const baseSlug = slugify(rest.title) || 'evento';
-  let slug = baseSlug;
+  const data = {
+    ...rest,
+    startDate: Timestamp.fromDate(startDate),
+    endDate: Timestamp.fromDate(endDate),
+    organizer: {
+      uid: user.uid,
+      name: user.name,
+      avatarUrl: user.avatarUrl ?? undefined,
+    },
+    community: comunidad ? toEventCommunity(comunidad) : undefined,
+    createdAt: FieldValue.serverTimestamp(),
+  };
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const existing = await db.collection('events').doc(slug).get();
-    if (!existing.exists) {
-      break;
+  // create() falla si el documento ya existe, y el fallo es atomico: sin eso,
+  // dos peticiones simultaneas con el mismo titulo pasarian ambas la
+  // comprobacion previa y la segunda pisaria entera a la primera.
+  let slug = baseSlug;
+  let creado = false;
+
+  for (let attempt = 0; attempt < 5 && !creado; attempt += 1) {
+    try {
+      await db.collection('events').doc(slug).create({ ...data, slug });
+      creado = true;
+    } catch (error) {
+      const code = (error as { code?: string } | undefined)?.code;
+
+      if (code !== 'already-exists') {
+        throw error;
+      }
+
+      slug = `${baseSlug}-${randomSuffix()}`;
     }
-    slug = `${baseSlug}-${randomSuffix()}`;
   }
 
-  await db
-    .collection('events')
-    .doc(slug)
-    .set({
-      ...rest,
-      slug,
-      startDate: Timestamp.fromDate(startDate),
-      endDate: Timestamp.fromDate(endDate),
-      organizer: {
-        uid: user.uid,
-        name: user.name,
-        avatarUrl: user.avatarUrl ?? undefined,
-      },
-      community: comunidad ? toEventCommunity(comunidad) : undefined,
-      createdAt: FieldValue.serverTimestamp(),
-    });
+  if (!creado) {
+    return jsonResponse({ error: 'No se pudo reservar un título único. Inténtalo de nuevo.' }, 409);
+  }
 
   return jsonResponse({ success: true, slug }, 201);
 };

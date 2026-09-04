@@ -4,8 +4,9 @@ import { jsonResponse } from '../../../lib/api';
 import { getCurrentUser } from '../../../lib/auth';
 import { validateEventPayload } from '../../../lib/eventValidation';
 import { getCommunityByOwner, toEventCommunity } from '../../../lib/firebase/communities';
+import { deleteEventWithRsvps } from '../../../lib/firebase/events';
 import { getAdminDb } from '../../../lib/firebase/server';
-import { deleteImageByUrl } from '../../../lib/images';
+import { deleteOwnedImage } from '../../../lib/images';
 
 export const PUT: APIRoute = async ({ params, request, cookies }) => {
   const user = await getCurrentUser(cookies);
@@ -63,10 +64,16 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
 
   // Si llega un banner nuevo, el anterior deja de estar referenciado por nadie.
   // Se borra despues de guardar: si el update fallara, no habriamos destruido
-  // la imagen que el evento sigue usando.
+  // la imagen que el evento sigue usando. La guarda de propiedad impide que
+  // alguien cuelgue su evento de la URL de la imagen de otro y luego la borre.
   const previousBanner = existingData?.bannerUrl;
   if (rest.bannerUrl && previousBanner && previousBanner !== rest.bannerUrl) {
-    await deleteImageByUrl(previousBanner);
+    await deleteOwnedImage(previousBanner, 'banner', user.uid);
+  }
+
+  const previousBannerSmall = existingData?.bannerSmallUrl;
+  if (rest.bannerSmallUrl && previousBannerSmall && previousBannerSmall !== rest.bannerSmallUrl) {
+    await deleteOwnedImage(previousBannerSmall, 'banner', user.uid);
   }
 
   return jsonResponse({ success: true, slug: existingData?.slug ?? id }, 200);
@@ -97,8 +104,9 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
     return jsonResponse({ error: 'No tienes permiso para eliminar este evento.' }, 403);
   }
 
-  await docRef.delete();
-  await deleteImageByUrl(existingData?.bannerUrl);
+  await deleteEventWithRsvps(id);
+  await deleteOwnedImage(existingData?.bannerUrl, 'banner', user.uid);
+  await deleteOwnedImage(existingData?.bannerSmallUrl, 'banner', user.uid);
 
   return jsonResponse({ success: true }, 200);
 };

@@ -2,7 +2,12 @@ import type { APIRoute } from 'astro';
 import { jsonResponse } from '../../../lib/api';
 import { getCurrentUser } from '../../../lib/auth';
 import { validateCommunityPayload } from '../../../lib/communityValidation';
-import { getCommunityBySlug, updateCommunity } from '../../../lib/firebase/communities';
+import {
+  deleteCommunity,
+  getCommunityBySlug,
+  updateCommunity,
+} from '../../../lib/firebase/communities';
+import { deleteOwnedImage } from '../../../lib/images';
 
 export const PUT: APIRoute = async ({ params, request, cookies }) => {
   const user = await getCurrentUser(cookies);
@@ -34,5 +39,35 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
   // id del documento y la URL que ya puede estar compartida por ahi.
   await updateCommunity(community.id, validated.data);
 
+  // Si el avatar cambio, el anterior deja de estar referenciado. Se borra solo
+  // si cuelga de la carpeta del dueno, por el mismo motivo que en los eventos.
+  const previousAvatar = community.avatarUrl;
+  if (validated.data.avatarUrl && previousAvatar && previousAvatar !== validated.data.avatarUrl) {
+    await deleteOwnedImage(previousAvatar, 'avatar', community.ownerUid);
+  }
+
   return jsonResponse({ slug: community.slug }, 200);
+};
+
+export const DELETE: APIRoute = async ({ params, cookies }) => {
+  const user = await getCurrentUser(cookies);
+
+  if (!user) {
+    return jsonResponse({ error: 'Debes iniciar sesión.' }, 401);
+  }
+
+  const community = await getCommunityBySlug(params.slug ?? '');
+
+  if (!community) {
+    return jsonResponse({ error: 'La comunidad no existe.' }, 404);
+  }
+
+  if (community.ownerUid !== user.uid) {
+    return jsonResponse({ error: 'Solo quien administra la comunidad puede eliminarla.' }, 403);
+  }
+
+  await deleteCommunity(community.id);
+  await deleteOwnedImage(community.avatarUrl, 'avatar', community.ownerUid);
+
+  return jsonResponse({ success: true }, 200);
 };
