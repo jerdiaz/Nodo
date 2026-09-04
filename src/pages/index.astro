@@ -66,10 +66,10 @@ const categorias = [...new Set(proximos.flatMap((event) => event.tags))]
 // van en el HTML para que el navegador reserve el hueco con la proporcion
 // correcta y el texto no salte cuando cargan.
 const collage = [
-  { src: '/banner/comida.webp', ancho: 700, alto: 533, lado: 'izquierda', arriba: true },
-  { src: '/banner/arte.webp', ancho: 700, alto: 700, lado: 'izquierda', arriba: false },
-  { src: '/banner/fiesta.webp', ancho: 700, alto: 592, lado: 'derecha', arriba: true },
-  { src: '/banner/tecnologia.webp', ancho: 700, alto: 581, lado: 'derecha', arriba: false },
+  { src: '/banner/comida.webp', ancho: 700, alto: 533, sitio: 'left-[58px] top-0 -rotate-3' },
+  { src: '/banner/arte.webp', ancho: 700, alto: 694, sitio: 'left-[58px] bottom-6 rotate-4 2xl:left-[130px]' },
+  { src: '/banner/fiesta.webp', ancho: 700, alto: 592, sitio: 'right-[58px] top-0 rotate-3' },
+  { src: '/banner/tecnologia.webp', ancho: 700, alto: 581, sitio: 'right-[58px] bottom-6 -rotate-4 2xl:right-[130px]' },
 ];
 
 const pasos = [
@@ -90,7 +90,6 @@ const pasos = [
   },
 ];
 
-const loginRequired = Astro.url.searchParams.get('login') === 'required';
 const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 
 // Publicaciones de Instagram, cacheadas en Firestore por /api/instagram/sync.
@@ -116,14 +115,6 @@ if (MOSTRAR_PUBLICACIONES) {
 ---
 
 <BaseLayout>
-  {loginRequired && (
-    <div class="mx-auto max-w-6xl px-6 pt-6">
-      <div class="rounded-2xl border border-marca-amarillo bg-fondo-alt px-4 py-3 text-sm text-texto backdrop-blur-xl">
-        Inicia sesión para publicar un evento.
-      </div>
-    </div>
-  )}
-
   {eventDeleted && <StatusToast paramKey="deleted" message="Evento eliminado correctamente." />}
 
   {/*
@@ -147,11 +138,7 @@ El collage lateral ocupa el sitio del suyo: dos recortes por lado, a 58px de
           width={pieza.ancho}
           height={pieza.alto}
           loading="eager"
-          class:list={[
-            'absolute w-[230px] 2xl:w-[300px]',
-            pieza.lado === 'izquierda' ? 'left-[58px]' : 'right-[58px]',
-            pieza.arriba ? 'top-0' : 'bottom-0',
-          ]}
+          class:list={['absolute w-[230px] 2xl:w-[290px]', pieza.sitio]}
         />
       ))}
     </div>
