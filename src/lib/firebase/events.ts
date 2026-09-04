@@ -1,5 +1,6 @@
 import { getAdminDb } from './server';
 import { getUserProfiles } from './users';
+import { normalizeCityName } from '../eventValidation';
 import type { NodoEvent } from '../../types/event';
 
 export interface EventFilters {
@@ -117,6 +118,19 @@ export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoE
 
     return true;
   });
+}
+
+// La ciudad se normaliza al guardar (ver normalizeCityName en
+// eventValidation.ts) desde que existe esta funcion, pero eso no toca lo que
+// ya esta en Firestore: eventos publicados antes conviven con "cartagena" y
+// "Cartagena" como si fueran ciudades distintas. Agrupar aqui, en vez de
+// migrar los documentos, resuelve el filtro sin tocar datos ya publicados.
+export function getFilterCities(events: NodoEvent[]): string[] {
+  const cities = new Set(
+    events.filter((event): event is NodoEvent & { city: string } => Boolean(event.city)).map((event) => normalizeCityName(event.city)),
+  );
+
+  return [...cities].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 export async function getEvents(filters?: EventFilters): Promise<NodoEvent[]> {

@@ -7,7 +7,7 @@ import SecondaryFilters from '../components/events/SecondaryFilters.astro';
 import StatusToast from '../components/common/StatusToast.astro';
 import Franja from '../components/common/Franja.astro';
 import { MapPin, Video } from '@lucide/astro';
-import { filterEvents, getEvents } from '../lib/firebase/events';
+import { filterEvents, getEvents, getFilterCities } from '../lib/firebase/events';
 import { buildFilterHref } from '../lib/eventFilterHref';
 import { genColor } from '../lib/genColor';
 import { getInstagramPosts } from '../lib/firebase/instagram';
@@ -29,9 +29,7 @@ try {
 }
 
 const timeframeEvents = filterEvents(allEvents, { timeframe });
-const cities = [
-  ...new Set(timeframeEvents.filter((event) => event.city).map((event) => event.city as string)),
-].sort((a, b) => a.localeCompare(b, 'es'));
+const cities = getFilterCities(timeframeEvents);
 
 const events = filterEvents(allEvents, { modality: modalidad, city: ciudad, timeframe, search: query });
 const hasActiveFilters = Boolean(modalidad || ciudad || query);

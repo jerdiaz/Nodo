@@ -21,6 +21,19 @@ function isValidTimezone(value: string): boolean {
   }
 }
 
+// "cartagena" y "Cartagena" son la misma ciudad pero, guardadas tal cual las
+// escribe quien publica, son dos valores distintos para cualquiera que
+// agrupe por el campo. Se exporta para poder aplicar el mismo criterio al
+// leer eventos ya publicados (ver getFilterCities en events.ts), sin
+// necesidad de migrar lo que ya hay en Firestore.
+export function normalizeCityName(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/(^|[\s-])\p{L}/gu, (letra) => letra.toUpperCase());
+}
+
 export interface ValidatedEventInput {
   title: string;
   description: string;
@@ -58,7 +71,7 @@ export function validateEventPayload(body: unknown): { data: ValidatedEventInput
     return { error: 'La modalidad debe ser presencial, virtual o hibrido.' };
   }
 
-  const city = typeof payload.city === 'string' ? payload.city.trim() : '';
+  const city = typeof payload.city === 'string' ? normalizeCityName(payload.city) : '';
   const venue = typeof payload.venue === 'string' ? payload.venue.trim() : '';
   const address = typeof payload.address === 'string' ? payload.address.trim() : '';
   const meetingUrl = typeof payload.meetingUrl === 'string' ? payload.meetingUrl.trim() : '';
