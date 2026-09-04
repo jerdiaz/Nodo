@@ -2,6 +2,7 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import EventForm from '../../../components/events/EventForm.astro';
 import { getCurrentUser } from '../../../lib/auth';
+import { getCommunityByOwner } from '../../../lib/firebase/communities';
 import { getEventBySlug } from '../../../lib/firebase/events';
 
 const { slug } = Astro.params;
@@ -20,6 +21,8 @@ if (!user) {
 if (user.uid !== event.organizer.uid) {
   return new Response(null, { status: 403, statusText: 'Forbidden' });
 }
+
+const community = await getCommunityByOwner(user.uid).catch(() => null);
 ---
 
 <BaseLayout title={`Editar ${event.title} — Nodo`} description="Edita los datos de tu evento en Nodo.">
@@ -29,6 +32,6 @@ if (user.uid !== event.organizer.uid) {
       <p class="mt-2 text-sm text-suave">Actualiza los datos de tu evento y guarda los cambios.</p>
     </div>
 
-    <EventForm event={event} />
+    <EventForm event={event} community={community} />
   </div>
 </BaseLayout>

@@ -3,14 +3,23 @@ import Card from '../ui/Card.astro';
 import ImageCropper from '../ui/ImageCropper.astro';
 import Button from '../ui/Button.astro';
 import type { NodoEvent } from '../../types/event';
+import type { NodoCommunity } from '../../types/community';
 import DateTimePicker from './DateTimePicker.astro';
 
 interface Props {
   event?: NodoEvent;
+  // La comunidad que administra quien esta rellenando el formulario, si tiene
+  // alguna. Sin ella no hay nada que elegir y el selector no se dibuja.
+  community?: NodoCommunity | null;
 }
 
-const { event } = Astro.props;
+const { event, community } = Astro.props;
 const isEdit = Boolean(event);
+
+// Al crear se propone la comunidad, que es para lo que se creo; al editar
+// manda lo que el evento ya tenga, para no cambiarle el autor a quien solo
+// venia a corregir una hora.
+const publishAsValue = isEdit ? (event?.community ? 'comunidad' : 'persona') : 'comunidad';
 
 function toDatetimeLocalValue(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -72,6 +81,24 @@ const inputClass =
         value={event?.title ?? ''}
       />
     </div>
+
+    {community && (
+      <div>
+        <label class="block text-sm font-medium text-texto">Publicar como</label>
+        <div class="mt-1.5 grid grid-cols-2 gap-1 rounded-2xl border border-linea bg-fondo-alt p-1">
+          <button type="button" data-publish-option="persona" class="publish-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
+            A mi nombre
+          </button>
+          <button type="button" data-publish-option="comunidad" class="publish-tab truncate rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
+            {community.name}
+          </button>
+        </div>
+        <input type="hidden" id="publishAs" name="publishAs" value={publishAsValue} />
+        <p class="mt-1.5 text-xs text-tenue">
+          En la cartelera se ve el nombre que elijas aquí. Quien lo creó siempre aparece en la ficha del evento.
+        </p>
+      </div>
+    )}
 
     <div>
       <label class="block text-sm font-medium text-texto">Modalidad</label>
@@ -180,6 +207,9 @@ const inputClass =
   const form = document.getElementById('event-form') as HTMLFormElement;
   const modalityInput = document.getElementById('modality') as HTMLInputElement;
   const modalityTabs = document.querySelectorAll<HTMLButtonElement>('.modality-tab');
+  // Solo existe si esta persona administra una comunidad.
+  const publishTabs = document.querySelectorAll<HTMLButtonElement>('.publish-tab');
+  const publishInput = document.getElementById('publishAs') as HTMLInputElement | null;
   const locationGroup = document.querySelector('[data-field-group="location"]') as HTMLElement;
   const onlineGroup = document.querySelector('[data-field-group="online"]') as HTMLElement;
   const cityInput = document.getElementById('city') as HTMLInputElement;
@@ -282,6 +312,27 @@ const inputClass =
       tab.classList.toggle('hover:text-texto', !isActive);
     });
   }
+
+  function setActivePublishTab(value: string): void {
+    publishTabs.forEach((tab) => {
+      const isActive = tab.dataset.publishOption === value;
+      tab.classList.toggle('bg-acento', isActive);
+      tab.classList.toggle('text-acento-contraste', isActive);
+      tab.classList.toggle('shadow-sm', isActive);
+      tab.classList.toggle('text-suave', !isActive);
+      tab.classList.toggle('hover:text-texto', !isActive);
+    });
+  }
+
+  publishTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const value = tab.dataset.publishOption ?? 'persona';
+      if (publishInput) publishInput.value = value;
+      setActivePublishTab(value);
+    });
+  });
+
+  if (publishInput) setActivePublishTab(publishInput.value);
 
   function updateConditionalFields(): void {
     const modality = modalityInput.value;
@@ -425,6 +476,7 @@ const inputClass =
         startDate: toIsoStringOrEmpty(formData.get('startDate')),
         endDate: toIsoStringOrEmpty(formData.get('endDate')),
         timezone: formData.get('timezone') || undefined,
+        publishAs: formData.get('publishAs') || undefined,
         tags: tagsRaw
           .split(',')
           .map((tag) => tag.trim())

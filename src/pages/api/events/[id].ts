@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { jsonResponse } from '../../../lib/api';
 import { getCurrentUser } from '../../../lib/auth';
 import { validateEventPayload } from '../../../lib/eventValidation';
+import { getCommunityByOwner, toEventCommunity } from '../../../lib/firebase/communities';
 import { getAdminDb } from '../../../lib/firebase/server';
 import { deleteImageByUrl } from '../../../lib/images';
 
@@ -40,10 +41,24 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
 
   const { startDate, endDate, ...rest } = validation.data;
 
+  // Editar tambien puede cambiar a nombre de quien sale el evento. Se toca
+  // solo si el formulario manda el campo: una peticion que no lo lleve deja la
+  // comunidad como estaba en vez de borrarla por omision.
+  const publishAs = (body as Record<string, unknown> | null)?.publishAs;
+  let community: FirebaseFirestore.FieldValue | ReturnType<typeof toEventCommunity> | undefined;
+
+  if (publishAs === 'persona') {
+    community = FieldValue.delete();
+  } else if (publishAs === 'comunidad') {
+    const comunidad = await getCommunityByOwner(user.uid);
+    community = comunidad ? toEventCommunity(comunidad) : FieldValue.delete();
+  }
+
   await docRef.update({
     ...rest,
     startDate: Timestamp.fromDate(startDate),
     endDate: Timestamp.fromDate(endDate),
+    ...(community === undefined ? {} : { community }),
   });
 
   // Si llega un banner nuevo, el anterior deja de estar referenciado por nadie.

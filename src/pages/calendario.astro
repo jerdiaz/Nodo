@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Badge from '../components/ui/Badge.astro';
+import VerifiedBadge from '../components/ui/VerifiedBadge.astro';
 import EmptyState from '../components/events/EmptyState.astro';
 import { getCurrentUser } from '../lib/auth';
 import { filterEvents, getEvents } from '../lib/firebase/events';
@@ -130,6 +131,10 @@ const modalityLabel: Record<EventModality, string> = {
                 {group.events.map((event, index) => {
                   const count = rsvpCounts.get(event.id) ?? 0;
                   const location = getEventLocationLabel(event);
+                  // Igual que en la cartelera: manda la comunidad si el evento
+                  // se publico en su nombre, y la palomita es siempre de quien
+                  // lo creo.
+                  const autor = event.community ?? event.organizer;
                   const badge = dayBadge(event);
                   const color = genColorForEvent(event);
 
@@ -179,18 +184,21 @@ const modalityLabel: Record<EventModality, string> = {
 
                         <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
                           <span class="flex min-w-0 items-center gap-1.5 text-xs text-suave">
-                            {event.organizer.avatarUrl ? (
+                            {autor.avatarUrl ? (
                               <img
-                                src={event.organizer.avatarUrl}
+                                src={autor.avatarUrl}
                                 alt=""
                                 class="size-4 shrink-0 rounded-full object-cover"
                               />
                             ) : (
                               <span class="flex size-4 shrink-0 items-center justify-center rounded-full bg-fondo-alt text-[8px] font-medium text-suave">
-                                {event.organizer.name.charAt(0).toUpperCase()}
+                                {autor.name.charAt(0).toUpperCase()}
                               </span>
                             )}
-                            <span class="truncate">{event.organizer.name}</span>
+                            <span class="truncate">{autor.name}</span>
+                            {event.organizer.verification && (
+                              <VerifiedBadge type={event.organizer.verification} class="size-3.5 shrink-0" />
+                            )}
                           </span>
 
                           {count > 0 && (

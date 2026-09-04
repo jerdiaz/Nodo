@@ -32,7 +32,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   const { startDate, endDate, ...rest } = validation.data;
   const db = getAdminDb();
-  const comunidad = await getCommunityByOwner(user.uid);
+
+  // Quien administra una comunidad elige en el formulario si publica en su
+  // nombre o en el suyo propio. Sin el campo se asume la comunidad, que es lo
+  // que hacia antes de que se pudiera elegir.
+  const publishAs = (body as Record<string, unknown> | null)?.publishAs;
+  const comunidad = publishAs === 'persona' ? null : await getCommunityByOwner(user.uid);
 
   const baseSlug = slugify(rest.title) || 'evento';
   let slug = baseSlug;

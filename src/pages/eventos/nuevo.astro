@@ -2,12 +2,17 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import EventForm from '../../components/events/EventForm.astro';
 import { getCurrentUser } from '../../lib/auth';
+import { getCommunityByOwner } from '../../lib/firebase/communities';
 
 const user = await getCurrentUser(Astro.cookies);
 
 if (!user) {
   return Astro.redirect('/?login=required');
 }
+
+// Si no administra ninguna, el formulario no dibuja el selector y el evento
+// sale a su nombre, como hasta ahora.
+const community = await getCommunityByOwner(user.uid).catch(() => null);
 ---
 
 <BaseLayout title="Publicar evento — Nodo" description="Publica un evento en la cartelera comunitaria de Nodo.">
@@ -17,6 +22,6 @@ if (!user) {
       <p class="mt-2 text-sm text-suave">Completa los datos para publicarlo en la comunidad.</p>
     </div>
 
-    <EventForm />
+    <EventForm community={community} />
   </div>
 </BaseLayout>
