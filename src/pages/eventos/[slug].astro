@@ -150,9 +150,9 @@ function textoLugares(restantes: number): string {
 
 const physicalLocation = [event.venue, event.address, event.city].filter(Boolean).join(', ');
 
-// Con coordenadas se pide el punto y no el texto: quien las eligio al publicar
-// ya dijo exactamente donde es, y buscar la direccion escrita solo acertaba el
-// barrio. Sin ellas se sigue buscando por texto, como los eventos antiguos.
+// Con coordenadas se pide el punto y no el texto: buscar la direccion escrita
+// solo acertaba el barrio. Sin ellas se sigue buscando por texto, como los
+// eventos publicados antes de que existiera el selector.
 const mapaConsulta =
   event.latitude !== undefined && event.longitude !== undefined
     ? `${event.latitude},${event.longitude}`
@@ -172,19 +172,41 @@ const mapsUrl = physicalLocation
   ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapaConsulta ?? physicalLocation)}`
   : null;
 
-// Mapa incrustado sin clave de API. El parametro output=embed de maps.google
-// .com no esta documentado, pero es la unica via a un mapa real sin dar de
-// alta la Maps Embed API y sin pasar una clave publica por el build de Docker
-// (que es donde se inlinean las PUBLIC_*). Si algun dia deja de responder, la
-// ficha no se rompe: el enlace "Ver en Google Maps" de debajo y el del filo de
-// la tarjeta siguen llevando al mismo sitio.
+// El mapa incrustado. Con clave se usa la Maps Embed API, que es la via
+// documentada y ademas gratuita sin tope; sin ella se cae al parametro
+// output=embed de maps.google.com, que no esta documentado pero no pide clave
+// y es como funcionaba antes.
 //
-// Se busca por texto porque es lo unico que hay: el evento guarda direccion
-// escrita, no coordenadas.
-const mapaEmbedUrl =
-  mapaConsulta && event.modality !== 'virtual'
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(mapaConsulta)}&z=${event.latitude !== undefined ? 17 : 15}&hl=es&output=embed`
-    : null;
+// La clave del navegador es publica por diseño -viaja en este HTML- y lo que
+// la protege es su restriccion por referente y por API, no el secreto. Se
+// incrusta en el build, asi que vive tambien en el Dockerfile y en los
+// build.args de docker-compose: si falta en alguno de los dos, aqui llega
+// undefined y el mapa se rompe solo en produccion.
+const claveMapa = import.meta.env.PUBLIC_GOOGLE_MAPS_EMBED_KEY;
+
+const mapaEmbedUrl = (() => {
+  if (!mapaConsulta || event.modality === 'virtual') {
+    return null;
+  }
+
+  // Con coordenadas se pide el punto y se acerca un nivel mas: quien las
+  // eligio al publicar ya dijo exactamente donde es.
+  const zoom = event.latitude !== undefined ? 17 : 15;
+
+  if (claveMapa) {
+    const params = new URLSearchParams({
+      key: claveMapa,
+      q: mapaConsulta,
+      language: 'es',
+      region: 'CO',
+      zoom: String(zoom),
+    });
+
+    return `https://www.google.com/maps/embed/v1/place?${params.toString()}`;
+  }
+
+  return `https://maps.google.com/maps?q=${encodeURIComponent(mapaConsulta)}&z=${zoom}&hl=es&output=embed`;
+})();
 
 const tzAbbreviation = new Intl.DateTimeFormat('es', { timeZone: event.timezone, timeZoneName: 'short' })
   .formatToParts(event.startDate)
