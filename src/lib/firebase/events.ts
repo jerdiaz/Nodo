@@ -1,4 +1,5 @@
 import { getAdminDb } from './server';
+import { getUserProfiles } from './users';
 import type { NodoEvent } from '../../types/event';
 
 export interface EventFilters {
@@ -38,6 +39,38 @@ function mapDocToEvent(doc: FirebaseFirestore.QueryDocumentSnapshot): NodoEvent 
     tags: data.tags ?? [],
     organizer: data.organizer,
   };
+}
+
+// El nombre/foto del organizador se guardan en el evento al publicarlo, pero
+// la persona puede cambiarlos despues en Configuracion. Sin esto, el evento
+// se quedaria mostrando para siempre el nombre de cuando se publico — aqui se
+// pisan con el perfil actual (si existe), en un solo viaje a Firestore para
+// todos los organizadores de la lista, no uno por evento.
+async function enrichOrganizers(events: NodoEvent[]): Promise<NodoEvent[]> {
+  const profiles = await getUserProfiles(events.map((event) => event.organizer.uid));
+
+  if (profiles.size === 0) {
+    return events;
+  }
+
+  return events.map((event) => {
+    const profile = profiles.get(event.organizer.uid);
+
+    if (!profile) {
+      return event;
+    }
+
+    const currentName = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
+
+    return {
+      ...event,
+      organizer: {
+        ...event.organizer,
+        name: currentName || event.organizer.name,
+        avatarUrl: profile.avatarUrl ?? event.organizer.avatarUrl,
+      },
+    };
+  });
 }
 
 export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoEvent[] {
@@ -84,7 +117,7 @@ export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoE
 export async function getEvents(filters?: EventFilters): Promise<NodoEvent[]> {
   const db = getAdminDb();
   const snapshot = await db.collection('events').orderBy('startDate', 'asc').get();
-  const events = snapshot.docs.map(mapDocToEvent);
+  const events = await enrichOrganizers(snapshot.docs.map(mapDocToEvent));
 
   return filterEvents(events, filters);
 }
@@ -97,5 +130,6 @@ export async function getEventBySlug(slug: string): Promise<NodoEvent | null> {
     return null;
   }
 
-  return mapDocToEvent(snapshot.docs[0]!);
+  const [event] = await enrichOrganizers([mapDocToEvent(snapshot.docs[0]!)]);
+  return event ?? null;
 }

@@ -6,9 +6,7 @@ function usersCollection() {
   return getAdminDb().collection('users');
 }
 
-export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  const doc = await usersCollection().doc(uid).get();
-
+function mapDocToProfile(doc: FirebaseFirestore.DocumentSnapshot): UserProfile | null {
   if (!doc.exists) {
     return null;
   }
@@ -27,6 +25,35 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     verification: data.verification,
     admin: data.admin === true,
   };
+}
+
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+  const doc = await usersCollection().doc(uid).get();
+  return mapDocToProfile(doc);
+}
+
+// Lectura por lotes para no pagar una consulta por organizador al listar
+// eventos: getAll() hace un solo viaje de red por muchos uids conocidos,
+// sin necesitar indice (a diferencia de un where(documentId(), 'in', ...),
+// que ademas topa en 30 valores).
+export async function getUserProfiles(uids: string[]): Promise<Map<string, UserProfile>> {
+  const uniqueUids = [...new Set(uids)];
+
+  if (uniqueUids.length === 0) {
+    return new Map();
+  }
+
+  const docs = await getAdminDb().getAll(...uniqueUids.map((uid) => usersCollection().doc(uid)));
+  const profiles = new Map<string, UserProfile>();
+
+  for (const doc of docs) {
+    const profile = mapDocToProfile(doc);
+    if (profile) {
+      profiles.set(doc.id, profile);
+    }
+  }
+
+  return profiles;
 }
 
 // La condicion de administrador se lee siempre de Firestore, nunca de nada que
