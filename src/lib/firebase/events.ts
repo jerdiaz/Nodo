@@ -56,6 +56,11 @@ function mapDocToEvent(doc: FirebaseFirestore.DocumentSnapshot): NodoEvent {
     organizer: data.organizer,
     community: data.community,
     rsvpCount: typeof data.rsvpCount === 'number' ? data.rsvpCount : undefined,
+    latitude: typeof data.latitude === 'number' ? data.latitude : undefined,
+    longitude: typeof data.longitude === 'number' ? data.longitude : undefined,
+    price: typeof data.price === 'number' ? data.price : undefined,
+    currency: typeof data.currency === 'string' ? (data.currency as NodoEvent['currency']) : undefined,
+    capacity: typeof data.capacity === 'number' ? data.capacity : undefined,
   };
 }
 

@@ -1,4 +1,4 @@
-import type { EventModality } from '../types/event';
+import { EVENT_CURRENCIES, type EventCurrency, type EventModality } from '../types/event';
 import { esImagenSubida } from './imagenSubida';
 
 const VALID_MODALITIES: EventModality[] = ['presencial', 'virtual', 'hibrido'];
@@ -14,6 +14,12 @@ const MAX_ADDRESS_LENGTH = 200;
 const MAX_URL_LENGTH = 500;
 const MAX_TAGS = 10;
 const MAX_TAG_LENGTH = 40;
+
+// Un precio por encima de esto es casi seguro un dedazo (un cero de mas al
+// teclear pesos), y el aforo tope evita que un numero absurdo acabe pintando
+// "quedan 999999999 lugares".
+const MAX_PRICE = 100_000_000;
+const MAX_CAPACITY = 100_000;
 
 // new URL() acepta "javascript:alert(1)" como URL valida. Estos valores se
 // pintan luego como enlace o como <img>, asi que el protocolo se comprueba de
@@ -63,6 +69,24 @@ export interface ValidatedEventInput {
   endDate: Date;
   timezone: string;
   tags: string[];
+  latitude?: number;
+  longitude?: number;
+  price?: number;
+  currency?: EventCurrency;
+  capacity?: number;
+}
+
+// Acepta numero o cadena porque el formulario manda lo que hay en un input de
+// texto. Cadena vacia, null y undefined son "sin valor", que no es lo mismo
+// que un cero.
+function toNumber(value: unknown): number | null | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const numero = typeof value === 'number' ? value : Number(value);
+
+  return Number.isFinite(numero) ? numero : null;
 }
 
 export interface ValidateEventOptions {
@@ -195,6 +219,63 @@ export function validateEventPayload(
     return { error: `Ninguna etiqueta puede superar los ${MAX_TAG_LENGTH} caracteres.` };
   }
 
+  // Las dos coordenadas van juntas o no van: con una sola no se puede pintar
+  // un punto, y guardarla dejaria el evento en un estado que ninguna pantalla
+  // sabe leer.
+  const latitude = toNumber(payload.latitude);
+  const longitude = toNumber(payload.longitude);
+
+  if (latitude === null || longitude === null) {
+    return { error: 'Las coordenadas del sitio no son válidas.' };
+  }
+
+  if ((latitude === undefined) !== (longitude === undefined)) {
+    return { error: 'Las coordenadas del sitio están incompletas.' };
+  }
+
+  if (latitude !== undefined && (latitude < -90 || latitude > 90)) {
+    return { error: 'La latitud del sitio está fuera de rango.' };
+  }
+
+  if (longitude !== undefined && (longitude < -180 || longitude > 180)) {
+    return { error: 'La longitud del sitio está fuera de rango.' };
+  }
+
+  const precioBruto = toNumber(payload.price);
+
+  if (precioBruto === null || (precioBruto !== undefined && precioBruto < 0)) {
+    return { error: 'El precio no es válido.' };
+  }
+
+  if (precioBruto !== undefined && precioBruto > MAX_PRICE) {
+    return { error: 'El precio es demasiado alto.' };
+  }
+
+  // Un cero se guarda como "sin precio": es lo mismo que gratis, y dejar solo
+  // una forma de decirlo evita que cada pantalla tenga que comprobar las dos.
+  // Se redondea a dos decimales porque un precio con mas no existe en ninguna
+  // de las monedas admitidas.
+  const price = precioBruto ? Math.round(precioBruto * 100) / 100 : undefined;
+
+  const monedaBruta = typeof payload.currency === 'string' ? payload.currency.trim().toUpperCase() : '';
+
+  if (monedaBruta && !EVENT_CURRENCIES.includes(monedaBruta as EventCurrency)) {
+    return { error: 'La moneda no es válida.' };
+  }
+
+  // La moneda solo se guarda si hay precio, y por defecto es la de casa.
+  const currency = price ? ((monedaBruta || 'COP') as EventCurrency) : undefined;
+
+  const aforo = toNumber(payload.capacity);
+
+  if (aforo === null || (aforo !== undefined && (!Number.isInteger(aforo) || aforo < 1))) {
+    return { error: 'El aforo debe ser un número entero mayor que cero.' };
+  }
+
+  if (aforo !== undefined && aforo > MAX_CAPACITY) {
+    return { error: `El aforo no puede superar los ${MAX_CAPACITY} asistentes.` };
+  }
+
   return {
     data: {
       title,
@@ -210,6 +291,11 @@ export function validateEventPayload(
       endDate,
       timezone,
       tags,
+      latitude,
+      longitude,
+      price,
+      currency,
+      capacity: aforo,
     },
   };
 }
