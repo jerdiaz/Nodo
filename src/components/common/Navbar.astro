@@ -31,7 +31,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
   Quien dibuja el redondeo es el borde inferior, que sigue la curva. El fondo
   tambien se recorta, pero contra el blanco de la pagina eso no se ve.
 */}
-<header class="relative z-50 rounded-b-3xl border-b border-linea bg-fondo/80 backdrop-blur-xl">
+<header class="relative z-50 rounded-b-3xl bg-fondo">
   <nav class="mx-auto flex h-20 max-w-[1200px] items-center gap-6 px-6 xl:px-14">
     <a href="/" class="flex shrink-0 items-center gap-2.5 text-2xl font-bold tracking-tight text-texto">
       <img src="/logo-icon.png" alt="" class="size-8" />
@@ -47,7 +47,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       method="get"
       action="/"
       role="search"
-      class="hidden h-11 w-full min-w-0 max-w-[500px] items-center gap-1 rounded-full bg-fondo-alt p-1 lg:flex"
+      class="group hidden h-11 w-full min-w-0 max-w-[500px] items-center gap-1 rounded-full bg-superficie p-1 shadow-[var(--c-sombra)] transition lg:flex focus-within:bg-fondo-alt focus-within:shadow-none"
     >
       <input
         type="text"
@@ -57,6 +57,11 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
         aria-label="Buscar eventos"
         class="h-9 min-w-0 flex-1 rounded-full bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none transition placeholder:text-tenue focus:bg-superficie focus:shadow-[var(--c-sombra)]"
       />
+      <span
+        class="h-5 w-px shrink-0 bg-linea transition group-focus-within:bg-transparent"
+        aria-hidden="true"
+      ></span>
+
       <input
         type="text"
         name="ciudad"
