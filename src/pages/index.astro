@@ -529,7 +529,7 @@ if (MOSTRAR_PUBLICACIONES) {
         El zigzag es lo que hace que se lean como pasos y no como tres opciones
         sueltas: la fila de tres columnas no dice en que orden van, y esto si.
       */}
-      <section class="border-y border-linea bg-fondo-alt">
+      <section>
         <div class="mx-auto max-w-[1200px] px-6 py-20">
           <p class="text-center text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">
             Qué es Nodo
@@ -625,8 +625,11 @@ if (MOSTRAR_PUBLICACIONES) {
           </div>
 
           <div class="mt-14 grid gap-10 md:grid-cols-3">
-            {comunidades.map((comunidad) => (
-              <article data-gen={comunidad.color}>
+            {comunidades.map((comunidad, indice) => (
+              <article
+                data-gen={comunidad.color}
+                class:list={[indice === 1 ? 'md:mt-12' : '']}
+              >
                 <a href="/comunidades" class="group block">
                   <div class="relative">
                     {/* El bloque de color asoma por abajo y por la izquierda. */}
