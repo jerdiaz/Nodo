@@ -39,6 +39,7 @@ function mapDocToEvent(doc: FirebaseFirestore.QueryDocumentSnapshot): NodoEvent 
     timezone: data.timezone ?? 'America/Bogota',
     tags: data.tags ?? [],
     organizer: data.organizer,
+    community: data.community,
   };
 }
 

@@ -4,18 +4,8 @@ import { jsonResponse } from '../../../lib/api';
 import { getDisplayUser } from '../../../lib/auth';
 import { validateEventPayload } from '../../../lib/eventValidation';
 import { getAdminDb } from '../../../lib/firebase/server';
-
-function slugify(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[^\x00-\x7F]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
+import { getCommunityByOwner, toEventCommunity } from '../../../lib/firebase/communities';
+import { slugify } from '../../../lib/slug';
 
 function randomSuffix(length = 4): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -42,6 +32,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   const { startDate, endDate, ...rest } = validation.data;
   const db = getAdminDb();
+  const comunidad = await getCommunityByOwner(user.uid);
 
   const baseSlug = slugify(rest.title) || 'evento';
   let slug = baseSlug;
@@ -67,6 +58,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         name: user.name,
         avatarUrl: user.avatarUrl ?? undefined,
       },
+      community: comunidad ? toEventCommunity(comunidad) : undefined,
       createdAt: FieldValue.serverTimestamp(),
     });
 

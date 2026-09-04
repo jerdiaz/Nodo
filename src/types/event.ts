@@ -1,3 +1,5 @@
+import type { EventCommunity } from './community';
+
 export type EventModality = 'presencial' | 'virtual' | 'hibrido';
 
 export interface EventOrganizer {
@@ -22,4 +24,7 @@ export interface NodoEvent {
   timezone: string;
   tags: string[];
   organizer: EventOrganizer;
+  // Cuando el evento se publica en nombre de una comunidad, la cartelera
+  // muestra a la comunidad y la ficha sigue mostrando a quien lo creo.
+  community?: EventCommunity;
 }
