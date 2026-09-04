@@ -305,25 +305,25 @@ if (MOSTRAR_PUBLICACIONES) {
 
     <div class="relative mx-auto max-w-[680px] text-center">
       {/*
-        En telefono los mismos iconos van en fila sobre el titular, y no
-        repartidos a los lados: ahi la columna se estrecha, el titular pasa de
-        tres lineas a seis y cada ancho de pantalla las corta por un sitio
-        distinto, asi que cualquier posicion fija acabaria encima del texto.
-        Encima del titular no puede chocar con nada a ningun ancho.
+        En telefono no cabe uno a cada lado de cada linea: el titular pasa de
+        tres lineas a seis y la mas larga se come 301 de los 327px de la
+        columna. Se reparten igualmente por las cuatro esquinas, pero apoyados
+        en los dos sitios que si estan vacios a cualquier ancho: la franja
+        sobre el titular y los costados del boton.
       */}
-      <div class="mb-8 flex justify-center gap-3 md:hidden" aria-hidden="true">
-        {iconosBanner.map(({ Icono, color, giro }) => (
-          <div
-            data-gen={color}
-            class:list={[
-              'grid size-12 place-items-center rounded-2xl bg-superficie shadow-[var(--c-sombra)]',
-              giro,
-            ]}
-          >
-            <Icono class="size-5 text-[var(--g)]" stroke-width={1.75} />
-          </div>
-        ))}
-      </div>
+      {iconosBanner.slice(0, 2).map(({ Icono, color, giro }, indice) => (
+        <div
+          data-gen={color}
+          aria-hidden="true"
+          class:list={[
+            'pointer-events-none absolute -top-16 grid size-10 place-items-center rounded-2xl bg-superficie shadow-[var(--c-sombra)] sm:size-12 md:hidden',
+            indice === 0 ? 'left-0' : 'right-0',
+            giro,
+          ]}
+        >
+          <Icono class="size-4 text-[var(--g)] sm:size-5" stroke-width={1.75} />
+        </div>
+      ))}
 
       {/* Desde md hay aire de sobra a los lados del titular y se reparten. */}
       {iconosBanner.map(({ Icono, color, giro, sitio }) => (
@@ -359,12 +359,28 @@ if (MOSTRAR_PUBLICACIONES) {
         confirma tu asistencia.
       </p>
 
-      <a
-        href="/eventos/nuevo"
-        class="mt-8 inline-flex h-[46px] items-center rounded-full bg-acento px-6 text-base font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
-      >
-        Publicar evento
-      </a>
+      <div class="relative mt-8">
+        {iconosBanner.slice(2).map(({ Icono, color, giro }, indice) => (
+          <div
+            data-gen={color}
+            aria-hidden="true"
+            class:list={[
+              'pointer-events-none absolute top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-2xl bg-superficie shadow-[var(--c-sombra)] sm:size-12 md:hidden',
+              indice === 0 ? 'left-0' : 'right-0',
+              giro,
+            ]}
+          >
+            <Icono class="size-4 text-[var(--g)] sm:size-5" stroke-width={1.75} />
+          </div>
+        ))}
+
+        <a
+          href="/eventos/nuevo"
+          class="inline-flex h-[46px] items-center rounded-full bg-acento px-6 text-base font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
+        >
+          Publicar evento
+        </a>
+      </div>
 
       {/*
         En movil las columnas laterales no caben, y dejarlas ocultas del todo
