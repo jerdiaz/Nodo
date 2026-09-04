@@ -23,6 +23,7 @@
     "clsx": "^2.1.1",
     "firebase": "^12.18.0",
     "firebase-admin": "^14.3.0",
+    "leaflet": "^1.9.4",
     "sharp": "^0.35.4",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3"
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@types/leaflet": "^1.9.22",
     "typescript": "^6.0.3"
   }
 }

@@ -2,7 +2,7 @@
 import Card from '../ui/Card.astro';
 import ImageCropper from '../ui/ImageCropper.astro';
 import Button from '../ui/Button.astro';
-import type { NodoEvent } from '../../types/event';
+import { EVENT_CURRENCIES, type NodoEvent } from '../../types/event';
 import type { NodoCommunity } from '../../types/community';
 import DateTimePicker from './DateTimePicker.astro';
 
@@ -47,6 +47,13 @@ const cancelHref = isEdit ? `/eventos/${event!.slug}` : '/';
 
 const inputClass =
   'mt-1.5 w-full rounded-xl bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus-visible:outline-none focus:ring-2 focus:ring-acento';
+
+// El mismo campo cuando ya va dentro de una fila: el margen y el ancho los
+// pone el contenedor. Sale sin w-full a proposito — estas clases se
+// concatenan a mano, no pasan por cn(), asi que un w-full junto a un w-auto
+// no lo resuelve tailwind-merge sino el orden de la hoja, y gana w-full: el
+// selector de moneda se comia la fila entera y dejaba el precio en 28px.
+const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
 ---
 
 <Card class="mt-8 p-8">
@@ -153,6 +160,60 @@ const inputClass =
           value={event?.address ?? ''}
         />
       </div>
+
+      {/*
+        El punto exacto. Buscar por nombre y pegar un enlace de Maps son la
+        misma caja a proposito: quien tiene el enlace lo pega, quien no, teclea
+        el sitio. Lo resuelve /api/ubicacion, que distingue las dos cosas.
+
+        Sin punto el evento se sigue publicando: el mapa de la ficha cae a
+        buscar por la direccion escrita, como hasta ahora.
+      */}
+      <div>
+        <label for="place-search" class="block text-sm font-medium text-texto">Ubicación exacta</label>
+        <div class="mt-1.5 flex gap-2">
+          <input
+            id="place-search"
+            type="text"
+            autocomplete="off"
+            class={`${inputClassFila} min-w-0 flex-1`}
+            placeholder="Busca el sitio o pega un enlace de Google Maps"
+          />
+          <button
+            type="button"
+            id="place-search-button"
+            class="shrink-0 rounded-xl border border-linea bg-superficie px-4 text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Buscar
+          </button>
+        </div>
+        <p class="mt-1.5 text-xs text-tenue">
+          Escribe el nombre del sitio, o ábrelo en Google Maps y pega aquí el enlace. El punto que
+          elijas es el que verá quien vaya.
+        </p>
+
+        <p id="place-error" class="mt-1.5 hidden text-xs text-acento-texto"></p>
+
+        <ul
+          id="place-results"
+          class="mt-2 hidden divide-y divide-linea overflow-hidden rounded-xl border border-linea bg-superficie"
+        ></ul>
+
+        <div
+          id="place-map"
+          class="mt-3 hidden h-56 w-full overflow-hidden rounded-2xl border border-linea"
+        ></div>
+
+        <div id="place-chosen" class="mt-2 hidden items-center justify-between gap-3 text-xs">
+          <span class="text-suave">Arrastra el pin si el punto no está justo donde es.</span>
+          <button type="button" id="place-clear" class="shrink-0 font-medium text-acento-texto">
+            Quitar punto
+          </button>
+        </div>
+
+        <input type="hidden" id="latitude" name="latitude" value={event?.latitude ?? ''} />
+        <input type="hidden" id="longitude" name="longitude" value={event?.longitude ?? ''} />
+      </div>
     </div>
 
     <div data-field-group="online" class="hidden">
@@ -165,6 +226,81 @@ const inputClass =
         placeholder="https://meet.google.com/..."
         value={event?.meetingUrl ?? ''}
       />
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="block text-sm font-medium text-texto">Entrada</label>
+        <div
+          class="mt-1.5 grid grid-cols-2 gap-1 rounded-2xl border border-linea bg-fondo-alt p-1"
+          role="radiogroup"
+          aria-label="Entrada"
+        >
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!event?.price}
+            data-price-option="gratis"
+            class="price-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]"
+          >
+            Gratis
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={Boolean(event?.price)}
+            data-price-option="pago"
+            class="price-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]"
+          >
+            De pago
+          </button>
+        </div>
+        <input type="hidden" id="priceMode" value={event?.price ? 'pago' : 'gratis'} />
+
+        <div data-field-group="price" class="mt-3 hidden gap-2">
+          <input
+            id="price"
+            name="price"
+            type="number"
+            min="0"
+            step="any"
+            inputmode="decimal"
+            class={`${inputClassFila} min-w-0 flex-1`}
+            placeholder="20000"
+            value={event?.price ?? ''}
+          />
+          <select
+            id="currency"
+            name="currency"
+            class={`${inputClassFila} shrink-0`}
+            aria-label="Moneda"
+          >
+            {EVENT_CURRENCIES.map((moneda) => (
+              <option value={moneda} selected={(event?.currency ?? 'COP') === moneda}>
+                {moneda}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label for="capacity" class="block text-sm font-medium text-texto">Aforo</label>
+        <input
+          id="capacity"
+          name="capacity"
+          type="number"
+          min="1"
+          step="1"
+          inputmode="numeric"
+          class={inputClass}
+          placeholder="Sin límite"
+          value={event?.capacity ?? ''}
+        />
+        <p class="mt-1.5 text-xs text-tenue">
+          Déjalo vacío si no hay tope. Al llenarse, nadie más podrá confirmar asistencia.
+        </p>
+      </div>
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2">
@@ -213,6 +349,7 @@ const inputClass =
 </Card>
 
 <script>
+  import 'leaflet/dist/leaflet.css';
 
   const form = document.getElementById('event-form') as HTMLFormElement;
   const modalityInput = document.getElementById('modality') as HTMLInputElement;
@@ -364,6 +501,240 @@ const inputClass =
 
   setActiveModalityTab(modalityInput.value);
   updateConditionalFields();
+
+  // --- Entrada: gratis o de pago ---
+  const priceModeInput = document.getElementById('priceMode') as HTMLInputElement;
+  const priceTabs = document.querySelectorAll<HTMLButtonElement>('.price-tab');
+  const priceGroup = document.querySelector('[data-field-group="price"]') as HTMLElement;
+  const priceInput = document.getElementById('price') as HTMLInputElement;
+
+  function setActivePriceTab(value: string): void {
+    priceTabs.forEach((tab) => {
+      const isActive = tab.dataset.priceOption === value;
+      tab.setAttribute('aria-checked', String(isActive));
+      tab.classList.toggle('bg-acento', isActive);
+      tab.classList.toggle('text-acento-contraste', isActive);
+      tab.classList.toggle('shadow-sm', isActive);
+      tab.classList.toggle('text-suave', !isActive);
+      tab.classList.toggle('hover:text-texto', !isActive);
+    });
+
+    const dePago = value === 'pago';
+    priceGroup.classList.toggle('hidden', !dePago);
+    priceGroup.classList.toggle('flex', dePago);
+    priceInput.required = dePago;
+  }
+
+  priceTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const value = tab.dataset.priceOption ?? 'gratis';
+      priceModeInput.value = value;
+      setActivePriceTab(value);
+
+      if (value === 'pago') {
+        priceInput.focus();
+      }
+    });
+  });
+
+  setActivePriceTab(priceModeInput.value);
+
+  // --- Ubicación exacta: buscar el sitio o pegar un enlace de Maps ---
+  interface Sitio {
+    nombre: string;
+    direccion?: string;
+    ciudad?: string;
+    latitude: number;
+    longitude: number;
+  }
+
+  const latitudeInput = document.getElementById('latitude') as HTMLInputElement;
+  const longitudeInput = document.getElementById('longitude') as HTMLInputElement;
+  const placeSearch = document.getElementById('place-search') as HTMLInputElement;
+  const placeButton = document.getElementById('place-search-button') as HTMLButtonElement;
+  const placeResults = document.getElementById('place-results') as HTMLUListElement;
+  const placeError = document.getElementById('place-error') as HTMLParagraphElement;
+  const placeMap = document.getElementById('place-map') as HTMLElement;
+  const placeChosen = document.getElementById('place-chosen') as HTMLElement;
+  const placeClear = document.getElementById('place-clear') as HTMLButtonElement;
+  const venueInput = document.getElementById('venue') as HTMLInputElement;
+  const addressInput = document.getElementById('address') as HTMLInputElement;
+
+  let mapa: import('leaflet').Map | null = null;
+  let marcador: import('leaflet').Marker | null = null;
+
+  function mostrarErrorSitio(mensaje: string): void {
+    placeError.textContent = mensaje;
+    placeError.classList.remove('hidden');
+  }
+
+  // Seis decimales son unos diez centimetros: mas cifras solo alargan el
+  // documento sin decir nada que un mapa pueda mostrar.
+  function guardarPunto(lat: number, lng: number): void {
+    latitudeInput.value = lat.toFixed(6);
+    longitudeInput.value = lng.toFixed(6);
+  }
+
+  // Leaflet se carga solo cuando de verdad hay un punto que pintar: es la
+  // pieza mas pesada de esta pagina y la mayoria de los eventos se publican
+  // sin tocarla.
+  async function pintarMapa(lat: number, lng: number): Promise<void> {
+    const L = (await import('leaflet')).default;
+
+    placeMap.classList.remove('hidden');
+    placeChosen.classList.remove('hidden');
+    placeChosen.classList.add('flex');
+
+    if (!mapa) {
+      mapa = L.map(placeMap, { scrollWheelZoom: false }).setView([lat, lng], 16);
+
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; colaboradores de OpenStreetMap',
+        maxZoom: 19,
+      }).addTo(mapa);
+
+      // El icono por defecto de Leaflet son dos PNG a los que llega por una
+      // ruta relativa que el empaquetador no resuelve: salen rotos. Un
+      // divIcon con SVG evita el problema y ademas lleva el color de marca.
+      const icono = L.divIcon({
+        className: '',
+        html:
+          '<svg viewBox="0 0 24 24" width="30" height="30" fill="var(--c-acento)" stroke="white" stroke-width="1.5">' +
+          '<path d="M12 22s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/>' +
+          '<circle cx="12" cy="11" r="2.5" fill="white" stroke="none"/></svg>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+      });
+
+      marcador = L.marker([lat, lng], { draggable: true, icon: icono }).addTo(mapa);
+
+      marcador.on('dragend', () => {
+        const punto = marcador!.getLatLng();
+        guardarPunto(punto.lat, punto.lng);
+      });
+    } else {
+      mapa.setView([lat, lng], 16);
+      marcador?.setLatLng([lat, lng]);
+    }
+
+    // El contenedor nace oculto: Leaflet lo midio a cero y sin este aviso
+    // pinta las teselas en el sitio equivocado.
+    mapa.invalidateSize();
+  }
+
+  function elegirSitio(sitio: Sitio): void {
+    guardarPunto(sitio.latitude, sitio.longitude);
+    placeResults.classList.add('hidden');
+    placeError.classList.add('hidden');
+
+    // Se rellenan solo los campos vacios: quien ya escribio el nombre del
+    // sitio a su manera no quiere que la busqueda se lo pise.
+    if (!venueInput.value && sitio.nombre) venueInput.value = sitio.nombre;
+    if (!addressInput.value && sitio.direccion) addressInput.value = sitio.direccion;
+    if (!cityInput.value && sitio.ciudad) cityInput.value = sitio.ciudad;
+
+    void pintarMapa(sitio.latitude, sitio.longitude);
+  }
+
+  function pintarResultados(sitios: Sitio[]): void {
+    placeResults.innerHTML = '';
+
+    sitios.forEach((sitio) => {
+      const item = document.createElement('li');
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'block w-full px-3.5 py-2.5 text-left text-sm transition hover:bg-fondo-alt';
+
+      const nombre = document.createElement('span');
+      nombre.className = 'block font-medium text-texto';
+      nombre.textContent = sitio.nombre;
+      boton.appendChild(nombre);
+
+      const detalle = [sitio.direccion, sitio.ciudad].filter(Boolean).join(' · ');
+
+      if (detalle) {
+        const linea = document.createElement('span');
+        linea.className = 'block text-xs text-suave';
+        linea.textContent = detalle;
+        boton.appendChild(linea);
+      }
+
+      boton.addEventListener('click', () => elegirSitio(sitio));
+      item.appendChild(boton);
+      placeResults.appendChild(item);
+    });
+
+    placeResults.classList.remove('hidden');
+  }
+
+  async function buscarSitio(): Promise<void> {
+    const consulta = placeSearch.value.trim();
+    placeError.classList.add('hidden');
+
+    if (consulta.length < 3) {
+      mostrarErrorSitio('Escribe al menos tres letras, o pega el enlace del sitio.');
+      return;
+    }
+
+    const textoOriginal = placeButton.textContent;
+    placeButton.disabled = true;
+    placeButton.textContent = 'Buscando…';
+
+    try {
+      const response = await fetch(`/api/ubicacion?q=${encodeURIComponent(consulta)}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? 'No se pudo buscar la ubicación.');
+      }
+
+      const sitios: Sitio[] = result.resultados ?? [];
+
+      if (sitios.length === 0) {
+        placeResults.classList.add('hidden');
+        mostrarErrorSitio('No se encontró ese sitio. Prueba con el nombre y la ciudad.');
+        return;
+      }
+
+      // Un enlace de Maps resuelve a un unico punto: no hay nada que elegir.
+      if (sitios.length === 1) {
+        elegirSitio(sitios[0]!);
+        return;
+      }
+
+      pintarResultados(sitios);
+    } catch (error) {
+      mostrarErrorSitio(error instanceof Error ? error.message : 'No se pudo buscar la ubicación.');
+    } finally {
+      placeButton.disabled = false;
+      placeButton.textContent = textoOriginal;
+    }
+  }
+
+  placeButton.addEventListener('click', () => void buscarSitio());
+
+  // El formulario lleva novalidate y su propio submit: sin esto, un Enter en
+  // este campo publicaria el evento en mitad de la busqueda.
+  placeSearch.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter') {
+      evento.preventDefault();
+      void buscarSitio();
+    }
+  });
+
+  placeClear.addEventListener('click', () => {
+    latitudeInput.value = '';
+    longitudeInput.value = '';
+    placeMap.classList.add('hidden');
+    placeChosen.classList.add('hidden');
+    placeChosen.classList.remove('flex');
+    placeResults.classList.add('hidden');
+  });
+
+  // Al editar, el evento ya trae punto: se pinta de entrada.
+  if (latitudeInput.value && longitudeInput.value) {
+    void pintarMapa(Number(latitudeInput.value), Number(longitudeInput.value));
+  }
 
   // --- Etiquetas: chips removibles ---
   let tags: string[] = tagsHiddenInput.value
@@ -549,6 +920,14 @@ const inputClass =
         venue: formData.get('venue') || undefined,
         address: formData.get('address') || undefined,
         meetingUrl: formData.get('meetingUrl') || undefined,
+        latitude: latitudeInput.value || undefined,
+        longitude: longitudeInput.value || undefined,
+        // Un evento gratis manda el precio vacio en vez de un cero: es lo que
+        // la validacion entiende por "sin precio", y asi pasar de pago a
+        // gratis al editar de verdad lo borra.
+        price: priceModeInput.value === 'pago' ? formData.get('price') || undefined : undefined,
+        currency: priceModeInput.value === 'pago' ? formData.get('currency') || undefined : undefined,
+        capacity: formData.get('capacity') || undefined,
         bannerUrl,
         bannerSmallUrl: bannerSmallUrl ?? (bannerSmallUrlInput.value || undefined),
         startDate: toIsoStringOrEmpty(formData.get('startDate'), eventTimezone),
