@@ -6,7 +6,7 @@ import EventFilter from '../components/events/EventFilter.astro';
 import SecondaryFilters from '../components/events/SecondaryFilters.astro';
 import StatusToast from '../components/common/StatusToast.astro';
 import Franja from '../components/common/Franja.astro';
-import { MapPin, Pencil, Video } from '@lucide/astro';
+import { CalendarCheck, Compass, MapPin, Megaphone, Pencil, Video } from '@lucide/astro';
 import { filterEvents, getEvents, getFilterCities } from '../lib/firebase/events';
 import { buildFilterHref } from '../lib/eventFilterHref';
 import { genColor } from '../lib/genColor';
@@ -76,27 +76,47 @@ const collage = [
   { src: '/banner/tecnologia.webp', ancho: 700, alto: 581, lado: 'derecha', sitio: 'left-0 bottom-2 w-[250px] -rotate-4' },
 ];
 
-// Ilustracion de fondo de la tarjeta de cierre. Vacio hasta que exista el
-// archivo: sin el, la tarjeta cae en las manchas de GEN, que ya se ven
-// terminadas. Meetup usa una sola imagen de 1200x465 para lo mismo.
-const FONDO_UNETE = '';
+// Ilustracion de fondo de la tarjeta de cierre, una sola imagen como la de
+// Meetup. Venia con el damero de transparencia pintado y con las esquinas ya
+// redondeadas: se recorto el rectangulo interior -detectando donde el patron
+// deja de alternar- y el radio se lo pone el CSS, que asi no depende de que la
+// imagen traiga el suyo.
+const FONDO_UNETE = '/banner/unete.webp';
 
 const pasos = [
   {
     color: 'rojo' as const,
+    Icono: Compass,
     titulo: 'Descubre lo que pasa cerca',
     texto: 'Talleres, encuentros y convocatorias de las comunidades de la red, en un solo sitio.',
+    enlace: 'Explorar eventos',
+    href: '/',
   },
   {
     color: 'azul' as const,
+    Icono: CalendarCheck,
     titulo: 'Confirma tu asistencia',
     texto: 'Guarda el evento en tu calendario y suscríbete para no perderte lo que viene.',
+    enlace: 'Ver el calendario',
+    href: '/calendario',
   },
   {
     color: 'magenta' as const,
+    Icono: Megaphone,
     titulo: 'Publica lo tuyo',
     texto: '¿Organizas algo? Publícalo y llega a quien todavía no te conoce.',
+    enlace: 'Publicar evento',
+    href: '/eventos/nuevo',
   },
+];
+
+// El zigzag sobre una rejilla de 12: arriba a la izquierda, arriba a la derecha
+// un poco mas abajo, y el tercero centrado debajo. Es lo que hace que se lean
+// como pasos en orden y no como tres opciones sueltas.
+const posicionesPaso = [
+  'lg:col-span-5 lg:col-start-1',
+  'lg:col-span-5 lg:col-start-8 lg:mt-10',
+  'lg:col-span-5 lg:col-start-4 lg:mt-14',
 ];
 
 const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
@@ -450,28 +470,83 @@ if (MOSTRAR_PUBLICACIONES) {
         </section>
       )}
 
+      {/*
+        Los tres pasos pasan de una fila de columnas iguales a un zigzag de
+        tarjetas, como el "Como funciona Meetup": encabezado centrado a 32px,
+        tarjetas blancas de radio 32 con 24/28 de padding y titulo a 16px, y un
+        trazo curvo que las encadena.
+
+        El zigzag es lo que hace que se lean como pasos y no como tres opciones
+        sueltas: la fila de tres columnas no dice en que orden van, y esto si.
+      */}
       <section class="border-y border-linea bg-fondo-alt">
-        <div class="mx-auto max-w-6xl px-6 py-16">
-          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">Qué es Nodo</p>
-          <h2 class="mt-3 max-w-2xl text-2xl font-bold tracking-tight text-texto sm:text-3xl">
+        <div class="mx-auto max-w-[1200px] px-6 py-20">
+          <p class="text-center text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">
+            Qué es Nodo
+          </p>
+          <h2 class="mx-auto mt-3 max-w-2xl text-center text-[32px] font-bold leading-tight text-texto">
             La cartelera del ecosistema, en un solo sitio
           </h2>
-          <p class="mt-4 max-w-prose text-suave">
+          <p class="mx-auto mt-4 max-w-prose text-center text-suave">
             Talleres, encuentros y convocatorias que organizan las comunidades de la red. Publicados por
             quienes los hacen, abiertos a quien quiera llegar.
           </p>
 
-          <ol class="mt-10 grid gap-8 md:grid-cols-3">
-            {pasos.map((paso, indice) => (
-              <li data-gen={paso.color} class="border-t-4 border-[var(--g)] pt-4">
-                <span class="text-sm font-bold text-[var(--g-texto)]">
-                  {String(indice + 1).padStart(2, '0')}
-                </span>
-                <h3 class="mt-2 text-lg font-semibold text-texto">{paso.titulo}</h3>
-                <p class="mt-2 text-sm text-suave">{paso.texto}</p>
-              </li>
-            ))}
-          </ol>
+          <div class="relative mt-14">
+            {/*
+              El trazo va en un solo SVG estirado sobre la rejilla, como el
+              suyo. preserveAspectRatio="none" deja que se deforme con el
+              contenedor: es decoracion, y asi los extremos siguen cayendo
+              donde estan las tarjetas en cualquier ancho. Solo desde lg, que
+              es donde el zigzag existe.
+            */}
+            <svg
+              class="pointer-events-none absolute inset-0 hidden size-full text-linea lg:block"
+              viewBox="0 0 1000 520"
+              preserveAspectRatio="none"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M400 90 C 470 40, 520 150, 580 110"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <path d="M572 100 l14 10 -16 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path
+                d="M880 210 C 930 330, 760 340, 700 380"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <path d="M714 368 l-16 12 4 -18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+
+            <ol class="relative grid gap-6 lg:grid-cols-12">
+              {pasos.map((paso, indice) => (
+                <li
+                  data-gen={paso.color}
+                  class:list={[
+                    'rounded-[32px] bg-superficie px-7 py-6 shadow-[var(--c-sombra)]',
+                    posicionesPaso[indice],
+                  ]}
+                >
+                  <div class="flex size-11 items-center justify-center rounded-2xl bg-[var(--g-suave)] text-[var(--g-texto)]">
+                    <paso.Icono class="size-5" stroke-width={2} />
+                  </div>
+                  <h3 class="mt-4 text-base font-bold text-texto">{paso.titulo}</h3>
+                  <p class="mt-1 text-sm leading-6 text-suave">{paso.texto}</p>
+                  <a
+                    href={paso.href}
+                    class="mt-3 inline-block text-sm font-semibold text-[var(--g-texto)] transition hover:opacity-80"
+                  >
+                    {paso.enlace}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </div>
         </div>
       </section>
     </>
