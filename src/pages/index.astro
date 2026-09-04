@@ -151,10 +151,10 @@ const collage = [
 // tarjetas de categoria, para que la portada hable un solo idioma. La lista es
 // fija: no representan datos, son decoracion, y por eso van con aria-hidden.
 const iconosBanner = [
-  { Icono: Palette, color: 'magenta', sitio: 'left-[18px] top-[2px] -rotate-6' },
-  { Icono: Users, color: 'celeste', sitio: 'right-[6px] top-[30px] rotate-6' },
-  { Icono: GraduationCap, color: 'naranja', sitio: 'left-[22px] top-[84px] rotate-3' },
-  { Icono: Music, color: 'azul', sitio: 'right-[18px] top-[92px] -rotate-3' },
+  { Icono: Palette, color: 'magenta', giro: '-rotate-6', sitio: 'left-[18px] top-[2px]' },
+  { Icono: Users, color: 'celeste', giro: 'rotate-6', sitio: 'right-[6px] top-[30px]' },
+  { Icono: GraduationCap, color: 'naranja', giro: 'rotate-3', sitio: 'left-[22px] top-[84px]' },
+  { Icono: Music, color: 'azul', giro: '-rotate-3', sitio: 'right-[18px] top-[92px]' },
 ] as const;
 
 // Ilustracion de fondo de la tarjeta de cierre, una sola imagen como la de
@@ -305,16 +305,35 @@ if (MOSTRAR_PUBLICACIONES) {
 
     <div class="relative mx-auto max-w-[680px] text-center">
       {/*
-        Aparecen desde md porque por debajo la columna se estrecha, el titular
-        reparte las lineas de otra forma y los iconos se le meterian encima.
+        En telefono los mismos iconos van en fila sobre el titular, y no
+        repartidos a los lados: ahi la columna se estrecha, el titular pasa de
+        tres lineas a seis y cada ancho de pantalla las corta por un sitio
+        distinto, asi que cualquier posicion fija acabaria encima del texto.
+        Encima del titular no puede chocar con nada a ningun ancho.
       */}
-      {iconosBanner.map(({ Icono, color, sitio }) => (
+      <div class="mb-8 flex justify-center gap-3 md:hidden" aria-hidden="true">
+        {iconosBanner.map(({ Icono, color, giro }) => (
+          <div
+            data-gen={color}
+            class:list={[
+              'grid size-12 place-items-center rounded-2xl bg-superficie shadow-[var(--c-sombra)]',
+              giro,
+            ]}
+          >
+            <Icono class="size-5 text-[var(--g)]" stroke-width={1.75} />
+          </div>
+        ))}
+      </div>
+
+      {/* Desde md hay aire de sobra a los lados del titular y se reparten. */}
+      {iconosBanner.map(({ Icono, color, giro, sitio }) => (
         <div
           data-gen={color}
           aria-hidden="true"
           class:list={[
             'pointer-events-none absolute hidden size-14 place-items-center rounded-2xl bg-superficie shadow-[var(--c-sombra)] md:grid',
             sitio,
+            giro,
           ]}
         >
           <Icono class="size-6 text-[var(--g)]" stroke-width={1.75} />
