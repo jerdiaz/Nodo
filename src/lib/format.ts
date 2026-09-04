@@ -96,10 +96,33 @@ export function getRemainingSpots(
   return Math.max(0, event.capacity - attending);
 }
 
+// Junta las partes de una direccion saltando las que dicen lo mismo. Los
+// campos son tres y los rellena quien publica: nada impide poner "utb" de
+// lugar y "utb" de direccion, y sin esto la ficha leia "utb, utb, Cartagena".
+// Se compara sin tildes ni mayusculas, como el resto del repo.
+export function joinLocationParts(...partes: (string | undefined)[]): string {
+  const vistas = new Set<string>();
+
+  return partes
+    .map((parte) => parte?.trim())
+    .filter((parte): parte is string => Boolean(parte))
+    .filter((parte) => {
+      const clave = parte.normalize('NFD').replace(/[^\x00-\x7F]/g, '').toLowerCase();
+
+      if (vistas.has(clave)) {
+        return false;
+      }
+
+      vistas.add(clave);
+      return true;
+    })
+    .join(', ');
+}
+
 export function getEventLocationLabel(event: NodoEvent): string {
   if (event.modality === 'virtual') {
     return 'En línea';
   }
 
-  return [event.venue, event.city].filter(Boolean).join(', ');
+  return joinLocationParts(event.venue, event.city);
 }

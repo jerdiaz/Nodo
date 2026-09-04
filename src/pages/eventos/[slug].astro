@@ -17,6 +17,7 @@ import {
   formatEventPrice,
   formatEventTime,
   getRemainingSpots,
+  joinLocationParts,
 } from '../../lib/format';
 import { genColorForEvent } from '../../lib/genColor';
 import { CalendarDays, CalendarPlus, Check, ChevronRight, MapPin, Share2, SquareArrowOutUpRight, Ticket, Users, Video } from '@lucide/astro';
@@ -148,7 +149,7 @@ function textoLugares(restantes: number): string {
   return `Queda${restantes === 1 ? '' : 'n'} ${restantes} ${restantes === 1 ? 'lugar' : 'lugares'}`;
 }
 
-const physicalLocation = [event.venue, event.address, event.city].filter(Boolean).join(', ');
+const physicalLocation = joinLocationParts(event.venue, event.address, event.city);
 
 // Con coordenadas se pide el punto y no el texto: buscar la direccion escrita
 // solo acertaba el barrio. Sin ellas se sigue buscando por texto, como los
@@ -164,9 +165,13 @@ const mapaConsulta =
 // El rotulo del mapa: el sitio manda si tiene nombre, y debajo va la
 // direccion. Sin nombre de sitio, la direccion sube a titulo y no se repite.
 const lugarTitulo = event.venue || event.city || physicalLocation;
-const lugarDetalle = [event.venue ? event.address : null, event.venue ? event.city : event.address]
-  .filter(Boolean)
-  .join(' · ');
+// Lo que quede de la direccion una vez quitado el titulo, sin repetirlo: con
+// lugar y direccion iguales, la segunda linea se queda solo con la ciudad.
+const lugarDetalle = joinLocationParts(
+  ...[event.address, event.city].filter(
+    (parte) => parte?.trim().toLowerCase() !== lugarTitulo.trim().toLowerCase(),
+  ),
+);
 
 const mapsUrl = physicalLocation
   ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapaConsulta ?? physicalLocation)}`
