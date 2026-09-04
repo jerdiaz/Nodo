@@ -10,12 +10,16 @@ import {
 } from '../../lib/format';
 import { genColorForEvent } from '../../lib/genColor';
 import type { EventModality, NodoEvent } from '../../types/event';
+import type { AttendeeFace } from '../../lib/firebase/rsvps';
 
 interface Props {
   event: NodoEvent;
+  /** Caras de quienes han confirmado. Las pide la pagina por lote con
+      getAttendeeFaces; sin ellas la tarjeta enseña solo el numero. */
+  attendees?: AttendeeFace[];
 }
 
-const { event } = Astro.props;
+const { event, attendees = [] } = Astro.props;
 
 const modalityLabel: Record<EventModality, string> = {
   presencial: 'Presencial',
@@ -34,6 +38,10 @@ const firstTag = event.tags[0];
 // posicion, asi que no cambia al filtrar ni al reordenar.
 const color = genColorForEvent(event);
 const asistentes = event.rsvpCount ?? 0;
+
+// Cuatro caras como mucho: mas no caben sin apretar el resto de la fila, y a
+// partir de ahi la fila deja de decir "esta gente va" para ser una mancha.
+const caras = attendees.slice(0, 4);
 ---
 
 {/*
@@ -45,11 +53,13 @@ const asistentes = event.rsvpCount ?? 0;
   que el color del evento vive ahora en su etiqueta y en el titulo al pasar por
   encima.
 
-  h-full para que la tarjeta ocupe toda su celda: las de una fila miden lo que
-  la mas alta, y sin esto cada una se quedaba con el alto de su propio texto.
+  El texto fluye hacia arriba y no se estira para cuadrar con el de al lado:
+  sin caja, lo que iguala una fila es la imagen -misma proporcion en todas- y
+  no el alto total. Reservar sitio para una segunda linea de titulo que no
+  existe solo abria un hueco blanco antes de la fecha.
 */}
-<article data-gen={color} class="group flex h-full flex-col">
-  <a href={`/eventos/${event.slug}`} class="flex flex-1 flex-col">
+<article data-gen={color} class="group">
+  <a href={`/eventos/${event.slug}`} class="block">
     <div class="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-fondo-alt">
       {event.bannerUrl ? (
         <img
@@ -72,16 +82,10 @@ const asistentes = event.rsvpCount ?? 0;
       </span>
     </div>
 
-    <div class="flex flex-1 flex-col pt-3">
-      {/*
-        Dos lineas como maximo y como minimo: el recorte evita que un titulo
-        largo estire la fila entera, y el alto reservado hace que una tarjeta
-        de titulo corto siga midiendo lo mismo que las demas, tambien cuando
-        estan en filas distintas.
-
-        min-h-14 son las dos lineas de text-lg (28px cada una).
-      */}
-      <h3 class="line-clamp-2 min-h-14 text-lg font-semibold text-texto transition group-hover:text-[var(--g-texto)]">
+    <div class="pt-3">
+      {/* Dos lineas como maximo: el recorte evita que un titulo kilometrico
+          estire la columna. Un titulo mas corto ocupa lo que ocupa. */}
+      <h3 class="line-clamp-2 text-lg font-semibold text-texto transition group-hover:text-[var(--g-texto)]">
         {event.title}
       </h3>
 
@@ -109,25 +113,49 @@ const asistentes = event.rsvpCount ?? 0;
         )}
       </p>
 
-      {/* mt-auto empuja esta fila al fondo cuando sobra sitio; el margen de
-          dentro es el que garantiza el aire cuando no sobra. */}
-      <div class="mt-auto">
-        <div class="mt-3 flex items-center justify-between gap-3">
-          {asistentes > 0 ? (
-            <span class="flex items-center gap-1.5 text-sm text-suave">
+      <div class="mt-3 flex items-center justify-between gap-3">
+        {asistentes > 0 ? (
+          <span class="flex min-w-0 items-center gap-2 text-sm text-suave">
+            {caras.length > 0 ? (
+              // El anillo del color del fondo es lo que separa una cara de la
+              // siguiente cuando se superponen; sin el se leen como una mancha.
+              <span class="flex shrink-0 items-center">
+                {caras.map((cara) => (
+                  <span class="-ml-1.5 first:ml-0">
+                    {cara.avatarUrl ? (
+                      <img
+                        src={cara.avatarUrl}
+                        alt=""
+                        title={cara.name}
+                        class="size-6 rounded-full object-cover ring-2 ring-fondo"
+                      />
+                    ) : (
+                      <span
+                        title={cara.name}
+                        class="grid size-6 place-items-center rounded-full bg-fondo-alt text-[10px] font-medium text-suave ring-2 ring-fondo"
+                      >
+                        {cara.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </span>
+            ) : (
               <Users class="size-4 shrink-0" stroke-width={1.75} />
+            )}
+            <span class="truncate">
               {asistentes} {asistentes === 1 ? 'asistente' : 'asistentes'}
             </span>
-          ) : (
-            <span />
-          )}
+          </span>
+        ) : (
+          <span />
+        )}
 
-          {firstTag && (
-            <Badge variant="auto" seed={firstTag} class="shrink-0">
-              {firstTag}
-            </Badge>
-          )}
-        </div>
+        {firstTag && (
+          <Badge variant="auto" seed={firstTag} class="shrink-0">
+            {firstTag}
+          </Badge>
+        )}
       </div>
     </div>
   </a>

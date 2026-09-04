@@ -5,6 +5,7 @@ import EventCard from '../components/events/EventCard.astro';
 import StatusToast from '../components/common/StatusToast.astro';
 import { getCurrentUser } from '../lib/auth';
 import { filterEvents, getEvents } from '../lib/firebase/events';
+import { getAttendeeFaces } from '../lib/firebase/rsvps';
 import type { NodoEvent } from '../types/event';
 
 const user = await getCurrentUser(Astro.cookies);
@@ -23,6 +24,11 @@ try {
 
 const upcomingEvents = filterEvents(myEvents, { timeframe: 'upcoming' });
 const pastEvents = filterEvents(myEvents, { timeframe: 'past' });
+
+// Las caras de quienes han confirmado, para las tarjetas. Una sola llamada
+// para todo lo que la pagina va a pintar: por dentro lanza las consultas a la
+// vez y resuelve los perfiles en un unico getAll().
+const caras = await getAttendeeFaces(myEvents.map((event) => event.id), 4).catch(() => new Map());
 
 const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 ---
@@ -64,7 +70,7 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
             ) : (
               <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {upcomingEvents.map((event) => (
-                  <EventCard event={event} />
+                  <EventCard event={event} attendees={caras.get(event.id)} />
                 ))}
               </div>
             )}
@@ -80,7 +86,7 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
             ) : (
               <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {pastEvents.map((event) => (
-                  <EventCard event={event} />
+                  <EventCard event={event} attendees={caras.get(event.id)} />
                 ))}
               </div>
             )}

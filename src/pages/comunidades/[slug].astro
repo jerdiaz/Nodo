@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button.astro';
 import { getCurrentUser } from '../../lib/auth';
 import { getCommunityBySlug, getMemberCount, isMember } from '../../lib/firebase/communities';
 import { getEvents } from '../../lib/firebase/events';
+import { getAttendeeFaces } from '../../lib/firebase/rsvps';
 import { formatMonthYear } from '../../lib/format';
 import { CalendarDays, Pencil, Users } from '@lucide/astro';
 import type { NodoEvent } from '../../types/event';
@@ -33,6 +34,11 @@ const proximos = eventos.filter((event) => event.endDate.getTime() >= ahora);
 const pasados = eventos
   .filter((event) => event.endDate.getTime() < ahora)
   .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+
+// Las caras de quienes han confirmado, para las tarjetas. Una sola llamada
+// para todo lo que la pagina va a pintar: por dentro lanza las consultas a la
+// vez y resuelve los perfiles en un unico getAll().
+const caras = await getAttendeeFaces(eventos.map((event) => event.id), 4).catch(() => new Map());
 
 const miembros = await getMemberCount(community.id).catch(() => 0);
 const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => false) : false;
@@ -103,7 +109,7 @@ const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => fa
         <section>
           <h2 class="text-2xl font-bold tracking-tight text-texto">Próximos eventos</h2>
           <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {proximos.map((event) => <EventCard event={event} />)}
+            {proximos.map((event) => <EventCard event={event} attendees={caras.get(event.id)} />)}
           </div>
         </section>
       )}
@@ -112,7 +118,7 @@ const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => fa
         <section>
           <h2 class="text-2xl font-bold tracking-tight text-texto">Eventos pasados</h2>
           <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {pasados.map((event) => <EventCard event={event} />)}
+            {pasados.map((event) => <EventCard event={event} attendees={caras.get(event.id)} />)}
           </div>
         </section>
       )}

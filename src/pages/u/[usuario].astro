@@ -7,6 +7,7 @@ import VerifiedBadge from '../../components/ui/VerifiedBadge.astro';
 import { getAccountCreatedAt, getCurrentUser } from '../../lib/auth';
 import { getCommunities, isMember } from '../../lib/firebase/communities';
 import { getEvents } from '../../lib/firebase/events';
+import { getAttendeeFaces } from '../../lib/firebase/rsvps';
 import { getUidByUsername, getUserProfile } from '../../lib/firebase/users';
 import { formatMonthYear } from '../../lib/format';
 import { genColor } from '../../lib/genColor';
@@ -70,6 +71,11 @@ interface SocialLink {
   href: string;
   tooltip: string;
 }
+
+// Las caras de quienes han confirmado, para las tarjetas. Una sola llamada
+// para todo lo que la pagina va a pintar: por dentro lanza las consultas a la
+// vez y resuelve los perfiles en un unico getAll().
+const caras = await getAttendeeFaces(publicados.map((event) => event.id), 4).catch(() => new Map());
 
 const socialLinks: SocialLink[] = SOCIAL_FIELDS.flatMap((field) => {
   const handle = profile.socials?.[field.key];
@@ -259,7 +265,7 @@ const secciones = [
             </h2>
 
             <div class="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {seccion.eventos.map((event) => <EventCard event={event} />)}
+              {seccion.eventos.map((event) => <EventCard event={event} attendees={caras.get(event.id)} />)}
             </div>
           </section>
         ))

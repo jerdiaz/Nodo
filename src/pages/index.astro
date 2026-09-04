@@ -33,6 +33,7 @@ import {
 import { filterEvents, getEvents, getFilterCities } from '../lib/firebase/events';
 import { buildFilterHref } from '../lib/eventFilterHref';
 import { genColor } from '../lib/genColor';
+import { getAttendeeFaces } from '../lib/firebase/rsvps';
 import { getInstagramPosts } from '../lib/firebase/instagram';
 import type { InstagramPost } from '../lib/firebase/instagram';
 import SocialIcon from '../components/ui/SocialIcon.astro';
@@ -228,6 +229,18 @@ const posicionesPaso = [
   'lg:col-span-5 lg:col-start-8 lg:mt-10',
   'lg:col-span-5 lg:col-start-4 lg:mt-14',
 ];
+
+// Solo las tarjetas que esta pagina va a pintar: la vista de resultados
+// enseña el listado entero, la portada nada mas los dos carriles. Una sola
+// llamada, que por dentro consulta todos los eventos a la vez.
+const eventosVisibles = vistaResultados
+  ? events
+  : [...presenciales.slice(0, LIMITE_CARRIL), ...virtuales.slice(0, LIMITE_CARRIL)];
+
+const caras = await getAttendeeFaces(
+  eventosVisibles.map((event) => event.id),
+  4,
+).catch(() => new Map());
 
 const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 
@@ -469,7 +482,7 @@ if (MOSTRAR_PUBLICACIONES) {
       ) : (
         <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {events.map((event) => (
-            <EventCard event={event} />
+            <EventCard event={event} attendees={caras.get(event.id)} />
           ))}
         </div>
       )}
@@ -569,7 +582,7 @@ if (MOSTRAR_PUBLICACIONES) {
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {presenciales.slice(0, LIMITE_CARRIL).map((event, indice) => (
               <div class:list={[indice >= LIMITE_MOVIL ? 'hidden sm:block' : '']}>
-                <EventCard event={event} />
+                <EventCard event={event} attendees={caras.get(event.id)} />
               </div>
             ))}
           </div>
@@ -609,7 +622,7 @@ if (MOSTRAR_PUBLICACIONES) {
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {virtuales.slice(0, LIMITE_CARRIL).map((event, indice) => (
               <div class:list={[indice >= LIMITE_MOVIL ? 'hidden sm:block' : '']}>
-                <EventCard event={event} />
+                <EventCard event={event} attendees={caras.get(event.id)} />
               </div>
             ))}
           </div>

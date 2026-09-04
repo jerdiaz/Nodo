@@ -8,7 +8,7 @@ import EventCard from '../../components/events/EventCard.astro';
 import { filterEvents, getEventBySlug, getEvents } from '../../lib/firebase/events';
 import { normalizeCityName } from '../../lib/eventValidation';
 import type { NodoEvent } from '../../types/event';
-import { getRsvpEntries, getRsvpInfo } from '../../lib/firebase/rsvps';
+import { getAttendeeFaces, getRsvpEntries, getRsvpInfo } from '../../lib/firebase/rsvps';
 import { getEventJsonLd } from '../../lib/eventSchema';
 import { getGoogleCalendarUrl, getIcsDataUrl } from '../../lib/calendar';
 import {
@@ -249,6 +249,11 @@ try {
 } catch (error) {
   console.warn('No se pudieron obtener los eventos recomendados:', error);
 }
+
+// Las caras de quienes han confirmado, para las tarjetas. Una sola llamada
+// para todo lo que la pagina va a pintar: por dentro lanza las consultas a la
+// vez y resuelve los perfiles en un unico getAll().
+const caras = await getAttendeeFaces(recomendados.map((otro) => otro.id), 4).catch(() => new Map());
 
 const eventCreated = Astro.url.searchParams.get('created') === 'true';
 const eventUpdated = Astro.url.searchParams.get('updated') === 'true';
@@ -715,7 +720,7 @@ function textoAsistentes(total: number): string {
       </div>
 
       <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {recomendados.map((otro) => <EventCard event={otro} />)}
+        {recomendados.map((otro) => <EventCard event={otro} attendees={caras.get(otro.id)} />)}
       </div>
     </section>
   )}
