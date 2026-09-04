@@ -80,9 +80,15 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
       </button>
     </form>
 
-    <ul class="ml-auto hidden shrink-0 items-center gap-7 text-sm font-medium tracking-[0.02em] text-suave lg:flex">
+    {/*
+      Calendario es el unico enlace que sobrevive en movil, junto al boton de
+      sesion. Los demas no caben ahi y siguen a un toque desde el pie; este se
+      queda porque es la otra forma de mirar la cartelera, y sin el, en movil la
+      cabecera se reduce a logotipo y sesion.
+    */}
+    <ul class="ml-auto flex shrink-0 items-center gap-7 text-sm font-medium tracking-[0.02em] text-suave">
       {links.map((link) => (
-        <li>
+        <li class:list={[link.href === '/calendario' ? '' : 'hidden lg:block']}>
           <a href={link.href} class="transition hover:text-texto">
             {link.label}
           </a>

@@ -303,6 +303,32 @@ if (MOSTRAR_PUBLICACIONES) {
         Publicar evento
       </a>
 
+      {/*
+        En movil las columnas laterales no caben, y dejarlas ocultas del todo
+        significaba que la ilustracion no se veia nunca en telefono. Meetup
+        resuelve lo mismo bajando una pieza del collage debajo del boton; aqui
+        van dos, que es lo que llena el ancho sin obligar a hacer scroll de mas.
+      */}
+      <div class="mt-12 flex items-start justify-center gap-6 min-[1380px]:hidden">
+        {collage.slice(0, 2).map((pieza, indice) => (
+          <img
+            src={pieza.src}
+            alt=""
+            aria-hidden="true"
+            width={pieza.ancho}
+            height={pieza.alto}
+            loading="lazy"
+            class:list={[
+              'max-w-[300px]',
+              // En telefono va una sola y grande, como la suya: dos repartidas
+              // en 375px salen a 150px y no se distingue lo que hay dentro.
+              // Desde sm caben las dos.
+              indice === 0 ? 'w-[80%] -rotate-3 sm:w-[45%]' : 'hidden sm:mt-10 sm:block sm:w-[45%] sm:rotate-3',
+            ]}
+          />
+        ))}
+      </div>
+
       {vistaResultados && (
         <div class="mt-8">
           <EventFilter
