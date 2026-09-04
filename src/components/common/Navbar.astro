@@ -1,8 +1,8 @@
 ---
 import { ChevronDown, LogOut, Plus, Settings, User } from '@lucide/astro';
-import { getCurrentUser } from '../../lib/auth';
+import { getDisplayUser } from '../../lib/auth';
 
-const user = await getCurrentUser(Astro.cookies);
+const user = await getDisplayUser(Astro.cookies);
 
 const links = [
   { href: '/', label: 'Explorar' },

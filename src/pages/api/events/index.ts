@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { jsonResponse } from '../../../lib/api';
-import { getCurrentUser } from '../../../lib/auth';
+import { getDisplayUser } from '../../../lib/auth';
 import { validateEventPayload } from '../../../lib/eventValidation';
 import { getAdminDb } from '../../../lib/firebase/server';
 
@@ -27,7 +27,7 @@ function randomSuffix(length = 4): string {
 }
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const user = await getCurrentUser(cookies);
+  const user = await getDisplayUser(cookies);
 
   if (!user) {
     return jsonResponse({ error: 'Debes iniciar sesión para publicar un evento.' }, 401);

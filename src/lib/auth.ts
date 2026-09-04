@@ -1,5 +1,6 @@
 import type { AstroCookies } from 'astro';
 import { getAdminAuth } from './firebase/server';
+import { getUserProfile } from './firebase/users';
 
 export interface CurrentUser {
   uid: string;
@@ -41,4 +42,37 @@ export async function getCurrentUser(cookies: AstroCookies): Promise<CurrentUser
   } catch {
     return null;
   }
+}
+
+// getCurrentUser() solo lee el token de sesión: el nombre y la foto que trae
+// son los del proveedor (Google/Microsoft) en el momento del login, y no se
+// actualizan si la persona edita su perfil después — la sesión no vuelve a
+// pasar por el proveedor hasta que inicia sesión de nuevo. Para mostrar el
+// nombre/foto que la persona eligió en Configuración hace falta cruzar con su
+// perfil de Firestore, que es justo lo que hace esta función. Se usa solo
+// donde el nombre se muestra o se guarda (Navbar, crear evento) — no en
+// comprobaciones de dueño, que solo necesitan el uid y no vale la pena
+// pagar la lectura extra a Firestore.
+export async function getDisplayUser(cookies: AstroCookies): Promise<CurrentUser | null> {
+  const user = await getCurrentUser(cookies);
+
+  if (!user) {
+    return null;
+  }
+
+  try {
+    const profile = await getUserProfile(user.uid);
+
+    if (profile) {
+      return {
+        ...user,
+        name: [profile.firstName, profile.lastName].filter(Boolean).join(' ') || user.name,
+        avatarUrl: profile.avatarUrl ?? user.avatarUrl,
+      };
+    }
+  } catch (error) {
+    console.warn('No se pudo obtener el perfil para mostrar el nombre actualizado:', error);
+  }
+
+  return user;
 }
