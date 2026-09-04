@@ -62,12 +62,6 @@ const categorias = [...new Set(proximos.flatMap((event) => event.tags))]
 // Manchas de color del banner. Se reparten dos por lado, fuera de la columna
 // de 680px del texto, y solo se pintan desde xl.
 const etiquetasBanner = categorias.slice(0, 4);
-const posicionesBanner = [
-  'left-[2%] top-4',
-  'left-[6%] bottom-0',
-  'right-[2%] top-8',
-  'right-[6%] bottom-2',
-];
 
 const pasos = [
   {
@@ -137,38 +131,60 @@ if (MOSTRAR_PUBLICACIONES) {
     publicados, cada una con su color de GEN. Solo desde xl, que es donde hay
     sitio a los lados de la columna sin estorbar al texto.
   */}
-  <section class="relative overflow-hidden px-6 pb-14 pt-10">
+  <section class="relative overflow-hidden px-6 pb-14 pt-24">
+    {/*
+      Las columnas laterales ocupan el sitio de sus collages: 310x450 a 58px de
+      cada filo, que es donde caen los suyos. Cada mancha lleva una etiqueta
+      real de los eventos publicados con su color de GEN.
+    */}
     {etiquetasBanner.length > 0 && (
-      <div class="pointer-events-none absolute inset-0 hidden xl:block" aria-hidden="true">
-        {etiquetasBanner.map((etiqueta, indice) => (
+      <div class="pointer-events-none absolute inset-x-0 top-0 hidden xl:block" aria-hidden="true">
+        {[0, 1].map((lado) => (
           <div
-            data-gen={genColor(etiqueta)}
             class:list={[
-              'absolute',
-              posicionesBanner[indice],
+              'absolute top-0 h-[450px] w-[310px]',
+              lado === 0 ? 'left-[58px]' : 'right-[58px]',
             ]}
           >
-            <div class="size-40 rounded-[42%_58%_57%_43%/45%_42%_58%_55%] bg-[var(--g-suave)]"></div>
-            <span
-              class:list={[
-                'absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[var(--g-suave)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--g-texto)] shadow-[var(--c-sombra)]',
-                indice % 2 === 0 ? '-rotate-3' : 'rotate-3',
-              ]}
-            >
-              {etiqueta}
-            </span>
+            {etiquetasBanner.slice(lado * 2, lado * 2 + 2).map((etiqueta, indice) => (
+              <div
+                data-gen={genColor(etiqueta)}
+                class:list={['absolute left-1/2 -translate-x-1/2', indice === 0 ? 'top-8' : 'top-[250px]']}
+              >
+                <div class="size-48 rounded-[42%_58%_57%_43%/45%_42%_58%_55%] bg-[var(--g-suave)]"></div>
+                <span
+                  class:list={[
+                    'absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[var(--g-suave)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--g-texto)] shadow-[var(--c-sombra)]',
+                    indice === 0 ? '-rotate-3' : 'rotate-3',
+                  ]}
+                >
+                  {etiqueta}
+                </span>
+              </div>
+            ))}
           </div>
         ))}
       </div>
     )}
 
     <div class="relative mx-auto max-w-[680px] text-center">
+      {/*
+        Tres lineas y cuatro de parrafo no son un capricho: es lo que ocupa el
+        titular de Meetup, y sin ese cuerpo el banner se queda en poco mas de la
+        mitad de su alto. El texto sale del vocabulario que ya usa Nodo en la
+        seccion Que es Nodo, pero es una propuesta: el copy de marca lo decide
+        la casa, y cambiarlo aqui no toca ninguna medida.
+      */}
       <h1 class="text-[40px] font-bold leading-[48px] text-texto">
-        Encuentra tu próximo <span class="text-acento-texto">evento</span>
+        Talleres, encuentros<br />
+        y convocatorias de la red,<br />
+        en <span class="text-acento-texto">una sola cartelera</span>.
       </h1>
-      <p class="mx-auto mt-6 text-base leading-6 tracking-[0.02em] text-suave">
-        Nodo conecta a tu comunidad con talleres, encuentros y actividades locales.
-        Descubre lo que está pasando cerca de ti.
+      <p class="mx-auto mt-5 text-base leading-6 tracking-[0.02em] text-suave">
+        Nodo reúne lo que organizan las comunidades del ecosistema: talleres, encuentros
+        y actividades locales, publicados por quienes los hacen y abiertos a quien quiera
+        llegar. Descubre lo que está pasando cerca de ti, guárdalo en tu calendario y
+        confirma tu asistencia.
       </p>
 
       <a
