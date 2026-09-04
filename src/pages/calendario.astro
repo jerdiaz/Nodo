@@ -3,7 +3,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Badge from '../components/ui/Badge.astro';
 import VerifiedBadge from '../components/ui/VerifiedBadge.astro';
 import EmptyState from '../components/events/EmptyState.astro';
-import { getCurrentUser } from '../lib/auth';
 import { filterEvents, getEvents } from '../lib/firebase/events';
 import { getRsvpInfo } from '../lib/firebase/rsvps';
 import {
@@ -17,8 +16,6 @@ import { genColorForEvent } from '../lib/genColor';
 import { MapPin, Users, Video } from '@lucide/astro';
 import type { EventModality, NodoEvent } from '../types/event';
 
-const user = await getCurrentUser(Astro.cookies);
-
 let allEvents: NodoEvent[] = [];
 
 try {
@@ -29,15 +26,20 @@ try {
 
 const upcomingEvents = filterEvents(allEvents, { timeframe: 'upcoming' });
 
-// Asistencia por evento. Es una agregación por evento (un N+1): aceptable con
-// el volumen actual, pero si la agenda crece conviene desnormalizar el
-// contador dentro del propio documento del evento.
+// Asistencia por evento. Con el contador desnormalizado ya viene dentro del
+// documento que trae getEvents(): solo los eventos anteriores al backfill
+// pagan un count() extra.
 const rsvpCounts = new Map<string, number>();
 
 await Promise.all(
   upcomingEvents.map(async (event) => {
+    if (typeof event.rsvpCount === 'number') {
+      rsvpCounts.set(event.id, event.rsvpCount);
+      return;
+    }
+
     try {
-      const info = await getRsvpInfo(event.id, user?.uid);
+      const info = await getRsvpInfo(event.id);
       rsvpCounts.set(event.id, info.count);
     } catch {
       rsvpCounts.set(event.id, 0);
@@ -81,13 +83,24 @@ function dayKey(date: Date, timezone: string): string {
   }).format(date);
 }
 
-const todayKey = dayKey(new Date(), 'America/Bogota');
-const tomorrowKey = dayKey(new Date(Date.now() + 86_400_000), 'America/Bogota');
+// Suma dias a una clave "YYYY-MM-DD" con aritmetica de calendario pura: sumar
+// 86400000 ms a un instante fallaria en husos con horario de verano.
+function shiftDayKey(key: string, delta: number): string {
+  const [y, m, d] = key.split('-').map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d + delta));
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+}
 
 function dayBadge(event: NodoEvent): string | null {
-  const key = dayKey(event.startDate, event.timezone);
-  if (key === todayKey) return 'Hoy';
-  if (key === tomorrowKey) return 'Mañana';
+  // "Hoy" y "Mañana" se calculan contra el dia de hoy EN LA ZONA del evento,
+  // no contra una unica zona global: el servidor no sabe donde esta quien mira.
+  const zone = event.timezone;
+  const today = dayKey(new Date(), zone);
+  const startKey = dayKey(event.startDate, zone);
+
+  if (startKey === today) return 'Hoy';
+  if (startKey === shiftDayKey(today, 1)) return 'Mañana';
   return null;
 }
 
@@ -213,7 +226,7 @@ const modalityLabel: Record<EventModality, string> = {
                       <div class="size-12 shrink-0 overflow-hidden rounded-xl sm:size-16">
                         {event.bannerUrl ? (
                           <img
-                            src={event.bannerUrl}
+                            src={event.bannerSmallUrl ?? event.bannerUrl}
                             alt=""
                             loading="lazy"
                             class="h-full w-full object-cover"

@@ -55,6 +55,7 @@ const inputClass =
     novalidate
     data-method={submitMethod}
     data-action={submitUrl}
+    data-timezone={event?.timezone ?? ''}
     class="space-y-6"
   >
     <input type="hidden" id="timezone" name="timezone" />
@@ -67,6 +68,7 @@ const inputClass =
       value={event?.bannerUrl ?? ''}
       hint="Arrastra la imagen de portada o haz clic para elegirla. Se recorta a 16:9."
     />
+    <input type="hidden" id="bannerSmallUrl" name="bannerSmallUrl" value={event?.bannerSmallUrl ?? ''} />
 
     <div>
       <label for="title" class="block text-sm font-medium text-texto">Título</label>
@@ -85,11 +87,15 @@ const inputClass =
     {community && (
       <div>
         <label class="block text-sm font-medium text-texto">Publicar como</label>
-        <div class="mt-1.5 grid grid-cols-2 gap-1 rounded-2xl border border-linea bg-fondo-alt p-1">
-          <button type="button" data-publish-option="persona" class="publish-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
+        <div
+          class="mt-1.5 grid grid-cols-2 gap-1 rounded-2xl border border-linea bg-fondo-alt p-1"
+          role="radiogroup"
+          aria-label="Publicar como"
+        >
+          <button type="button" role="radio" aria-checked={publishAsValue === 'persona'} data-publish-option="persona" class="publish-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
             A mi nombre
           </button>
-          <button type="button" data-publish-option="comunidad" class="publish-tab truncate rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
+          <button type="button" role="radio" aria-checked={publishAsValue === 'comunidad'} data-publish-option="comunidad" class="publish-tab truncate rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
             {community.name}
           </button>
         </div>
@@ -100,19 +106,23 @@ const inputClass =
       </div>
     )}
 
-    <div>
-      <label class="block text-sm font-medium text-texto">Modalidad</label>
-      <div class="mt-1.5 grid grid-cols-3 gap-1 rounded-2xl border border-linea bg-fondo-alt p-1">
-        <button type="button" data-modality-option="presencial" class="modality-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
-          Presencial
-        </button>
-        <button type="button" data-modality-option="virtual" class="modality-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
-          Virtual
-        </button>
-        <button type="button" data-modality-option="hibrido" class="modality-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
-          Híbrido
-        </button>
-      </div>
+      <div>
+        <label class="block text-sm font-medium text-texto">Modalidad</label>
+        <div
+          class="mt-1.5 grid grid-cols-3 gap-1 rounded-2xl border border-linea bg-fondo-alt p-1"
+          role="radiogroup"
+          aria-label="Modalidad"
+        >
+          <button type="button" role="radio" aria-checked={(event?.modality ?? 'presencial') === 'presencial'} data-modality-option="presencial" class="modality-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
+            Presencial
+          </button>
+          <button type="button" role="radio" aria-checked={(event?.modality ?? 'presencial') === 'virtual'} data-modality-option="virtual" class="modality-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
+            Virtual
+          </button>
+          <button type="button" role="radio" aria-checked={(event?.modality ?? 'presencial') === 'hibrido'} data-modality-option="hibrido" class="modality-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
+            Híbrido
+          </button>
+        </div>
       <input type="hidden" id="modality" name="modality" value={event?.modality ?? 'presencial'} />
     </div>
 
@@ -215,6 +225,7 @@ const inputClass =
   const cityInput = document.getElementById('city') as HTMLInputElement;
   const meetingUrlInput = document.getElementById('meetingUrl') as HTMLInputElement;
   const bannerUrlInput = document.getElementById('bannerUrl') as HTMLInputElement;
+  const bannerSmallUrlInput = document.getElementById('bannerSmallUrl') as HTMLInputElement;
   const timezoneInput = document.getElementById('timezone') as HTMLInputElement;
   const tagsHiddenInput = document.getElementById('tags') as HTMLInputElement;
   const tagChipsContainer = document.getElementById('tag-chips') as HTMLElement;
@@ -224,28 +235,11 @@ const inputClass =
 
   const originalButtonText = submitButton.textContent ?? 'Publicar evento';
 
-  // El recorte va al servidor, que lo modera antes de guardarlo.
-  async function subirImagen(dataUrl: string, kind: 'avatar' | 'banner'): Promise<string> {
-    const recorte = await (await fetch(dataUrl)).blob();
-
-    // Cuerpo binario, no FormData: multipart dispara la comprobacion de origen
-    // de Astro y responde 403 detras del proxy de produccion.
-    const response = await fetch(`/api/imagenes?kind=${kind}`, {
-      method: 'POST',
-      headers: { 'Content-Type': recorte.type || 'image/jpeg' },
-      body: recorte,
-    });
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(result.error ?? 'No se pudo subir la imagen.');
-    }
-
-    return result.url as string;
-  }
-
-
-  timezoneInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // El evento guarda su propia zona horaria. Al crear, manda la del navegador;
+  // al editar, la del evento tal como se guardo: pisarla con la del navegador
+  // desplazaria el instante cuando alguien edita desde otro huso.
+  timezoneInput.value = form.dataset.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const eventTimezone = timezoneInput.value;
 
   // --- Fechas: minutos en punto por defecto, sin fechas pasadas, fin nunca antes que inicio ---
   const startDateInput = document.getElementById('startDate') as HTMLInputElement;
@@ -259,6 +253,16 @@ const inputClass =
   // string con la hora local del navegador y no con metodos UTC.
   function toLocalInputValue(date: Date): string {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  // Suma una hora a un valor "YYYY-MM-DDTHH:mm" sin pasar por fechas locales:
+  // el string es la hora de pared del evento (su huso), no la del navegador.
+  function wallPlusOneHour(value: string): string {
+    const [datePart, timePart] = value.split('T');
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [h, min] = timePart.split(':').map(Number);
+    const shifted = new Date(Date.UTC(y, m - 1, d, h + 1, min));
+    return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}T${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}`;
   }
 
   // Un evento nuevo empieza vacio (ver startValue/endValue arriba); si ya
@@ -291,9 +295,7 @@ const inputClass =
     endDateInput.min = startDateInput.value;
 
     if (endDateInput.value && endDateInput.value < startDateInput.value) {
-      const inicio = new Date(startDateInput.value);
-      inicio.setHours(inicio.getHours() + 1);
-      endDateInput.value = toLocalInputValue(inicio);
+      endDateInput.value = wallPlusOneHour(startDateInput.value);
       endDateInput.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
@@ -305,6 +307,7 @@ const inputClass =
   function setActiveModalityTab(value: string): void {
     modalityTabs.forEach((tab) => {
       const isActive = tab.dataset.modalityOption === value;
+      tab.setAttribute('aria-checked', String(isActive));
       tab.classList.toggle('bg-acento', isActive);
       tab.classList.toggle('text-acento-contraste', isActive);
       tab.classList.toggle('shadow-sm', isActive);
@@ -316,6 +319,7 @@ const inputClass =
   function setActivePublishTab(value: string): void {
     publishTabs.forEach((tab) => {
       const isActive = tab.dataset.publishOption === value;
+      tab.setAttribute('aria-checked', String(isActive));
       tab.classList.toggle('bg-acento', isActive);
       tab.classList.toggle('text-acento-contraste', isActive);
       tab.classList.toggle('shadow-sm', isActive);
@@ -424,16 +428,86 @@ const inputClass =
 
   renderTags();
 
-  // Los inputs `datetime-local` no llevan zona horaria: `new Date(valor)`
-  // los interpreta con la hora local de quien ejecuta el código. Se
-  // resuelven aquí, en el navegador (con la hora local real de quien
-  // publica), a un ISO string absoluto en UTC — así el servidor, sin
-  // importar en qué huso horario corra, interpreta el instante correcto.
-  function toIsoStringOrEmpty(value: FormDataEntryValue | null): string {
+  // El recorte va al servidor, que lo modera antes de guardarlo.
+  async function subirImagen(
+    dataUrl: string,
+    kind: 'avatar' | 'banner',
+  ): Promise<{ url: string; urlSmall?: string }> {
+    const recorte = await (await fetch(dataUrl)).blob();
+
+    // Cuerpo binario, no FormData: multipart dispara la comprobacion de origen
+    // de Astro y responde 403 detras del proxy de produccion.
+    const response = await fetch(`/api/imagenes?kind=${kind}`, {
+      method: 'POST',
+      headers: { 'Content-Type': recorte.type || 'image/jpeg' },
+      body: recorte,
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error ?? 'No se pudo subir la imagen.');
+    }
+
+    return { url: result.url as string, urlSmall: result.urlSmall as string | undefined };
+  }
+
+  // --- Conversión de la hora de pared al instante, en el huso del evento ---
+  // El valor de un input datetime-local no tiene zona: es la hora de pared del
+  // huso en que se muestra. Al crear ese huso es el del navegador; al editar,
+  // el del evento (los valores llegan ya pasados a su hora). Interpretarlos con
+  // `new Date(valor)` usaria el huso del navegador y desplazaria el instante si
+  // son distintos — el bug que ya se pago una vez en este repo.
+  function createZonedFormatter(timeZone: string): Intl.DateTimeFormat {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  }
+
+  // Dado un instante, cuanto hay que sumar/restar a su representacion UTC para
+  // obtener la hora de pared en la zona. Se calcula releyendo el instante como
+  // si fuera UTC en la zona, y viendo cuanto difiere.
+  function zoneOffsetAt(formatter: Intl.DateTimeFormat, instant: number): number {
+    const parts = Object.fromEntries(
+      formatter.formatToParts(new Date(instant)).map((part) => [part.type, part.value]),
+    );
+    const wallAsUtc = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+      Number(parts.second),
+    );
+    return wallAsUtc - instant;
+  }
+
+  function wallToInstant(wall: string, timeZone: string): Date {
+    const [datePart, timePart] = wall.split('T');
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [h, min] = timePart.split(':').map(Number);
+    const wallAsUtc = Date.UTC(y, m - 1, d, h, min, 0, 0);
+
+    const formatter = createZonedFormatter(timeZone);
+
+    // Dos pasadas: la primera con la estimacion basta salvo en el borde de un
+    // cambio de hora, y la segunda lo afina.
+    let offset = zoneOffsetAt(formatter, wallAsUtc);
+    offset = zoneOffsetAt(formatter, wallAsUtc - offset);
+    return new Date(wallAsUtc - offset);
+  }
+
+  function toIsoStringOrEmpty(value: FormDataEntryValue | null, timeZone: string): string {
     if (typeof value !== 'string' || !value) {
       return '';
     }
-    const date = new Date(value);
+    const date = wallToInstant(value, timeZone);
     return Number.isNaN(date.getTime()) ? '' : date.toISOString();
   }
 
@@ -453,10 +527,13 @@ const inputClass =
       // recien hecho llega como data URL; el que ya estaba guardado, como la
       // URL de Storage, que no hay que volver a subir.
       let bannerUrl: string | undefined;
+      let bannerSmallUrl: string | undefined;
 
       if (bannerUrlInput.value.startsWith('data:')) {
         submitButton.textContent = 'Revisando imagen…';
-        bannerUrl = await subirImagen(bannerUrlInput.value, 'banner');
+        const subida = await subirImagen(bannerUrlInput.value, 'banner');
+        bannerUrl = subida.url;
+        bannerSmallUrl = subida.urlSmall;
       }
 
       submitButton.textContent = form.dataset.method === 'PUT' ? 'Guardando…' : 'Publicando…';
@@ -473,9 +550,10 @@ const inputClass =
         address: formData.get('address') || undefined,
         meetingUrl: formData.get('meetingUrl') || undefined,
         bannerUrl,
-        startDate: toIsoStringOrEmpty(formData.get('startDate')),
-        endDate: toIsoStringOrEmpty(formData.get('endDate')),
-        timezone: formData.get('timezone') || undefined,
+        bannerSmallUrl: bannerSmallUrl ?? (bannerSmallUrlInput.value || undefined),
+        startDate: toIsoStringOrEmpty(formData.get('startDate'), eventTimezone),
+        endDate: toIsoStringOrEmpty(formData.get('endDate'), eventTimezone),
+        timezone: eventTimezone || undefined,
         publishAs: formData.get('publishAs') || undefined,
         tags: tagsRaw
           .split(',')
