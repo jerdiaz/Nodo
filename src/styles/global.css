@@ -31,7 +31,11 @@
   --azul-texto: #0a7fa3;      /* 4.59 */
 
   /* --- Semanticos: tema claro (por defecto) --- */
-  --c-fondo: #ffffff;
+  /* El fondo no es blanco puro, igual que el de Meetup, que va a #fcfcfd en
+     html, body y cabecera. Reservar el #ffffff para las superficies -tarjetas,
+     menus, la pastilla del buscador- hace que floten sin necesidad de borde:
+     tres puntos de diferencia no se ven como color, pero si como relieve. */
+  --c-fondo: #fcfcfd;
   --c-fondo-alt: #f7f6f3;      /* hueso, no gris puro */
   --c-superficie: #ffffff;
   --c-linea: #e3e3e6;
@@ -79,6 +83,11 @@
    emitan var(--c-*) en vez de congelar el valor: sin eso el cambio de tema
    en caliente no funcionaria. */
 @theme inline {
+  /* Inter sustituye a la NeuSans de Meetup, que es propietaria. Se declara
+     aqui y no solo en body para que las utilidades font-sans de Tailwind
+     apunten a lo mismo y no reaparezca el stack del sistema por debajo. */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+
   --color-fondo: var(--c-fondo);
   --color-fondo-alt: var(--c-fondo-alt);
   --color-superficie: var(--c-superficie);
@@ -109,23 +118,40 @@
   }
 }
 
-/* En capa "base": Tailwind emite sus utilidades (incluida
-   focus-visible:outline-none) en la capa "utilities", que en cascade layers
-   siempre gana sobre cualquier capa nombrada anterior sin importar la
-   especificidad. Sin este @layer, estas reglas quedarian "sin capa" y una
-   regla sin capa le gana a CUALQUIER capa con nombre, utilities incluida —
-   ninguna clase de Tailwind podria pisar el outline de foco de aqui abajo. */
+body {
+  background: var(--c-fondo);
+  color: var(--c-texto);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* NeuSans aprieta bastante en titulares grandes: el h1 de Meetup va a 40px
+   con -0.8px, es decir -0.02em. Inter por defecto es mas suelta, asi que los
+   titulares llevan ese tracking para que el bloque tenga la misma densidad.
+
+   Va en @layer base y no suelto: el CSS sin capa gana a @layer utilities
+   pase lo que pase con la especificidad, asi que sin esto un tracking-[...]
+   de Tailwind sobre un h3 no tendria forma de ganar. Es justo lo que hace
+   falta en el pie, donde el texto pequeno abre en vez de apretar. */
 @layer base {
-  body {
-    background: var(--c-fondo);
-    color: var(--c-texto);
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
   }
+}
 
-  ::selection {
-    background: var(--c-acento);
-    color: var(--c-acento-contraste);
-  }
+::selection {
+  background: var(--c-acento);
+  color: var(--c-acento-contraste);
+}
 
+/* En @layer base por lo mismo que el tracking de los titulares: sin capa,
+   esta regla gana a @layer utilities y un outline-none no puede desactivarla.
+   Hace falta poder hacerlo en los campos del buscador de la cabecera, que
+   marcan el foco cambiando de fondo a blanco -indicador visible de sobra- y
+   con el anillo encima parecian un campo en error. Tambien hacia falta en
+   Publicar/editar evento, Bienvenida, Configuracion y Admin, donde cada
+   input tiene su propio anillo de foco. */
+@layer base {
   :focus-visible {
     outline: 2px solid var(--c-acento);
     outline-offset: 2px;

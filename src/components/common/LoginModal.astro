@@ -1,0 +1,159 @@
+---
+import { X } from '@lucide/astro';
+import ProviderIcon from '../ui/ProviderIcon.astro';
+---
+
+{/*
+  Va como <dialog> nativo y no como un div con position fixed. showModal() se
+  encarga solo de tres cosas que a mano salen mal casi siempre: atrapar el foco
+  dentro del cuadro, cerrar con Escape y volver el resto de la pagina inerte
+  para lectores de pantalla. Ademas expone ::backdrop, que es donde vive el
+  desenfoque del fondo.
+*/}
+<dialog
+  id="nodo-modal-sesion"
+  aria-labelledby="nodo-modal-sesion-titulo"
+  class="m-auto w-[calc(100vw-2rem)] max-w-[560px] rounded-3xl bg-superficie p-0 text-texto shadow-[var(--c-sombra)] backdrop:bg-[#111113]/40"
+>
+  <div class="relative p-10">
+    <button
+      id="nodo-modal-cerrar"
+      type="button"
+      aria-label="Cerrar"
+      class="absolute right-5 top-5 flex size-9 items-center justify-center rounded-full text-suave transition hover:bg-fondo-alt hover:text-texto"
+    >
+      <X class="size-5" stroke-width={2} />
+    </button>
+
+    <h2 id="nodo-modal-sesion-titulo" class="text-center text-3xl font-bold text-texto">
+      Inicia sesión
+    </h2>
+    <p class="mx-auto mt-3 max-w-sm text-center text-sm leading-6 tracking-[0.02em] text-suave">
+      Necesitas una cuenta para publicar eventos en la cartelera.
+    </p>
+
+    <div class="mt-8 space-y-3">
+      <button
+        id="nodo-modal-google"
+        type="button"
+        class="flex h-14 w-full items-center justify-center gap-3 rounded-full border border-linea bg-superficie text-base font-semibold text-texto transition active:scale-[0.98] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <ProviderIcon name="google" class="size-5" />
+        Continuar con Google
+      </button>
+
+      <button
+        id="nodo-modal-microsoft"
+        type="button"
+        class="flex h-14 w-full items-center justify-center gap-3 rounded-full border border-linea bg-superficie text-base font-semibold text-texto transition active:scale-[0.98] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <ProviderIcon name="microsoft" class="size-5" />
+        Continuar con Microsoft
+      </button>
+    </div>
+
+    <p id="nodo-modal-error" class="mt-4 hidden text-center text-sm text-acento-texto" role="alert"></p>
+  </div>
+</dialog>
+
+<style>
+  /* El desenfoque va aparte: backdrop-filter no se puede expresar con la
+     utilidad backdrop: de Tailwind, que solo alcanza al color de fondo. */
+  #nodo-modal-sesion::backdrop {
+    backdrop-filter: blur(8px);
+  }
+
+  /* Sin esto el cuadro aparece de golpe. La animacion se anula sola con la
+     regla de prefers-reduced-motion que ya existe en global.css. */
+  #nodo-modal-sesion[open] {
+    animation: nodo-modal-entrada 0.18s ease-out;
+  }
+
+  @keyframes nodo-modal-entrada {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+  }
+</style>
+
+<script>
+  import { loginWithGoogle, loginWithMicrosoft } from '../../lib/firebase/client';
+
+  const modal = document.getElementById('nodo-modal-sesion') as HTMLDialogElement | null;
+
+  if (modal) {
+    const error = document.getElementById('nodo-modal-error');
+    // A donde ir despues de entrar. Sin esto se recargaria la pagina actual y
+    // quien venia a publicar un evento acabaria de vuelta donde estaba.
+    let destino = '/eventos/nuevo';
+
+    const abrir = (href: string): void => {
+      destino = href;
+      error?.classList.add('hidden');
+      modal.showModal();
+    };
+
+    // Se enganchan todos los enlaces a publicar evento en vez de marcarlos uno
+    // a uno: hay uno en el banner, otro en la franja, otro en el estado vacio y
+    // otro en el pie, y marcarlos a mano garantiza olvidarse de alguno.
+    document.querySelectorAll<HTMLAnchorElement>('a[href="/eventos/nuevo"]').forEach((enlace) => {
+      enlace.addEventListener('click', (evento) => {
+        // El atributo lo pone el servidor, que es el unico que puede leer la
+        // cookie de sesion: es httpOnly y el navegador no la ve.
+        if (document.body.dataset.sesion === 'activa') {
+          return;
+        }
+
+        evento.preventDefault();
+        abrir(enlace.getAttribute('href') ?? '/eventos/nuevo');
+      });
+    });
+
+    document.getElementById('nodo-modal-cerrar')?.addEventListener('click', () => modal.close());
+
+    // Pulsar fuera del cuadro cierra. El click en el fondo lo recibe el propio
+    // <dialog>, asi que basta con comprobar que el punto queda fuera de su caja.
+    modal.addEventListener('click', (evento) => {
+      const caja = modal.getBoundingClientRect();
+      const fuera =
+        evento.clientX < caja.left ||
+        evento.clientX > caja.right ||
+        evento.clientY < caja.top ||
+        evento.clientY > caja.bottom;
+
+      if (fuera) {
+        modal.close();
+      }
+    });
+
+    const botones = [
+      { id: 'nodo-modal-google', entrar: loginWithGoogle },
+      { id: 'nodo-modal-microsoft', entrar: loginWithMicrosoft },
+    ];
+
+    for (const { id, entrar } of botones) {
+      const boton = document.getElementById(id) as HTMLButtonElement | null;
+
+      boton?.addEventListener('click', async () => {
+        botones.forEach(({ id: otro }) => {
+          (document.getElementById(otro) as HTMLButtonElement | null)?.setAttribute('disabled', '');
+        });
+        error?.classList.add('hidden');
+
+        try {
+          await entrar(destino);
+        } catch (fallo) {
+          console.error('No se pudo iniciar sesión:', fallo);
+          if (error) {
+            error.textContent = 'No se pudo iniciar sesión. Inténtalo de nuevo.';
+            error.classList.remove('hidden');
+          }
+          botones.forEach(({ id: otro }) => {
+            (document.getElementById(otro) as HTMLButtonElement | null)?.removeAttribute('disabled');
+          });
+        }
+      });
+    }
+  }
+</script>
