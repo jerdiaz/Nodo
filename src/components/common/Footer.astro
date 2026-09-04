@@ -42,8 +42,13 @@ const columns = [
 
 {/*
   Tarjeta flotante, no franja a sangre. Las medidas estan tomadas del pie de
-  Meetup y no puestas a ojo: margen de 20px por los tres lados, radio de 48px,
-  interior de 1200px como maximo y 28px de padding lateral.
+  Meetup y no puestas a ojo: margen de 20px por los cuatro lados, radio de
+  48px, interior de 1200px como maximo y 28px de padding lateral.
+
+  El margen superior es mt-5 y no mt-auto: main ya lleva flex-1, que por si
+  solo empuja el pie al fondo en paginas cortas, asi que mt-auto no sumaba
+  nada en paginas con contenido — el pie quedaba pegado a la seccion anterior,
+  sin aire, con solo el padding interno de la tarjeta separandolos.
 
   El fondo es #232326 y no el #111113 del sitio: sobre el tema oscuro el pie
   tiene que leerse como una superficie elevada, y si fuera del mismo color que
@@ -55,17 +60,18 @@ const columns = [
   aqui no llegarian a contraste, asi que el acento del lema usa la variante
   del tema oscuro.
 */}
-<footer class="mt-auto mx-5 mb-5 overflow-hidden rounded-[48px] bg-[#232326] px-7 text-white">
+<footer class="mx-5 mb-5 mt-5 overflow-hidden rounded-[48px] bg-[#232326] px-7 text-white">
   {/* -mx-7 para que la cinta llegue a los filos de la tarjeta y el radio la
       recorte: es la firma de GEN, que Meetup no tiene y aqui se conserva. */}
   <div class="cinta-gen -mx-7" aria-hidden="true"></div>
 
   {/*
-    Ritmo vertical medido sobre el pie de Meetup, que ocupa 805px: 48 arriba,
-    45 de la marca a la linea, 96 de la linea a las columnas, 105 hasta el
-    bloque legal y 40 abajo. Son huecos grandes a proposito; con las
-    separaciones habituales el pie se queda en poco mas de la mitad de alto y
-    pierde la presencia de tarjeta.
+    El ritmo vertical de Meetup (96 de la linea a las columnas, 105 hasta el
+    bloque legal) esta calculado sobre sus 805px de contenido, con mas
+    columnas y enlaces que las de Nodo. Copiar esos mismos pixeles sobre un
+    bloque de columnas mucho mas corto (unos 150px) se sentia como espacio
+    vacio y no como presencia de tarjeta, asi que aqui van escalados a la
+    mitad: huecos generosos pero proporcionales al contenido real.
   */}
   <div class="mx-auto max-w-[1200px] pb-10 pt-12">
     {/*
@@ -99,7 +105,7 @@ const columns = [
     {/* El separador de Meetup es #353538: gris propio, no un blanco con alfa. */}
     <div class="mt-[45px] border-t border-[#353538]"></div>
 
-    <div class="mt-12 grid gap-10 sm:grid-cols-2 lg:mt-24 lg:grid-cols-4">
+    <div class="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
       {columns.map((column) => (
         <div>
           {/*
@@ -148,7 +154,7 @@ const columns = [
       </div>
     </div>
 
-    <div class="mt-16 text-sm tracking-[0.02em] text-white/50 lg:mt-[105px]">
+    <div class="mt-16 text-sm tracking-[0.02em] text-white/50">
       <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
         <p>© {year} Nodo</p>
         <a href="/privacidad" class="font-medium transition hover:text-white">Privacidad</a>
