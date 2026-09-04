@@ -1,24 +1,21 @@
 import type { APIRoute } from 'astro';
 import { jsonResponse } from '../../lib/api';
 import { getCurrentUser } from '../../lib/auth';
+import { buscarSugerencias, detalleDeSitio, hayClaveDePlaces, type Sitio } from '../../lib/places';
 
 // Busqueda de sitios para el formulario de eventos. Acepta las dos cosas que
 // hace la gente: pegar el enlace del sitio en Google Maps, o escribir el
 // nombre y elegir de una lista.
 //
-// Va por el servidor y no desde el navegador por tres razones: Nominatim pide
-// un User-Agent que identifique a la aplicacion y el navegador no deja
-// ponerlo; su politica limita a una consulta por segundo, que solo se puede
-// respetar desde un sitio que las vea todas; y seguir la redireccion de un
-// enlace corto de Maps desde la pagina choca con CORS.
-
-export interface Sitio {
-  nombre: string;
-  direccion?: string;
-  ciudad?: string;
-  latitude: number;
-  longitude: number;
-}
+// El texto libre va a Places cuando hay clave y a Nominatim cuando no. Los
+// enlaces de Maps se resuelven aqui en los dos casos: las coordenadas vienen
+// dentro del propio enlace.
+//
+// Va por el servidor y no desde el navegador por cuatro razones: la clave de
+// Places no puede viajar al cliente; Nominatim pide un User-Agent que el
+// navegador no deja poner; su politica limita a una consulta por segundo, que
+// solo se puede respetar desde un sitio que las vea todas; y seguir la
+// redireccion de un enlace corto de Maps desde la pagina choca con CORS.
 
 // Solo se sigue la redireccion de estos dominios. Sin la lista, pegar
 // cualquier URL convertiria este endpoint en un cliente HTTP a peticion de
@@ -207,6 +204,31 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     return jsonResponse({ error: 'Debes iniciar sesión.' }, 401);
   }
 
+  const sessionToken = url.searchParams.get('sesion') ?? undefined;
+
+  // Segunda mitad del flujo de Google: el autocompletado devuelve nombres sin
+  // coordenadas, y el punto se pide solo del que se acaba eligiendo. Es lo que
+  // hace que escribir diez letras no cueste diez consultas de detalle.
+  const placeId = url.searchParams.get('placeId');
+
+  if (placeId) {
+    if (!hayClaveDePlaces()) {
+      return jsonResponse({ error: 'La búsqueda por Google no está configurada.' }, 400);
+    }
+
+    try {
+      const sitio = await detalleDeSitio(placeId, {
+        nombre: url.searchParams.get('nombre') ?? undefined,
+        sessionToken,
+      });
+
+      return jsonResponse({ resultados: sitio ? [sitio] : [] }, 200);
+    } catch (error) {
+      console.warn('No se pudo resolver el sitio en Places:', error);
+      return jsonResponse({ error: 'No se pudo obtener la ubicación del sitio.' }, 502);
+    }
+  }
+
   const consulta = (url.searchParams.get('q') ?? '').trim();
 
   if (consulta.length < 3) {
@@ -218,6 +240,8 @@ export const GET: APIRoute = async ({ url, cookies }) => {
   }
 
   try {
+    // Un enlace de Maps se resuelve igual con clave o sin ella: las
+    // coordenadas ya vienen dentro, no hay nada que preguntarle a nadie.
     const enlace = esUrlDeMapas(consulta);
 
     if (enlace) {
@@ -232,10 +256,8 @@ export const GET: APIRoute = async ({ url, cookies }) => {
         );
       }
 
-      // El enlace no traia coordenadas pero si el nombre del sitio: se busca
-      // por ese nombre, que es lo que haria quien lo tecleara a mano.
       if (nombre) {
-        return jsonResponse({ resultados: await buscarEnNominatim(nombre, false) }, 200);
+        return jsonResponse({ resultados: await buscarTexto(nombre, false) }, 200);
       }
 
       return jsonResponse(
@@ -244,18 +266,33 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       );
     }
 
-    // Se busca primero dentro de Colombia, que es donde pasa casi todo lo que
-    // se publica aqui: sin esa acotacion, "Casa Taller" devuelve medio mundo
-    // antes que la de Bogota. Si no hay nada, se repite sin acotar.
-    const enColombia = await buscarEnNominatim(consulta, true);
+    const soloCiudades = url.searchParams.get('tipo') === 'ciudad';
 
-    if (enColombia.length > 0) {
-      return jsonResponse({ resultados: enColombia }, 200);
-    }
-
-    return jsonResponse({ resultados: await buscarEnNominatim(consulta, false) }, 200);
+    return jsonResponse({ resultados: await buscarTexto(consulta, soloCiudades, sessionToken) }, 200);
   } catch (error) {
     console.warn('No se pudo resolver la ubicación:', error);
     return jsonResponse({ error: 'No se pudo buscar la ubicación. Inténtalo de nuevo.' }, 502);
   }
 };
+
+// Google si esta configurado, Nominatim si no. El respaldo no es solo para el
+// dia que falte la clave: en desarrollo la clave esta atada a la IP del VPS y
+// desde una maquina de casa Google rechaza la llamada, asi que sin esto no se
+// podria probar el formulario en local.
+async function buscarTexto(
+  consulta: string,
+  soloCiudades: boolean,
+  sessionToken?: string,
+): Promise<Sitio[]> {
+  if (hayClaveDePlaces()) {
+    try {
+      return await buscarSugerencias(consulta, { soloCiudades, sessionToken });
+    } catch (error) {
+      console.warn('Places falló; se sigue con Nominatim:', error);
+    }
+  }
+
+  const enColombia = await buscarEnNominatim(consulta, true);
+
+  return enColombia.length > 0 ? enColombia : buscarEnNominatim(consulta, false);
+}

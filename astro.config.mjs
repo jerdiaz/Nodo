@@ -32,6 +32,11 @@ export default defineConfig({
       VISION_CLIENT_EMAIL: envField.string({ context: 'server', access: 'secret', optional: true }),
       VISION_PRIVATE_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
 
+      // Places API (New) y Geocoding, para buscar sitios y ciudades. Sin
+      // ella, /api/ubicacion cae a Nominatim, que es como funcionaba antes:
+      // por eso es opcional y no obligatoria.
+      GOOGLE_MAPS_SERVER_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+
       // Instagram: token de larga duracion de la Graph API, id de la cuenta y
       // el secreto que autoriza a disparar la sincronizacion.
       INSTAGRAM_TOKEN: envField.string({ context: 'server', access: 'secret', optional: true }),

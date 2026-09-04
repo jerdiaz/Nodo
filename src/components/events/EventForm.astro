@@ -544,9 +544,18 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     nombre: string;
     direccion?: string;
     ciudad?: string;
-    latitude: number;
-    longitude: number;
+    // Las sugerencias de Google llegan sin punto: el autocompletado devuelve
+    // nombres y el detalle se pide solo del que se elige. Las de Nominatim y
+    // las de un enlace de Maps si lo traen ya.
+    latitude?: number;
+    longitude?: number;
+    placeId?: string;
   }
+
+  // Agrupa las pulsaciones de una misma busqueda con la consulta de detalle
+  // que venga despues: Google las factura como una sesion en vez de como una
+  // llamada por tecla. Se renueva al elegir, que es cuando la sesion cierra.
+  let sesionBusqueda = crypto.randomUUID();
 
   const latitudeInput = document.getElementById('latitude') as HTMLInputElement;
   const longitudeInput = document.getElementById('longitude') as HTMLInputElement;
@@ -622,18 +631,54 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     mapa.invalidateSize();
   }
 
-  function elegirSitio(sitio: Sitio): void {
-    guardarPunto(sitio.latitude, sitio.longitude);
+  async function elegirSitio(sitio: Sitio): Promise<void> {
     placeResults.classList.add('hidden');
     placeError.classList.add('hidden');
 
+    // Una sugerencia de Google no trae coordenadas todavia: se piden ahora,
+    // que es la unica llamada de detalle que se paga de toda la busqueda.
+    let elegido = sitio;
+
+    if (elegido.latitude === undefined && elegido.placeId) {
+      try {
+        const params = new URLSearchParams({
+          placeId: elegido.placeId,
+          nombre: elegido.nombre,
+          sesion: sesionBusqueda,
+        });
+        const response = await fetch(`/api/ubicacion?${params.toString()}`);
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error ?? 'No se pudo obtener la ubicación del sitio.');
+        }
+
+        const detalle: Sitio | undefined = result.resultados?.[0];
+
+        if (!detalle || detalle.latitude === undefined) {
+          throw new Error('Ese sitio no tiene una ubicación concreta.');
+        }
+
+        elegido = detalle;
+      } catch (error) {
+        mostrarErrorSitio(error instanceof Error ? error.message : 'No se pudo obtener la ubicación.');
+        return;
+      } finally {
+        // La sesion se cierra con el detalle, haya salido bien o mal.
+        sesionBusqueda = crypto.randomUUID();
+      }
+    }
+
+    guardarPunto(elegido.latitude!, elegido.longitude!);
+    const sitio2 = elegido;
+
     // Se rellenan solo los campos vacios: quien ya escribio el nombre del
     // sitio a su manera no quiere que la busqueda se lo pise.
-    if (!venueInput.value && sitio.nombre) venueInput.value = sitio.nombre;
-    if (!addressInput.value && sitio.direccion) addressInput.value = sitio.direccion;
-    if (!cityInput.value && sitio.ciudad) cityInput.value = sitio.ciudad;
+    if (!venueInput.value && sitio2.nombre) venueInput.value = sitio2.nombre;
+    if (!addressInput.value && sitio2.direccion) addressInput.value = sitio2.direccion;
+    if (!cityInput.value && sitio2.ciudad) cityInput.value = sitio2.ciudad;
 
-    void pintarMapa(sitio.latitude, sitio.longitude);
+    await pintarMapa(sitio2.latitude!, sitio2.longitude!);
   }
 
   function pintarResultados(sitios: Sitio[]): void {
@@ -659,7 +704,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
         boton.appendChild(linea);
       }
 
-      boton.addEventListener('click', () => elegirSitio(sitio));
+      boton.addEventListener('click', () => void elegirSitio(sitio));
       item.appendChild(boton);
       placeResults.appendChild(item);
     });
@@ -681,7 +726,9 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     placeButton.textContent = 'Buscando…';
 
     try {
-      const response = await fetch(`/api/ubicacion?q=${encodeURIComponent(consulta)}`);
+      const response = await fetch(
+        `/api/ubicacion?q=${encodeURIComponent(consulta)}&sesion=${sesionBusqueda}`,
+      );
       const result = await response.json();
 
       if (!response.ok) {
@@ -698,7 +745,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
 
       // Un enlace de Maps resuelve a un unico punto: no hay nada que elegir.
       if (sitios.length === 1) {
-        elegirSitio(sitios[0]!);
+        await elegirSitio(sitios[0]!);
         return;
       }
 
