@@ -1,5 +1,5 @@
 ---
-import { ChevronDown, LogOut, Plus, Search, Settings, User } from '@lucide/astro';
+import { ChevronDown, LogOut, Search, Settings, User } from '@lucide/astro';
 import { getDisplayUser } from '../../lib/auth';
 
 const user = await getDisplayUser(Astro.cookies);
@@ -32,7 +32,7 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
   tambien se recorta, pero contra el blanco de la pagina eso no se ve.
 */}
 <header class="relative z-50 rounded-b-3xl bg-fondo">
-  <nav class="mx-auto flex h-20 max-w-[1200px] items-center gap-6 px-6 xl:px-14">
+  <nav class="mx-auto flex h-20 max-w-[1200px] items-center gap-6 px-6 xl:px-0">
     <a href="/" class="flex shrink-0 items-center gap-2.5 text-2xl font-bold tracking-tight text-texto">
       <img src="/logo-icon.png" alt="" class="size-8" />
       <span>Nodo<span class="text-acento-texto">.</span></span>
@@ -90,14 +90,6 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
     </ul>
 
     <div class="ml-auto flex shrink-0 items-center gap-3 xl:ml-0">
-      <a
-        href="/eventos/nuevo"
-        class="inline-flex h-9 items-center gap-1.5 rounded-full bg-acento px-4 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
-      >
-        <Plus class="size-4" stroke-width={2.5} />
-        Publicar evento
-      </a>
-
       {user ? (
         <div class="relative" data-menu>
           <button

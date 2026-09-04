@@ -140,9 +140,16 @@ body {
   color: var(--c-acento-contraste);
 }
 
-:focus-visible {
-  outline: 2px solid var(--c-acento);
-  outline-offset: 2px;
+/* En @layer base por lo mismo que el tracking de los titulares: sin capa,
+   esta regla gana a @layer utilities y un outline-none no puede desactivarla.
+   Hace falta poder hacerlo en los campos del buscador de la cabecera, que
+   marcan el foco cambiando de fondo a blanco -indicador visible de sobra- y
+   con el anillo encima parecian un campo en error. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--c-acento);
+    outline-offset: 2px;
+  }
 }
 
 /* =========================================================
