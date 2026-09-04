@@ -28,7 +28,15 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
   desplegables de sesion y de cuenta son absolute dentro de la cabecera: con
   overflow-hidden se cortarian y no se verian al abrirlos.
 */}
-<header class="sticky top-0 z-50 rounded-b-3xl border-b border-linea bg-fondo/80 backdrop-blur-xl">
+{/*
+  Se va con la pagina, como la cabecera de la home de Meetup, que es static y
+  no queda pegada arriba.
+
+  Sigue siendo relative y con z-50 aunque no se ancle: los menus de sesion y de
+  cuenta son absolute dentro de ella, y sin un ancestro posicionado que levante
+  la capa se colarian por debajo del contenido de la pagina al abrirlos.
+*/}
+<header class="relative z-50 rounded-b-3xl border-b border-linea bg-fondo/80 backdrop-blur-xl">
   <nav class="mx-auto flex h-20 max-w-[1200px] items-center gap-4 px-6">
     <a href="/" class="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-texto">
       <img src="/logo-icon.png" alt="" class="size-7" />
