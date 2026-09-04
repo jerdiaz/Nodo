@@ -4,6 +4,7 @@ import Button from '../components/ui/Button.astro';
 import { getCurrentUser } from '../lib/auth';
 import ImageCropper from '../components/ui/ImageCropper.astro';
 import { getUserProfile } from '../lib/firebase/users';
+import { getPendingTransfers, type TransferRequest } from '../lib/firebase/transfers';
 import { SOCIAL_FIELDS } from '../types/profile';
 import { Rss, TriangleAlert } from '@lucide/astro';
 import { getEvents } from '../lib/firebase/events';
@@ -12,7 +13,7 @@ import type { UserProfile } from '../types/profile';
 const user = await getCurrentUser(Astro.cookies);
 
 if (!user) {
-  return Astro.redirect('/?login=required');
+  return Astro.redirect(`/?login=required&destino=${encodeURIComponent(Astro.url.pathname)}`);
 }
 
 let profile: UserProfile | null = null;
@@ -32,17 +33,27 @@ const lastName = profile?.lastName ?? authRest.join(' ');
 const avatarUrl = profile?.avatarUrl ?? user.avatarUrl ?? '';
 
 // Cuantos eventos propios seguirian vivos si borrara la cuenta: es el dato
-// que decide si la transferencia tiene sentido o no.
+// que decide si la transferencia tiene sentido o no. Solo se leen los propios,
+// no el catalogo entero.
 let upcomingOwn: { id: string }[] = [];
 
 try {
-  const allEvents = await getEvents();
+  const allEvents = await getEvents({ organizerUid: user.uid });
   const now = Date.now();
-  upcomingOwn = allEvents.filter(
-    (event) => event.organizer.uid === user.uid && event.endDate.getTime() >= now,
-  );
+  upcomingOwn = allEvents.filter((event) => event.endDate.getTime() >= now);
 } catch (error) {
   console.warn('No se pudieron contar los eventos propios:', error);
+}
+
+// Solicitudes de transferencia que alguien te dejo al borrar su cuenta.
+// Aceptarlas te convierte en organizador de esos eventos; rechazarlas los
+// retira de la cartelera.
+let transferencias: TransferRequest[] = [];
+
+try {
+  transferencias = await getPendingTransfers(user.uid);
+} catch (error) {
+  console.warn('No se pudieron obtener las transferencias pendientes:', error);
 }
 
 const calendarUrl = profile?.calendarToken
@@ -280,6 +291,50 @@ const inputClass =
         <p id="ical-error" class="mt-3 hidden text-sm text-acento-texto"></p>
       </div>
     </section>
+
+    {transferencias.length > 0 && (
+      <section class="mt-14 border-t border-linea pt-10">
+        <h2 class="text-lg font-semibold text-texto">Eventos pendientes de aceptar</h2>
+        <p class="mt-2 text-sm text-suave">
+          Alguien que borró su cuenta te dejó sus eventos próximos. Decide qué hacer con ellos.
+        </p>
+
+        <div class="mt-4 space-y-3">
+          {transferencias.map((transfer) => (
+            <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-linea bg-superficie p-5">
+              <div class="min-w-0">
+                <p class="font-medium text-texto">
+                  {transfer.fromName} te transfirió{' '}
+                  {transfer.eventIds.length === 1 ? 'un evento próximo' : `${transfer.eventIds.length} eventos próximos`}
+                </p>
+                <p class="mt-1 text-sm text-suave">
+                  Al aceptarlos aparecerás como organizador en la cartelera.
+                </p>
+              </div>
+
+              <div class="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  data-transfer={transfer.id}
+                  data-accion="aceptar"
+                  class="rounded-full bg-acento px-4 py-2 text-sm font-medium text-acento-contraste transition active:scale-[0.97] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Aceptar
+                </button>
+                <button
+                  type="button"
+                  data-transfer={transfer.id}
+                  data-accion="rechazar"
+                  class="rounded-full border border-linea bg-superficie px-4 py-2 text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Rechazar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
 
     <section class="mt-14 border-t border-linea pt-10">
       <h2 class="text-lg font-semibold text-texto">Eliminar cuenta</h2>
@@ -697,5 +752,38 @@ const inputClass =
       submitButton.disabled = false;
       submitButton.textContent = originalButtonText;
     }
+  });
+
+  // --- Transferencias pendientes ---
+  document.querySelectorAll<HTMLButtonElement>('[data-transfer]').forEach((boton) => {
+    boton.addEventListener('click', async () => {
+      const accion = boton.dataset.accion;
+      const id = boton.dataset.transfer;
+
+      if (accion === 'rechazar') {
+        const confirmado = window.confirm('¿Seguro que quieres rechazar estos eventos? Se retirarán de la cartelera.');
+        if (!confirmado) return;
+      }
+
+      boton.disabled = true;
+
+      try {
+        const response = await fetch(`/api/transferencias/${id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: accion }),
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(result.error ?? 'No se pudo procesar la solicitud.');
+        }
+
+        window.location.reload();
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : 'No se pudo procesar la solicitud.');
+        boton.disabled = false;
+      }
+    });
   });
 </script>

@@ -2,20 +2,11 @@ import type { APIRoute } from 'astro';
 import { jsonResponse } from '../../lib/api';
 import { getCurrentUser } from '../../lib/auth';
 import { getAdminAuth, getAdminDb } from '../../lib/firebase/server';
-import { getEvents } from '../../lib/firebase/events';
+import { deleteEventWithRsvps } from '../../lib/firebase/events';
+import { deleteCommunity, getCommunityByOwner } from '../../lib/firebase/communities';
+import { createTransferRequest } from '../../lib/firebase/transfers';
 import { deleteUserImages } from '../../lib/images';
 import { deleteUserProfile, getDeletionCode, getUidByUsername, getUserProfile } from '../../lib/firebase/users';
-
-// Borrar un documento no borra sus subcolecciones: los rsvps de un evento
-// sobreviven al evento si no se recorren a mano.
-async function deleteEventWithRsvps(eventId: string): Promise<void> {
-  const db = getAdminDb();
-  const eventRef = db.collection('events').doc(eventId);
-  const rsvps = await eventRef.collection('rsvps').get();
-
-  await Promise.all(rsvps.docs.map((doc) => doc.ref.delete()));
-  await eventRef.delete();
-}
 
 export const DELETE: APIRoute = async ({ request, cookies }) => {
   const user = await getCurrentUser(cookies);
@@ -43,12 +34,19 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
     return jsonResponse({ error: 'El código ha caducado. Genera uno nuevo.' }, 400);
   }
 
-  const allEvents = await getEvents();
-  const own = allEvents.filter((event) => event.organizer.uid === user.uid);
-  const now = Date.now();
-  const upcoming = own.filter((event) => event.endDate.getTime() >= now);
-
   const db = getAdminDb();
+  const now = Date.now();
+
+  // Solo se leen los ids: no hacen falta los perfiles de organizadores que
+  // getEvents() trae para pintar. El borrado de cuenta es raro y caro, pero no
+  // debe arrastrar el catálogo entero con su enriquecimiento.
+  const allEvents = await db.collection('events').get();
+  const own = allEvents.docs.filter((doc) => doc.data()?.organizer?.uid === user.uid);
+  const others = allEvents.docs.filter((doc) => doc.data()?.organizer?.uid !== user.uid);
+  const upcomingOwn = own.filter((doc) => {
+    const end = doc.data()?.endDate;
+    return !end || end.toDate().getTime() >= now;
+  });
 
   if (mode === 'transfer') {
     const username = typeof payload.transferTo === 'string' ? payload.transferTo.trim().toLowerCase() : '';
@@ -74,33 +72,46 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
       return jsonResponse({ error: 'Esa cuenta todavía no ha completado su perfil.' }, 400);
     }
 
-    // Solo los futuros. Los pasados conservan el organizador tal como estaba:
-    // el nombre viaja desnormalizado en el propio evento, asi que siguen
-    // mostrandose bien y el historial no se falsea atribuyendoselos a otra
-    // persona que no los organizo.
+    // Los eventos no se reasignan aqui: se deja una solicitud que la persona
+    // destino debe aceptar o rechazar. Hasta entonces conservan al organizador
+    // original, cuyo nombre viaja desnormalizado y se sigue mostrando bien.
+    if (upcomingOwn.length > 0) {
+      const nombreDeLosEventos = upcomingOwn[0]?.data()?.organizer?.name;
+      await createTransferRequest({
+        toUid: targetUid,
+        fromName: typeof nombreDeLosEventos === 'string' && nombreDeLosEventos ? nombreDeLosEventos : user.name,
+        eventIds: upcomingOwn.map((doc) => doc.id),
+      });
+    }
+
+    // La propia asistencia a esos eventos se va igual: son datos de la persona.
     await Promise.all(
-      upcoming.map((event) =>
-        db.collection('events').doc(event.id).update({
-          organizer: { uid: targetUid, name: targetName, avatarUrl: target?.avatarUrl },
-        }),
+      upcomingOwn.map((doc) =>
+        db.collection('events').doc(doc.id).collection('rsvps').doc(user.uid).delete(),
       ),
     );
   } else {
-    // deleteUserImages ya barre event-banners/{uid}/, asi que los banners de
-    // estos eventos se van con ella.
-    await Promise.all(own.map((event) => deleteEventWithRsvps(event.id)));
+    await Promise.all(own.map((doc) => deleteEventWithRsvps(doc.id)));
   }
 
   // Las asistencias a eventos ajenos se van siempre: son datos de la persona.
-  const others = allEvents.filter((event) => event.organizer.uid !== user.uid);
   await Promise.all(
-    others.map((event) =>
-      db.collection('events').doc(event.id).collection('rsvps').doc(user.uid).delete(),
-    ),
+    others.map((doc) => db.collection('events').doc(doc.id).collection('rsvps').doc(user.uid).delete()),
   );
 
+  // Quien administra una comunidad se lleva su documento y sus miembros: si no,
+  // quedaria una comunidad publica con un ownerUid inexistente, sin dueno y
+  // sin ruta de borrado. Sus eventos ya se transfirieron o borraron arriba y la
+  // referencia desnormalizada se limpia aqui.
+  const miComunidad = await getCommunityByOwner(user.uid);
+
+  if (miComunidad) {
+    await deleteCommunity(miComunidad.id);
+  }
+
   // Los archivos de Storage no cuelgan de ningun documento: si no se barren
-  // aqui, el avatar y los banners sobreviven a la cuenta para siempre. Al
+  // aqui, el avatar (tambien el de la comunidad, que vive bajo la carpeta de
+  // quien la creo) y los banners sobreviven a la cuenta para siempre. Al
   // transferir se conservan los banners: los eventos siguen vivos en otra
   // cuenta y se quedarian sin imagen.
   await deleteUserImages(user.uid, mode === 'transfer' ? ['avatars'] : ['avatars', 'event-banners']);
