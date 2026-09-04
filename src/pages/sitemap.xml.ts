@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getEvents } from '../lib/firebase/events';
+import { getEventSlugs } from '../lib/firebase/events';
 
 const staticPaths = ['/', '/calendario', '/comunidades'];
 
@@ -9,8 +9,8 @@ export const GET: APIRoute = async ({ site }) => {
   let eventPaths: string[] = [];
 
   try {
-    const events = await getEvents();
-    eventPaths = events.map((event) => `/eventos/${event.slug}`);
+    const slugs = await getEventSlugs();
+    eventPaths = slugs.map((slug) => `/eventos/${slug}`);
   } catch (error) {
     console.warn('No se pudo generar el sitemap con eventos:', error);
   }
