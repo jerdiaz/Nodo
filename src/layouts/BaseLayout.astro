@@ -48,6 +48,22 @@ const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
         }
       })();
     </script>
+    <!--
+      Meetup usa NeuSans, que es propietaria y no se puede incrustar aqui. Su
+      propia hoja de estilos declara Inter como respaldo (NeuSans, Inter,
+      system-ui), asi que es la mas fiel de las libres: misma familia grotesca,
+      mismo comportamiento a pesos altos con tracking negativo.
+
+      preconnect va aparte y con crossorigin porque los ficheros salen de
+      gstatic, un origen distinto al de la hoja: sin las dos lineas el
+      navegador descubre el segundo dominio cuando ya ha parseado el CSS.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

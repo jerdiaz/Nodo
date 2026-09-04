@@ -79,6 +79,11 @@
    emitan var(--c-*) en vez de congelar el valor: sin eso el cambio de tema
    en caliente no funcionaria. */
 @theme inline {
+  /* Inter sustituye a la NeuSans de Meetup, que es propietaria. Se declara
+     aqui y no solo en body para que las utilidades font-sans de Tailwind
+     apunten a lo mismo y no reaparezca el stack del sistema por debajo. */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+
   --color-fondo: var(--c-fondo);
   --color-fondo-alt: var(--c-fondo-alt);
   --color-superficie: var(--c-superficie);
@@ -112,6 +117,15 @@
 body {
   background: var(--c-fondo);
   color: var(--c-texto);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* NeuSans aprieta bastante en titulares grandes: el h1 de Meetup va a 40px
+   con -0.8px, es decir -0.02em. Inter por defecto es mas suelta, asi que los
+   titulares llevan ese tracking para que el bloque tenga la misma densidad. */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
 }
 
 ::selection {
