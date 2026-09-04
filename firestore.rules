@@ -1,15 +1,24 @@
 rules_version = '2';
 
+// Todas las escrituras de Nodo pasan por sus rutas de API, que usan el Admin
+// SDK y se saltan estas reglas por completo. El SDK de Firebase en el navegador
+// solo se usa para Auth: no hay una sola lectura ni escritura de Firestore
+// desde el cliente (comprobado: nada en src/ importa 'firebase/firestore').
+//
+// Por eso aqui no se abre nada. Permitir "create si request.auth != null"
+// dejaba que cualquiera con la sesion iniciada escribiera eventos directamente
+// contra Firestore -la clave publica y el id del proyecto van en el bundle del
+// navegador-, saltandose validateEventPayload: sin limite de tamano, sin
+// validar fechas, con campos inventados y pudiendose fabricar el bloque
+// community para publicar en nombre de una comunidad ajena.
 service cloud.firestore {
   match /databases/{database}/documents {
+    // La cartelera es publica: los eventos se pueden leer sin sesion. El resto
+    // de colecciones (users, communities, rsvps, transfer_requests...) no
+    // aparece aqui y queda denegado por omision.
     match /events/{eventId} {
       allow read: if true;
-
-      allow create: if request.auth != null
-        && request.resource.data.organizer.uid == request.auth.uid;
-
-      allow update, delete: if request.auth != null
-        && resource.data.organizer.uid == request.auth.uid;
+      allow write: if false;
     }
   }
 }

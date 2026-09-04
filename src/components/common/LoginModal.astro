@@ -78,6 +78,10 @@ import ProviderIcon from '../ui/ProviderIcon.astro';
 </style>
 
 <script>
+  // Modulo diminuto y sin dependencias, asi que se importa de forma estatica:
+  // el que si se carga bajo demanda es el SDK de Firebase Auth, mas abajo.
+  import { rutaInterna } from '../../lib/rutaInterna';
+
   // El SDK de Firebase Auth solo se importa al pulsar un proveedor (import
   // dinamico): es el asset mas pesado del sitio y no hace falta en paginas
   // donde nadie va a entrar.
@@ -121,7 +125,7 @@ import ProviderIcon from '../ui/ProviderIcon.astro';
       // actual ya es el destino. Los demas llevan el suyo en el href.
       const irA = enlace.href.includes('login=required')
         ? window.location.pathname + window.location.search
-        : (enlace.getAttribute('href') ?? '/eventos/nuevo');
+        : rutaInterna(enlace.getAttribute('href'));
 
       evento.preventDefault();
       abrir(irA);
@@ -133,8 +137,9 @@ import ProviderIcon from '../ui/ProviderIcon.astro';
     const parametros = new URLSearchParams(window.location.search);
 
     if (parametros.get('login') === 'required') {
-      const destinoParam = parametros.get('destino');
-      const ir = destinoParam ? decodeURIComponent(destinoParam) : '/eventos/nuevo';
+      // URLSearchParams ya descodifica el %-encoding; el decodeURIComponent
+      // que habia aqui lo hacia una segunda vez.
+      const ir = rutaInterna(parametros.get('destino'));
 
       history.replaceState(null, '', window.location.pathname);
 

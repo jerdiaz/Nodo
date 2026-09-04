@@ -1,5 +1,6 @@
 import { getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
 import { GoogleAuthProvider, OAuthProvider, getAuth, signInWithPopup, signOut, type UserCredential } from 'firebase/auth';
+import { rutaInterna } from '../rutaInterna';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -40,8 +41,12 @@ async function completeSignIn(userCredential: UserCredential, redirectTo?: strin
     return;
   }
 
-  if (redirectTo) {
-    window.location.href = redirectTo;
+  // Se vuelve a comprobar aqui, que es donde se navega de verdad: asi ningun
+  // sitio que llame a esta funcion puede colar un destino ajeno.
+  const destino = redirectTo ? rutaInterna(redirectTo, '') : '';
+
+  if (destino) {
+    window.location.href = destino;
     return;
   }
 

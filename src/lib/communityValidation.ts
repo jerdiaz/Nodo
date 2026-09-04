@@ -1,3 +1,5 @@
+import { esImagenSubida } from './imagenSubida';
+
 // Compartido entre crear (POST /api/comunidades) y editar
 // (PUT /api/comunidades/[slug]), por el mismo motivo que
 // validateEventPayload: dos validaciones paralelas acaban discrepando, y la
@@ -39,11 +41,10 @@ export function validateCommunityPayload(
   }
 
   // Solo se acepta una URL que haya salido de /api/imagenes: el cliente manda
-  // aqui lo que le devolvio esa ruta, y sin la comprobacion cualquiera podria
-  // apuntar el avatar de su comunidad a un servidor ajeno.
+  // aqui lo que le devolvio esa ruta.
   const avatarUrl = typeof payload.avatarUrl === 'string' ? payload.avatarUrl.trim() : '';
 
-  if (avatarUrl && !avatarUrl.startsWith('https://firebasestorage.googleapis.com/')) {
+  if (avatarUrl && !esImagenSubida(avatarUrl)) {
     return { error: 'La imagen no es válida.' };
   }
 

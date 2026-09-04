@@ -1,4 +1,5 @@
 import type { EventModality } from '../types/event';
+import { esImagenSubida } from './imagenSubida';
 
 const VALID_MODALITIES: EventModality[] = ['presencial', 'virtual', 'hibrido'];
 const DEFAULT_TIMEZONE = 'America/Bogota';
@@ -130,7 +131,7 @@ export function validateEventPayload(
   }
 
   const bannerUrl = typeof payload.bannerUrl === 'string' ? payload.bannerUrl.trim() : '';
-  if (bannerUrl && !isHttpUrl(bannerUrl)) {
+  if (bannerUrl && !esImagenSubida(bannerUrl)) {
     return { error: 'La URL del banner no es válida.' };
   }
 
@@ -141,7 +142,7 @@ export function validateEventPayload(
   // La variante reducida viaja aparte (la genera /api/imagenes). Es opcional:
   // un evento sin ella simplemente pinta la imagen completa en todas partes.
   const bannerSmallUrl = typeof payload.bannerSmallUrl === 'string' ? payload.bannerSmallUrl.trim() : '';
-  if (bannerSmallUrl && !isHttpUrl(bannerSmallUrl)) {
+  if (bannerSmallUrl && !esImagenSubida(bannerSmallUrl)) {
     return { error: 'La URL del banner reducido no es válida.' };
   }
 

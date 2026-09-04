@@ -23,6 +23,10 @@ export const onRequest = defineMiddleware(async ({ request }, next) => {
   const cookie = request.headers.get('cookie') ?? '';
 
   if (cookie.includes('__session=')) {
+    // Explicito y no por omision: una respuesta sin cabeceras de cache puede
+    // acabar guardada igualmente por heuristica en algun intermediario, y esta
+    // lleva el nombre y las asistencias de quien la pidio.
+    response.headers.set('Cache-Control', 'private, no-store');
     return response;
   }
 
