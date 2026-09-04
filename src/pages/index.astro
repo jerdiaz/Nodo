@@ -143,6 +143,20 @@ const collage = [
   { src: '/banner/tecnologia.webp', ancho: 700, alto: 581, lado: 'derecha', sitio: 'left-0 bottom-2 w-[250px] -rotate-4' },
 ];
 
+// Iconos sueltos alrededor del titular. El titular ocupa tres lineas de
+// distinto ancho y deja unos 100-150px de aire a cada lado dentro de la propia
+// columna: ahi caben sin tocar el texto, y el hueco deja de leerse vacio.
+//
+// Son los mismos iconos y los mismos colores del anillo de GEN que usan las
+// tarjetas de categoria, para que la portada hable un solo idioma. La lista es
+// fija: no representan datos, son decoracion, y por eso van con aria-hidden.
+const iconosBanner = [
+  { Icono: Palette, color: 'magenta', sitio: 'left-[18px] top-[2px] -rotate-6' },
+  { Icono: Users, color: 'celeste', sitio: 'right-[6px] top-[30px] rotate-6' },
+  { Icono: GraduationCap, color: 'naranja', sitio: 'left-[22px] top-[84px] rotate-3' },
+  { Icono: Music, color: 'azul', sitio: 'right-[18px] top-[92px] -rotate-3' },
+] as const;
+
 // Ilustracion de fondo de la tarjeta de cierre, una sola imagen como la de
 // Meetup. Venia con el damero de transparencia pintado y con las esquinas ya
 // redondeadas: se recorto el rectangulo interior -detectando donde el patron
@@ -290,6 +304,23 @@ if (MOSTRAR_PUBLICACIONES) {
     </div>
 
     <div class="relative mx-auto max-w-[680px] text-center">
+      {/*
+        Aparecen desde md porque por debajo la columna se estrecha, el titular
+        reparte las lineas de otra forma y los iconos se le meterian encima.
+      */}
+      {iconosBanner.map(({ Icono, color, sitio }) => (
+        <div
+          data-gen={color}
+          aria-hidden="true"
+          class:list={[
+            'pointer-events-none absolute hidden size-14 place-items-center rounded-2xl bg-superficie shadow-[var(--c-sombra)] md:grid',
+            sitio,
+          ]}
+        >
+          <Icono class="size-6 text-[var(--g)]" stroke-width={1.75} />
+        </div>
+      ))}
+
       {/*
         Tres lineas y cuatro de parrafo no son un capricho: es lo que ocupa el
         titular de Meetup, y sin ese cuerpo el banner se queda en poco mas de la
