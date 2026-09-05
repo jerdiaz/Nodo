@@ -2,7 +2,8 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from '../firebase/server';
 import { getEmailsByUid, getUserProfiles } from '../firebase/users';
 import { getEventsStartingBetween } from '../firebase/events';
-import { buildIcsInvitation } from '../calendar';
+import { buildIcsInvitation, getGoogleCalendarUrl } from '../calendar';
+import { formatEventPrice, getEventLocationLabel, joinLocationParts } from '../format';
 import { componerCorreo, type DatosCorreo, type TipoCorreo } from './plantillas';
 import { correoConfigurado, direccionRemitente, enviarCorreo, type AdjuntoCorreo } from './resend';
 import type { NodoEvent } from '../../types/event';
@@ -129,18 +130,49 @@ function secuenciaAhora(): number {
   return Math.floor(Date.now() / 1000);
 }
 
+// El mapa apunta a las coordenadas exactas si el formulario las fijo, y si no
+// a la direccion escrita. Es la misma jerarquia que usa la ficha del evento:
+// con coordenadas se clava el sitio, sin ellas se acierta la calle.
+function enlaceDeMapa(evento: NodoEvent, direccion: string): string | undefined {
+  if (evento.latitude !== undefined && evento.longitude !== undefined) {
+    return `https://www.google.com/maps/search/?api=1&query=${evento.latitude},${evento.longitude}`;
+  }
+
+  if (!direccion) {
+    return undefined;
+  }
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`;
+}
+
 function datosDelEvento(
   evento: NodoEvent,
   destinatario: DestinatarioCorreo,
   cambios?: string[],
 ): DatosCorreo {
+  // joinLocationParts y no un join a secas: los tres campos los escribe quien
+  // publica y nada impide poner "UTB" de lugar y "UTB" de direccion, que sin
+  // esto sale como "UTB, UTB, Cartagena".
+  const direccion =
+    evento.modality === 'virtual' ? '' : joinLocationParts(evento.venue, evento.address, evento.city);
+
   return {
     nombreDestinatario: destinatario.nombre,
     tituloEvento: evento.title,
     slugEvento: evento.slug,
     inicioIso: evento.startDate.toISOString(),
+    finIso: evento.endDate.toISOString(),
     timezone: evento.timezone,
-    lugar: [evento.venue, evento.city].filter(Boolean).join(', '),
+    // El corto, para el asunto y el avance de la bandeja.
+    lugar: getEventLocationLabel(evento),
+    direccion: direccion || undefined,
+    enlaceMapa: enlaceDeMapa(evento, direccion),
+    meetingUrl: evento.meetingUrl,
+    // La variante grande: el correo se ve a 504 px de ancho y en pantallas de
+    // densidad doble la reducida (640 px) se ve blanda.
+    bannerUrl: evento.bannerUrl ?? evento.bannerSmallUrl,
+    precio: formatEventPrice(evento),
+    enlaceCalendario: getGoogleCalendarUrl(evento),
     organizador: evento.community?.name ?? evento.organizer.name,
     cambios,
   };
