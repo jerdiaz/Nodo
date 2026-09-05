@@ -33,6 +33,15 @@ export async function getAttendedEventIds(uid: string, eventIds: string[]): Prom
   return new Set(results.filter((eventId): eventId is string => eventId !== null));
 }
 
+// Solo los uids de quienes confirmaron. listDocuments() devuelve referencias y
+// no datos, asi que no se paga una lectura por asistente: el uid es el id del
+// documento. Lo usan el correo y los avisos de la campana, que necesitan la
+// lista pero no lo que hay dentro.
+export async function getRsvpUids(eventId: string): Promise<string[]> {
+  const referencias = await rsvpsCollection(eventId).listDocuments();
+  return referencias.map((referencia) => referencia.id);
+}
+
 export interface RsvpEntry {
   uid: string;
   // Cuando confirmo. Es null en un documento sin marca de tiempo, que hoy no

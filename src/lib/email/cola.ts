@@ -2,6 +2,8 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from '../firebase/server';
 import { getEmailsByUid, getUserProfiles } from '../firebase/users';
 import { getEventsStartingBetween } from '../firebase/events';
+import { getRsvpUids } from '../firebase/rsvps';
+import { addReminderNotification } from '../firebase/notifications';
 import { buildIcsInvitation, getGoogleCalendarUrl } from '../calendar';
 import { formatEventPrice, getEventLocationLabel, joinLocationParts } from '../format';
 import { componerCorreo, type DatosCorreo, type TipoCorreo } from './plantillas';
@@ -65,17 +67,7 @@ export async function destinatariosDelEvento(
   eventoId: string,
   respetarPreferencia = true,
 ): Promise<DestinatarioCorreo[]> {
-  // listDocuments() devuelve referencias, no datos: los uids son los ids de los
-  // documentos, asi que no hace falta pagar una lectura por asistente.
-  const referencias = await getAdminDb()
-    .collection('events')
-    .doc(eventoId)
-    .collection('rsvps')
-    .listDocuments();
-
-  const uids = referencias.map((referencia) => referencia.id);
-
-  return resolverDestinatarios(uids, respetarPreferencia);
+  return resolverDestinatarios(await getRsvpUids(eventoId), respetarPreferencia);
 }
 
 export async function resolverDestinatarios(
@@ -324,7 +316,28 @@ export async function encolarRecordatorios(): Promise<number> {
   let total = 0;
 
   for (const evento of eventos) {
-    const destinatarios = await destinatariosDelEvento(evento.id);
+    const uids = await getRsvpUids(evento.id);
+
+    // El aviso de la campana va a TODOS los que asisten, sin pasar por el
+    // interruptor de avisos: ese apaga lo que llega al correo, no lo que se ve
+    // dentro de Nodo. Y va en su propio try para que un fallo escribiendo
+    // avisos no impida que salgan los correos.
+    try {
+      await Promise.all(
+        uids.map((uid) =>
+          addReminderNotification({
+            toUid: uid,
+            eventId: evento.id,
+            eventTitle: evento.title,
+            imageUrl: evento.bannerSmallUrl ?? evento.bannerUrl,
+          }),
+        ),
+      );
+    } catch (error) {
+      console.warn('No se pudieron dejar los recordatorios en la campana:', error);
+    }
+
+    const destinatarios = await resolverDestinatarios(uids);
     const encolados = await encolarCorreos({ evento, tipo: 'recordatorio', destinatarios });
     total += encolados.length;
   }

@@ -760,9 +760,11 @@ const enResultados =
 
   function pintarLista(items: {
     id: string;
+    type?: string;
     eventId: string;
     eventTitle: string;
     actorName: string;
+    imageUrl?: string;
     createdAt: string | null;
   }[]): void {
     if (!notifLista) return;
@@ -782,15 +784,30 @@ const enResultados =
       enlace.className =
         'flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-fondo-alt';
 
+      // El recordatorio no tiene actor: en su hueco va la miniatura del evento,
+      // como hace Meetup. Sin banner cae a la inicial del titulo, que es mejor
+      // que un circulo vacio.
+      const esRecordatorio = item.type === 'recordatorio';
+
+      const inicial = esRecordatorio
+        ? item.eventTitle.charAt(0).toUpperCase()
+        : item.actorName.charAt(0).toUpperCase();
+
+      const avatar = item.imageUrl
+        ? `<img src="${escapar(item.imageUrl)}" alt="" class="mt-0.5 size-9 shrink-0 rounded-lg object-cover" />`
+        : `<span class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-acento-suave text-acento-texto">
+             <span class="text-[10px] font-bold">${escapar(inicial)}</span>
+           </span>`;
+
+      const texto = esRecordatorio
+        ? `Tu evento <span class="font-semibold">${escapar(item.eventTitle)}</span> es pronto. Si ya no puedes ir, retira tu asistencia.`
+        : `<span class="font-semibold">${escapar(item.actorName)}</span> confirmó asistencia a
+           <span class="font-semibold">${escapar(item.eventTitle)}</span>`;
+
       enlace.innerHTML = `
-        <span class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-acento-suave text-acento-texto">
-          <span class="text-[10px] font-bold">${escapar(item.actorName.charAt(0).toUpperCase())}</span>
-        </span>
+        ${avatar}
         <span class="min-w-0 flex-1">
-          <span class="block text-sm text-texto">
-            <span class="font-semibold">${escapar(item.actorName)}</span> confirmó asistencia a
-            <span class="font-semibold">${escapar(item.eventTitle)}</span>
-          </span>
+          <span class="block text-sm text-texto">${texto}</span>
           <span class="block text-xs text-suave">${escapar(tiempoRelativo(item.createdAt))}</span>
         </span>
       `;
