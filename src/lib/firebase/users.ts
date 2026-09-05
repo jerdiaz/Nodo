@@ -82,6 +82,16 @@ export async function setBlocked(uid: string, blocked: boolean): Promise<void> {
   await usersCollection().doc(uid).set({ blocked: blocked ? true : FieldValue.delete() }, { merge: true });
 }
 
+// Al reves que los de arriba: aqui se guarda el `false` y se borra el `true`,
+// porque el valor por defecto es recibir avisos. Guardar el campo solo cuando
+// se apagan deja "no consta" y "los quiero" como el mismo estado, que es lo que
+// evita tener que rellenarle el campo a todos los perfiles que ya existen.
+export async function setEmailAvisos(uid: string, activos: boolean): Promise<void> {
+  await usersCollection()
+    .doc(uid)
+    .set({ emailAvisos: activos ? FieldValue.delete() : false }, { merge: true });
+}
+
 // Los correos no viven en el perfil de Firestore: estan en Firebase Auth, y
 // para verlos en el panel de admin hay que pedirlos al Admin SDK. getUsers
 // acepta hasta 100 uids por llamada.

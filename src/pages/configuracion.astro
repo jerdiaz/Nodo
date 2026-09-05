@@ -127,6 +127,36 @@ const inputClass =
       <p class="mt-4 text-xs text-tenue">
         La preferencia se guarda en este navegador. Todavía no viaja contigo a otros dispositivos.
       </p>
+
+      <h2 class="mt-12 text-lg font-semibold text-texto">Correos</h2>
+      <p class="mt-2 text-sm text-suave">Qué te avisamos por correo.</p>
+
+      {/*
+        A diferencia del tema, esta preferencia se guarda en el perfil y no en
+        el navegador: quien la consulta es el proceso que manda los correos, que
+        no tiene forma de mirar el localStorage de nadie.
+      */}
+      <label class="mt-5 flex cursor-pointer gap-3 rounded-2xl border border-linea p-4 transition hover:border-acento">
+        <input
+          type="checkbox"
+          id="email-avisos"
+          class="mt-1 accent-acento"
+          checked={profile?.emailAvisos !== false}
+        />
+        <span>
+          <span class="block text-sm font-medium text-texto">Recordatorios y cambios</span>
+          <span class="mt-0.5 block text-sm text-suave">
+            Un recordatorio el día antes de cada evento al que vas, y un aviso si quien organiza cambia la
+            fecha o el lugar, o si lo cancela.
+          </span>
+        </span>
+      </label>
+
+      <p class="mt-3 text-xs text-tenue">
+        La confirmación de asistencia se envía siempre: es el comprobante de algo que acabas de hacer.
+      </p>
+
+      <p id="email-avisos-estado" class="mt-2 hidden text-sm text-acento-texto"></p>
     </section>
 
     <div id="panel-cuenta">
@@ -533,6 +563,38 @@ const inputClass =
       }
       aplicarTema(r.value);
     });
+  });
+
+  // --- Avisos por correo ---
+  // Se guarda al momento y no con el boton del formulario de perfil: ese vive
+  // en la otra pestana, y un interruptor que hay que ir a guardar a otro sitio
+  // parece roto. Si el guardado falla se devuelve la casilla a como estaba,
+  // para que no diga una cosa distinta de lo que hay en el servidor.
+  const emailAvisos = document.getElementById('email-avisos') as HTMLInputElement;
+  const emailAvisosEstado = document.getElementById('email-avisos-estado') as HTMLParagraphElement;
+
+  emailAvisos.addEventListener('change', async () => {
+    const deseado = emailAvisos.checked;
+    emailAvisos.disabled = true;
+    emailAvisosEstado.classList.add('hidden');
+
+    try {
+      const response = await fetch('/api/preferencias', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailAvisos: deseado }),
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo guardar');
+      }
+    } catch {
+      emailAvisos.checked = !deseado;
+      emailAvisosEstado.textContent = 'No se pudo guardar la preferencia. Inténtalo de nuevo.';
+      emailAvisosEstado.classList.remove('hidden');
+    } finally {
+      emailAvisos.disabled = false;
+    }
   });
 
   // Si esta en "sistema", seguir al dispositivo cuando cambie en caliente.
