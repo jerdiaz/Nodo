@@ -501,10 +501,12 @@ function textoAsistentes(total: number): string {
             <div class="mx-5 h-px bg-linea-suave"></div>
 
             {/*
-              El ancla de la barra inferior. Mientras este bloque se vea, la
-              barra sobra: el mismo boton ya esta en pantalla.
+              Cuantos van, ya sin boton: el asistir vive en la barra fija de
+              abajo, que esta siempre visible. Repetirlo aqui dejaba dos CTAs
+              iguales a la vista a la vez en escritorio, donde la columna es
+              pegajosa y no se va nunca de la pantalla.
             */}
-            <div id="rsvp-anchor" class="p-5">
+            <div class="p-5">
               <div class="flex items-center gap-4">
                 <span class="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--g-suave)] text-[var(--g-texto)]">
                   <Users class="size-5" stroke-width={2} />
@@ -513,40 +515,6 @@ function textoAsistentes(total: number): string {
                   {textoAsistentes(rsvpCount)}
                 </p>
               </div>
-
-              {eventEnded ? (
-                <p class="mt-4 w-full rounded-2xl border border-linea bg-fondo-alt px-4 py-2.5 text-center text-sm font-medium text-suave">
-                  {isAttending ? 'Asististe a este evento' : 'Este evento ya terminó'}
-                </p>
-              ) : aforoCompleto ? (
-                <p class="mt-4 w-full rounded-2xl border border-linea bg-fondo-alt px-4 py-2.5 text-center text-sm font-medium text-suave">
-                  Aforo completo
-                </p>
-              ) : user ? (
-                <button
-                  type="button"
-                  data-rsvp
-                  data-event-id={event.id}
-                  data-attending={isAttending ? 'true' : 'false'}
-                  class="group mt-4 w-full rounded-2xl border border-linea bg-superficie px-4 py-3 text-sm font-semibold text-texto transition active:scale-[0.97] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60 data-[attending=true]:border-acento data-[attending=true]:bg-acento-suave data-[attending=true]:text-acento-texto"
-                >
-                  <span class="inline-flex items-center justify-center gap-1.5 group-data-[attending=true]:hidden">
-                    Me interesa
-                  </span>
-                  <span class="hidden items-center justify-center gap-1.5 group-data-[attending=true]:inline-flex">
-                    <Check class="size-4" stroke-width={2.5} />
-                    Asistes
-                  </span>
-                </button>
-              ) : (
-                <a
-                  href="/?login=required"
-                  data-login-required
-                  class="mt-4 block w-full rounded-2xl border border-linea bg-superficie px-4 py-3 text-center text-sm font-semibold text-texto transition active:scale-[0.97] hover:border-acento"
-                >
-                  Inicia sesión para asistir
-                </a>
-              )}
             </div>
 
             <div class="border-t border-linea bg-fondo-alt p-5">
@@ -753,20 +721,19 @@ function textoAsistentes(total: number): string {
   )}
 
   {/*
-    La barra de la ficha de Meetup: mientras el boton de asistir esta en
-    pantalla no aparece -seria el mismo boton dos veces-, y entra en cuanto se
-    va. Se retira sola al llegar al pie para no taparlo.
-
-    Empieza fuera de pantalla y con visibility oculta: `invisible` es lo que la
-    saca del orden de tabulacion y del arbol de accesibilidad mientras no se
-    ve, que un translate por si solo no hace.
+    La barra de la ficha de Meetup, pero siempre a la vista: no espera a que
+    el boton de la tarjeta se vaya de la pantalla para aparecer (en escritorio
+    la columna es pegajosa, asi que nunca llegaba a salir). Queda fija al
+    borde inferior desde el primer scroll; al llegar al pie, el hueco que
+    BaseLayout reserva con barraInferior hace que se asiente sobre el espacio
+    libre y no tape el aviso de copyright.
   */}
   <div
     id="barra-evento"
     data-gen={color}
-    class="pointer-events-none invisible fixed inset-x-0 bottom-0 z-40 translate-y-full px-3 pb-3 opacity-0 transition duration-300 sm:px-5 sm:pb-5"
+    class="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 sm:px-5 sm:pb-4"
   >
-    <div class="pointer-events-auto mx-auto flex max-w-6xl items-center gap-3 rounded-[28px] border border-linea bg-superficie px-4 py-3 shadow-[var(--c-sombra-alta)] sm:gap-6 sm:px-6">
+    <div class="pointer-events-auto mx-auto flex max-w-6xl items-center gap-3 rounded-[28px] border border-linea bg-superficie/95 px-4 py-3 shadow-[var(--c-sombra-alta)] backdrop-blur sm:gap-5 sm:px-6">
       <span class="hidden h-10 w-1.5 shrink-0 rounded-full bg-[var(--g)] sm:block" aria-hidden="true"></span>
 
       <div class="min-w-0 flex-1">
@@ -807,11 +774,11 @@ function textoAsistentes(total: number): string {
       </button>
 
       {eventEnded ? (
-        <span class="shrink-0 rounded-full bg-fondo-alt px-5 py-2.5 text-sm font-semibold text-suave">
+        <span class="inline-flex h-12 shrink-0 items-center rounded-full bg-fondo-alt px-6 text-sm font-semibold text-suave">
           Terminó
         </span>
       ) : aforoCompleto ? (
-        <span class="shrink-0 rounded-full bg-fondo-alt px-5 py-2.5 text-sm font-semibold text-suave">
+        <span class="inline-flex h-12 shrink-0 items-center rounded-full bg-fondo-alt px-6 text-sm font-semibold text-suave">
           Sin lugares
         </span>
       ) : user ? (
@@ -820,11 +787,11 @@ function textoAsistentes(total: number): string {
           data-rsvp
           data-event-id={event.id}
           data-attending={isAttending ? 'true' : 'false'}
-          class="group shrink-0 rounded-full bg-acento px-5 py-2.5 text-sm font-semibold text-acento-contraste transition active:scale-[0.97] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 data-[attending=true]:bg-acento-suave data-[attending=true]:text-acento-texto data-[attending=true]:ring-1 data-[attending=true]:ring-inset data-[attending=true]:ring-acento"
+          class="group inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-acento px-8 text-base font-semibold text-acento-contraste transition active:scale-[0.97] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 data-[attending=true]:bg-acento-suave data-[attending=true]:text-acento-texto data-[attending=true]:ring-1 data-[attending=true]:ring-inset data-[attending=true]:ring-acento"
         >
-          <span class="inline-flex items-center gap-1.5 group-data-[attending=true]:hidden">Asistir</span>
-          <span class="hidden items-center gap-1.5 group-data-[attending=true]:inline-flex">
-            <Check class="size-4" stroke-width={2.5} />
+          <span class="inline-flex items-center gap-2 group-data-[attending=true]:hidden">Asistir</span>
+          <span class="hidden items-center gap-2 group-data-[attending=true]:inline-flex">
+            <Check class="size-5" stroke-width={2.5} />
             Asistes
           </span>
         </button>
@@ -832,7 +799,7 @@ function textoAsistentes(total: number): string {
         <a
           href="/?login=required"
           data-login-required
-          class="shrink-0 rounded-full bg-acento px-5 py-2.5 text-sm font-semibold text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
+          class="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-acento px-8 text-base font-semibold text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
         >
           Asistir
         </a>
@@ -866,38 +833,6 @@ function textoAsistentes(total: number): string {
 </script>
 
 <script>
-  // Aparicion de la barra: entra cuando el boton de asistir se va de la
-  // pantalla y se queda hasta el final. Un observador y no el evento de
-  // scroll, porque el navegador ya sabe cuando un elemento entra o sale y
-  // preguntarselo en cada pixel obligaria a medir posiciones a mano.
-  //
-  // Antes tambien se escondia al llegar al pie, y eso era el problema: el pie
-  // es alto, asi que la barra desaparecia a media pagina y volvia al subir
-  // unos pixeles. Ahora no se esconde nunca una vez ha salido; que no tape el
-  // pie lo resuelve el hueco que BaseLayout deja debajo cuando la pagina
-  // declara barraInferior.
-  const barra = document.getElementById('barra-evento');
-  const ancla = document.getElementById('rsvp-anchor');
-
-  if (barra && ancla) {
-    new IntersectionObserver(
-      ([entrada]) => {
-        // No basta con que el bloque no se vea: hay que mirar por donde no se
-        // ve. Al cargar la pagina el boton todavia esta mas abajo -tampoco se
-        // ve- y con solo isIntersecting la barra salia de entrada, se ocultaba
-        // al llegar al boton y volvia a salir despues. Se pide ademas que el
-        // bloque haya quedado por encima, que es lo que significa "ya pasaste
-        // el boton".
-        const rect = entrada?.boundingClientRect;
-        const mostrar = Boolean(entrada && !entrada.isIntersecting && rect && rect.top < 0);
-        barra.classList.toggle('invisible', !mostrar);
-        barra.classList.toggle('translate-y-full', !mostrar);
-        barra.classList.toggle('opacity-0', !mostrar);
-      },
-      { threshold: 0 },
-    ).observe(ancla);
-  }
-
   // Compartir desde la barra. No reutiliza el boton de la tarjeta porque
   // cuando la barra se ve, esa tarjeta esta fuera de pantalla y su aviso de
   // "copiado" no lo veria nadie: aqui el acuse es el propio icono, que pasa a
