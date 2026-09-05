@@ -36,6 +36,13 @@ export interface UserProfile {
   // Quien esta bloqueado no puede publicar eventos ni comunidades, y sus
   // eventos dejan de verse en la cartelera (sin borrarse). Lo pone un admin.
   blocked?: boolean;
+  // Recordatorios y avisos de cambio o cancelacion por correo. Ausencia de
+  // valor es "si": los perfiles anteriores a esta preferencia no la tienen, y
+  // quien no ha tocado el interruptor espera que le avisen. No cubre la
+  // confirmacion de asistencia, que es el recibo de algo que se acaba de hacer
+  // y sale siempre. Vive en el perfil y no en el navegador -a diferencia del
+  // tema- porque quien la consulta es el cron que manda los correos.
+  emailAvisos?: boolean;
 }
 
 // Clave de red social -> como se muestra y como se convierte en enlace.

@@ -24,6 +24,7 @@
     "firebase": "^12.18.0",
     "firebase-admin": "^14.3.0",
     "leaflet": "^1.9.4",
+    "resend": "^6.26.0",
     "sharp": "^0.35.4",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3"

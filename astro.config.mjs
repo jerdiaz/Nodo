@@ -41,7 +41,19 @@ export default defineConfig({
       // el secreto que autoriza a disparar la sincronizacion.
       INSTAGRAM_TOKEN: envField.string({ context: 'server', access: 'secret', optional: true }),
       INSTAGRAM_USER_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
-      SYNC_SECRET: envField.string({ context: 'server', access: 'secret', optional: true })
+      SYNC_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
+
+      // Correo transaccional (Resend). Sin RESEND_API_KEY y EMAIL_FROM, la cola
+      // sigue encolando pero no envia: es lo que permite desplegar esto antes
+      // de que el dominio de envio este verificado, sin que nada se rompa ni se
+      // pierdan los correos de ese periodo.
+      //
+      // EMAIL_FROM va con nombre visible: `Nodo <hola@tudominio>`. El dominio
+      // tiene que estar verificado en Resend (SPF + DKIM + DMARC en su DNS);
+      // ver POR-HACER.md.
+      RESEND_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+      EMAIL_FROM: envField.string({ context: 'server', access: 'secret', optional: true }),
+      EMAIL_REPLY_TO: envField.string({ context: 'server', access: 'secret', optional: true })
     }
   }
 });

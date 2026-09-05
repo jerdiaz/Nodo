@@ -34,7 +34,12 @@ function toSafeDate(value: unknown): Date {
   return new Date(0);
 }
 
-function mapDocToEvent(doc: FirebaseFirestore.DocumentSnapshot): NodoEvent {
+// Exportado para las rutas que ya tienen el documento en la mano (editar,
+// eliminar, confirmar asistencia) y necesitan el evento como objeto para
+// componer un correo. Volver a pedirlo con getEventBySlug() serian dos lecturas
+// mas -la del evento y la del perfil del organizador- para datos que ya estan
+// delante.
+export function mapDocToEvent(doc: FirebaseFirestore.DocumentSnapshot): NodoEvent {
   const data = doc.data() ?? {};
 
   return {
@@ -183,6 +188,26 @@ export async function getEvents(filters?: EventFilters): Promise<NodoEvent[]> {
   const events = await enrichOrganizers(snapshot.docs.map(mapDocToEvent));
 
   return filterEvents(events, filters);
+}
+
+// Los eventos que empiezan dentro de una ventana de tiempo. Lo usa el barrido
+// que encola los recordatorios, que no puede permitirse leer el catalogo entero
+// cada cuarto de hora.
+//
+// Dos desigualdades sobre el MISMO campo suelto, que es lo que Firestore indexa
+// por su cuenta; con dos campos distintos haria falta un indice compuesto, que
+// es justo lo que el resto del repo evita. Sin enrichOrganizers a proposito: el
+// correo lleva el nombre del organizador guardado en el evento, y cruzar el
+// perfil de cada uno seria una lectura mas por recordatorio.
+export async function getEventsStartingBetween(desde: Date, hasta: Date): Promise<NodoEvent[]> {
+  const snapshot = await getAdminDb()
+    .collection('events')
+    .where('startDate', '>=', Timestamp.fromDate(desde))
+    .where('startDate', '<=', Timestamp.fromDate(hasta))
+    .orderBy('startDate', 'asc')
+    .get();
+
+  return snapshot.docs.map(mapDocToEvent);
 }
 
 // Solo los slugs, para el sitemap: no hace falta el perfil de cada organizador
