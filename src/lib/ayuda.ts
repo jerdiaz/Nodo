@@ -103,9 +103,8 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         pregunta: 'Qué significa la palomita junto a un nombre',
         respuesta: [
           'Hay dos, con el mismo símbolo y criterios distintos. "Identidad confirmada" dice que esa persona es quien dice ser. "Comunidad oficial" dice que ese colectivo está reconocido por Nodo.',
-          'No se solicita desde el formulario ni se puede activar uno mismo: la concede el equipo de Nodo, y puede retirarla. Si crees que a tu comunidad le corresponde, escribe por los canales de contacto.',
+          'No se solicita desde el formulario ni se puede activar uno mismo: la concede el equipo de Nodo, y puede retirarla.',
         ],
-        enlace: { texto: 'Canales de contacto', href: '/contacto' },
       },
       {
         id: 'eliminar-cuenta',
@@ -362,17 +361,16 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         pregunta: 'Se revisan las imágenes que se suben',
         respuesta: [
           'Sí: las fotos de perfil y los banners de eventos pasan por una revisión automática antes de publicarse, y se rechazan las que dan señales de contenido adulto, violento o sugerente.',
-          'La revisión automática no lo ve todo. Si te encuentras algo que no debería estar en la cartelera, avísanos por los canales de contacto.',
+          'La revisión automática no lo ve todo. Si te encuentras algo que no debería estar en la cartelera, avísale a Red Global por Instagram.',
         ],
       },
       {
         id: 'reportar',
         pregunta: 'Cómo reporto un evento o una cuenta',
         respuesta: [
-          'Escribiendo por los canales de contacto, con el enlace del evento o del perfil. Nodo no tiene un botón de reporte todavía.',
+          'Escribiéndole a Red Global por Instagram, con el enlace del evento o del perfil. Nodo no tiene un botón de reporte todavía.',
           'Una cuenta bloqueada deja de publicar eventos y comunidades, y lo que había publicado deja de verse en la cartelera sin llegar a borrarse: si el bloqueo se levanta, vuelve a aparecer.',
         ],
-        enlace: { texto: 'Canales de contacto', href: '/contacto' },
       },
       {
         id: 'quien-esta-detras',

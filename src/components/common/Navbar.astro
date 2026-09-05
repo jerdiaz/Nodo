@@ -813,8 +813,23 @@ const enResultados =
       pintarLista(datos.items ?? []);
 
       // Abrir el campanario es leer: se marcan todas como leidas.
-      await fetch('/api/notificaciones/leer', { method: 'POST' }).catch(() => {});
-      pintarInsignia(0);
+      //
+      // El Content-Type no es opcional. Sin el, Astro trata el POST como envio
+      // de formulario y comprueba que el Origin coincida con el que calcula el
+      // servidor; detras del proxy de produccion no coincide y responde 403.
+      // Es el mismo fallo que ya obligo a que /api/imagenes suba binario crudo.
+      const marcadas = await fetch('/api/notificaciones/leer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).catch(() => null);
+
+      // La insignia se apaga solo si el servidor lo confirma. Antes se apagaba
+      // siempre: fetch no lanza ante un 403, asi que la campana se quedaba en
+      // cero, el servidor seguia teniendolas sin leer, y al recargar la pagina
+      // volvia el contador. Eso era justo el sintoma.
+      if (marcadas?.ok) {
+        pintarInsignia(0);
+      }
     } catch {
       notifLista.textContent = '';
       const aviso = document.createElement('p');

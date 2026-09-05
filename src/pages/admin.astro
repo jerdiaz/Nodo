@@ -523,7 +523,12 @@ const modalidadLabel: Record<EventModality, string> = {
 
       borrar.disabled = true;
 
-      fetch(`/api/admin/eventos/${encodeURIComponent(eventoId)}`, { method: 'DELETE' })
+      // Content-Type obligatorio: sin el, Astro trata el DELETE como envio de
+      // formulario y detras del proxy responde 403 sin llegar a la ruta.
+      fetch(`/api/admin/eventos/${encodeURIComponent(eventoId)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      })
         .then(async (response) => {
           const resultado = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(resultado.error ?? 'No se pudo borrar el evento.');

@@ -148,8 +148,11 @@ const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => fa
     boton.disabled = true;
 
     try {
+      // Content-Type obligatorio: sin el, Astro trata la peticion como envio de
+      // formulario y detras del proxy responde 403 sin llegar a la ruta.
       const respuesta = await fetch(`/api/comunidades/${boton.dataset.slug}/unirse`, {
         method: siguiendo ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!respuesta.ok) {

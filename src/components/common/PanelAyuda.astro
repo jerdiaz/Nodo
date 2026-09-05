@@ -11,8 +11,7 @@
 // El buscador filtra en el navegador y no contra el servidor: el contenido
 // entero ya viajó con la página —son unos pocos kilobytes de texto— y una
 // petición por letra tecleada para buscar en 27 artículos no se sostiene.
-import { ArrowUpRight, Bell, CalendarPlus, ChevronDown, LifeBuoy, Search, ShieldCheck, Ticket, UserRound, Users } from '@lucide/astro';
-import Button from '../ui/Button.astro';
+import { ArrowUpRight, Bell, CalendarPlus, ChevronDown, Search, ShieldCheck, Ticket, UserRound, Users } from '@lucide/astro';
 import {
   CATEGORIAS_AYUDA,
   DESTACADOS_AYUDA,
@@ -37,8 +36,6 @@ const ICONOS: Record<IconoAyuda, typeof UserRound> = {
 const destacados = DESTACADOS_AYUDA.map(articuloPorId).filter(
   (articulo): articulo is ArticuloAyuda => articulo !== undefined,
 );
-
-const totalArticulos = CATEGORIAS_AYUDA.reduce((suma, categoria) => suma + categoria.articulos.length, 0);
 
 // El texto contra el que busca el navegador se prepara aquí, ya normalizado:
 // hacerlo en el cliente obligaría a recorrer el DOM y a limpiar tildes en cada
@@ -196,22 +193,9 @@ function textoDeBusqueda(articulo: ArticuloAyuda): string {
   <div id="ayuda-vacio" hidden class="mt-10 rounded-3xl border border-linea bg-superficie p-8 text-center">
     <p class="text-sm font-medium text-texto">Nada coincide con esa búsqueda.</p>
     <p class="mx-auto mt-2 max-w-sm text-sm text-suave">
-      Prueba con menos palabras, o escríbenos: si la duda no está aquí, probablemente le falte a esta
-      página.
+      Prueba con menos palabras: puede que la duda esté escrita con otras.
     </p>
   </div>
-
-  {/* El «Submit a request» de Meetup. Nodo no tiene mesa de soporte, así que
-      lleva a los canales de la comunidad en vez de a un formulario. */}
-  <section class="mt-12 rounded-3xl border border-linea bg-fondo-alt p-6 text-center">
-    <LifeBuoy class="mx-auto size-6 text-suave" stroke-width={1.75} />
-    <p class="mt-3 text-base font-semibold text-texto">¿No encuentras lo que buscas?</p>
-    <p class="mx-auto mt-2 max-w-md text-sm text-suave">
-      Estos {totalArticulos} artículos cubren lo que más se pregunta. Para todo lo demás están los canales
-      de Red Global.
-    </p>
-    <Button variant="secondary" href="/contacto" class="mt-5">Escríbenos</Button>
-  </section>
 </section>
 
 <script>
