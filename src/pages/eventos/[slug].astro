@@ -734,6 +734,29 @@ function textoAsistentes(total: number): string {
     class="pointer-events-none sticky bottom-0 z-40 px-3 pb-3 sm:px-5 sm:pb-4"
   >
     {/*
+      El velo de debajo. Lo que pasa por detras de la barra no se corta en
+      seco: se desenfoca y se funde con el fondo, como en la suya, asi que la
+      pastilla no queda flotando sobre un texto nitido que compite con ella.
+
+      Son dos capas en una: backdrop-blur desenfoca lo que hay detras y el
+      degradado lo tiñe del color de la pagina. La mascara es lo que hace que
+      el efecto se apague hacia arriba en vez de cortarse con un filo recto,
+      que es justo lo que se veria sin ella.
+
+      Sube 64px por encima de la barra para que el desvanecido tenga recorrido,
+      y va detras de la pastilla con z negativo: dentro de este contenedor -que
+      ya crea su propio contexto de apilado- eso lo deja debajo del boton pero
+      encima del contenido de la pagina.
+
+      La version con prefijo de la mascara es por Safari, que hasta hace poco
+      solo entendia -webkit-mask-image.
+    */}
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-x-0 -top-16 bottom-0 -z-10 bg-gradient-to-t from-fondo via-fondo/80 to-transparent backdrop-blur-md [-webkit-mask-image:linear-gradient(to_top,black_55%,transparent)] [mask-image:linear-gradient(to_top,black_55%,transparent)]"
+    ></div>
+
+    {/*
       Pastilla entera y sin borde, como la suya: a este tamaño el radio fijo se
       leia como una caja de esquinas muy redondeadas y no como una pastilla, y
       el filo dibujaba un contorno que su barra no tiene — la separa del fondo
