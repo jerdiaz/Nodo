@@ -1,5 +1,5 @@
 ---
-import { ChevronDown, LogOut, Menu, Plus, Search, Settings, User } from '@lucide/astro';
+import { ChevronDown, LogOut, Menu, Plus, Search, Settings, ShieldCheck, User } from '@lucide/astro';
 import { getDisplayUser } from '../../lib/auth';
 import ProviderIcon from '../ui/ProviderIcon.astro';
 
@@ -225,6 +225,16 @@ const enResultados =
               <Settings class="size-4 shrink-0" stroke-width={1.75} />
               Configuración
             </a>
+            {user.isAdmin && (
+              <a
+                href="/admin"
+                role="menuitem"
+                class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+              >
+                <ShieldCheck class="size-4 shrink-0" stroke-width={1.75} />
+                Administración
+              </a>
+            )}
             <button
               id="nodo-logout-movil"
               type="button"
@@ -314,6 +324,17 @@ const enResultados =
               <Settings class="size-4 shrink-0" stroke-width={1.75} />
               Configuración
             </a>
+
+            {user.isAdmin && (
+              <a
+                href="/admin"
+                role="menuitem"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+              >
+                <ShieldCheck class="size-4 shrink-0" stroke-width={1.75} />
+                Administración
+              </a>
+            )}
 
             <div class="h-px bg-linea"></div>
 

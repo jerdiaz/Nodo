@@ -23,6 +23,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return jsonResponse({ error: 'Debes iniciar sesión para publicar un evento.' }, 401);
   }
 
+  if (user.isBlocked) {
+    return jsonResponse({ error: 'Tu cuenta está bloqueada y no puede publicar eventos.' }, 403);
+  }
+
   const body = await request.json().catch(() => null);
   const validation = validateEventPayload(body);
 

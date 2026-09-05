@@ -12,6 +12,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return jsonResponse({ error: 'Debes iniciar sesión para crear una comunidad.' }, 401);
   }
 
+  if (user.isBlocked) {
+    return jsonResponse({ error: 'Tu cuenta está bloqueada y no puede crear comunidades.' }, 403);
+  }
+
   const validated = validateCommunityPayload(await request.json().catch(() => null));
 
   if ('error' in validated) {

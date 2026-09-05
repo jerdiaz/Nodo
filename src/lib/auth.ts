@@ -1,12 +1,16 @@
 import type { AstroCookies } from 'astro';
 import { getAdminAuth } from './firebase/server';
-import { getUserProfile } from './firebase/users';
+import { getUserProfile, isAdmin } from './firebase/users';
 
 export interface CurrentUser {
   uid: string;
   name: string;
   email: string | null;
   avatarUrl: string | null;
+  // No viajan en la cookie: los pone el cruce con el perfil de Firestore que
+  // hace getDisplayUser. undefined es "no consta" (sin perfil o sin lectura).
+  isAdmin?: boolean;
+  isBlocked?: boolean;
 }
 
 // La fecha de alta no viaja en la cookie de sesión: vive en los metadatos de
@@ -68,6 +72,8 @@ export async function getDisplayUser(cookies: AstroCookies): Promise<CurrentUser
         ...user,
         name: [profile.firstName, profile.lastName].filter(Boolean).join(' ') || user.name,
         avatarUrl: profile.avatarUrl ?? user.avatarUrl,
+        isAdmin: profile.admin === true,
+        isBlocked: profile.blocked === true,
       };
     }
   } catch (error) {
@@ -75,4 +81,22 @@ export async function getDisplayUser(cookies: AstroCookies): Promise<CurrentUser
   }
 
   return user;
+}
+
+// Para los endpoints del panel de administracion. La condicion se lee de
+// Firestore en cada peticion: si se le quita el admin a alguien, deja de
+// valer sin esperar a que se le acabe la sesion.
+export async function getAdminUser(cookies: AstroCookies): Promise<CurrentUser | null> {
+  const user = await getCurrentUser(cookies);
+
+  if (!user) {
+    return null;
+  }
+
+  try {
+    return (await isAdmin(user.uid)) ? user : null;
+  } catch (error) {
+    console.warn('No se pudo comprobar el rol de administrador:', error);
+    return null;
+  }
 }

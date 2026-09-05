@@ -76,24 +76,33 @@ async function enrichOrganizers(events: NodoEvent[]): Promise<NodoEvent[]> {
     return events;
   }
 
-  return events.map((event) => {
+  return events.flatMap((event) => {
     const profile = profiles.get(event.organizer.uid);
 
+    // Los eventos de quien esta bloqueado no se muestran (no se borran): el
+    // bloqueo lo decide un admin, y "ocultar lo suyo" es parte de esa
+    // decision. Al desbloquear vuelven a salir solos.
+    if (profile?.blocked) {
+      return [];
+    }
+
     if (!profile) {
-      return event;
+      return [event];
     }
 
     const currentName = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
 
-    return {
-      ...event,
-      organizer: {
-        ...event.organizer,
-        name: currentName || event.organizer.name,
-        avatarUrl: profile.avatarUrl ?? event.organizer.avatarUrl,
-        verification: profile.verification,
+    return [
+      {
+        ...event,
+        organizer: {
+          ...event.organizer,
+          name: currentName || event.organizer.name,
+          avatarUrl: profile.avatarUrl ?? event.organizer.avatarUrl,
+          verification: profile.verification,
+        },
       },
-    };
+    ];
   });
 }
 
@@ -208,4 +217,69 @@ export async function deleteEventWithRsvps(eventId: string): Promise<void> {
 
   await Promise.all(rsvps.map((doc) => doc.delete()));
   await eventRef.delete();
+}
+
+// --- Directorio del panel de administracion ---------------------------------
+
+export interface AdminEventRow {
+  id: string;
+  slug: string;
+  title: string;
+  startDate: Date;
+  endDate: Date;
+  timezone: string;
+  modality: NodoEvent['modality'];
+  city?: string;
+  venue?: string;
+  organizerUid: string;
+  organizerName: string;
+  // El organizador esta bloqueado: sus eventos no se ven en la cartelera pero
+  // el admin tiene que poder verlos y gestionarlos aqui.
+  organizadorBloqueado: boolean;
+  organizadorAdmin: boolean;
+  comunidad?: string;
+  rsvpCount: number;
+  capacity?: number;
+  price?: number;
+  currency?: NodoEvent['currency'];
+}
+
+// Todos los eventos, incluidos los de organizadores bloqueados (que
+// getEvents oculta a la cartelera). El admin los ve todos. Una sola lectura de
+// la coleccion y un getAll() de perfiles de organizadores, como el resto del
+// repo; no escribe nada.
+export async function getAdminEventRows(): Promise<AdminEventRow[]> {
+  const db = getAdminDb();
+  const snapshot = await db.collection('events').orderBy('startDate', 'desc').get();
+
+  const perfiles = await getUserProfiles(
+    snapshot.docs.map((doc) => doc.data()?.organizer?.uid).filter((uid): uid is string => Boolean(uid)),
+  );
+
+  return snapshot.docs.map((doc) => {
+    const data = doc.data() ?? {};
+    const organizer = (data.organizer ?? {}) as { uid?: string; name?: string };
+    const perfil = organizer.uid ? perfiles.get(organizer.uid) : undefined;
+
+    return {
+      id: doc.id,
+      slug: data.slug ?? doc.id,
+      title: data.title ?? '(sin título)',
+      startDate: toSafeDate(data.startDate),
+      endDate: toSafeDate(data.endDate),
+      timezone: data.timezone ?? 'America/Bogota',
+      modality: data.modality,
+      city: data.city,
+      venue: data.venue,
+      organizerUid: organizer.uid ?? '',
+      organizerName: organizer.name ?? 'Desconocido',
+      organizadorBloqueado: perfil?.blocked === true,
+      organizadorAdmin: perfil?.admin === true,
+      comunidad: data.community?.name,
+      rsvpCount: typeof data.rsvpCount === 'number' ? data.rsvpCount : 0,
+      capacity: typeof data.capacity === 'number' ? data.capacity : undefined,
+      price: typeof data.price === 'number' ? data.price : undefined,
+      currency: typeof data.currency === 'string' ? (data.currency as NodoEvent['currency']) : undefined,
+    };
+  });
 }

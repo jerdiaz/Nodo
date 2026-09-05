@@ -1,5 +1,5 @@
 import { FieldValue } from 'firebase-admin/firestore';
-import { getAdminDb } from './server';
+import { getAdminAuth, getAdminDb } from './server';
 import type { UserProfile, VerificationType } from '../../types/profile';
 
 function usersCollection() {
@@ -24,6 +24,7 @@ function mapDocToProfile(doc: FirebaseFirestore.DocumentSnapshot): UserProfile |
     calendarToken: data.calendarToken,
     verification: data.verification,
     admin: data.admin === true,
+    blocked: data.blocked === true,
   };
 }
 
@@ -68,6 +69,38 @@ export async function setVerification(uid: string, verification: VerificationTyp
   await usersCollection()
     .doc(uid)
     .set({ verification: verification ?? FieldValue.delete() }, { merge: true });
+}
+
+// El resto de campos de rol se tocan solo desde el panel de administracion y
+// con set(merge): la forma de quitar el valor es borrar el campo, igual que con
+// la verificacion, para que "no consta" sea ausencia y no false.
+export async function setAdmin(uid: string, admin: boolean): Promise<void> {
+  await usersCollection().doc(uid).set({ admin: admin ? true : FieldValue.delete() }, { merge: true });
+}
+
+export async function setBlocked(uid: string, blocked: boolean): Promise<void> {
+  await usersCollection().doc(uid).set({ blocked: blocked ? true : FieldValue.delete() }, { merge: true });
+}
+
+// Los correos no viven en el perfil de Firestore: estan en Firebase Auth, y
+// para verlos en el panel de admin hay que pedirlos al Admin SDK. getUsers
+// acepta hasta 100 uids por llamada.
+export async function getEmailsByUid(uids: string[]): Promise<Map<string, string | null>> {
+  const unicos = [...new Set(uids)];
+  const correos = new Map<string, string | null>();
+
+  for (let i = 0; i < unicos.length; i += 100) {
+    const lote = unicos.slice(i, i + 100).map((uid) => ({ uid }));
+
+    try {
+      const resultado = await getAdminAuth().getUsers(lote);
+      resultado.users.forEach((usuario) => correos.set(usuario.uid, usuario.email ?? null));
+    } catch (error) {
+      console.warn('No se pudieron obtener los correos del lote de usuarios:', error);
+    }
+  }
+
+  return correos;
 }
 
 export async function getUidByCalendarToken(token: string): Promise<string | null> {

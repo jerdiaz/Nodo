@@ -1,10 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Button from '../components/ui/Button.astro';
 import VerifiedBadge from '../components/ui/VerifiedBadge.astro';
+import { Ban, Search, ShieldCheck, Trash2, Users } from '@lucide/astro';
 import { getCurrentUser } from '../lib/auth';
 import { isAdmin } from '../lib/firebase/users';
-import { VERIFICATION_LABEL } from '../types/profile';
+import { getAdminEventRows } from '../lib/firebase/events';
+import { formatEventDate, formatEventTime, formatEventPrice } from '../lib/format';
+import type { EventModality } from '../types/event';
 
 const user = await getCurrentUser(Astro.cookies);
 
@@ -17,94 +19,520 @@ if (!user) {
 if (!(await isAdmin(user.uid))) {
   return new Response(null, { status: 404, statusText: 'No encontrado' });
 }
+
+let filas: Awaited<ReturnType<typeof getAdminEventRows>> = [];
+
+try {
+  filas = await getAdminEventRows();
+} catch (error) {
+  console.warn('No se pudo listar los eventos para el panel de administración:', error);
+}
+
+const ahora = Date.now();
+
+const modalidadLabel: Record<EventModality, string> = {
+  presencial: 'Presencial',
+  virtual: 'Virtual',
+  hibrido: 'Híbrido',
+};
 ---
 
-<BaseLayout title="Administración — Nodo" description="Panel de administración de Nodo.">
-  <div class="mx-auto max-w-2xl px-6 pb-24 pt-16">
-    <h1 class="text-3xl font-bold tracking-tight text-texto">Administración</h1>
-    <p class="mt-2 text-sm text-suave">Concede o retira la verificación de una cuenta.</p>
-
-    <div class="mt-8 rounded-3xl border border-linea bg-superficie p-6">
-      <label for="username" class="block text-sm font-medium text-texto">Nombre de usuario</label>
-      <div class="mt-1.5 flex overflow-hidden rounded-xl ring-1 ring-inset ring-linea focus-within:ring-2 focus-within:ring-acento">
-        <span class="flex items-center bg-fondo-alt px-3.5 text-sm text-suave">@</span>
-        <input
-          id="username"
-          type="text"
-          autocomplete="off"
-          placeholder="usuario"
-          class="w-full bg-superficie px-3.5 py-2.5 text-sm text-texto placeholder:text-tenue focus-visible:outline-none"
-        />
-      </div>
-
-      <fieldset class="mt-5 space-y-2">
-        <legend class="text-sm font-medium text-texto">Verificación</legend>
-
-        <label class="flex cursor-pointer items-center gap-3 text-sm text-texto">
-          <input type="radio" name="verification" value="persona" class="accent-marca-azul" checked />
-          <VerifiedBadge type="persona" class="size-4" />
-          {VERIFICATION_LABEL.persona}
-        </label>
-
-        <label class="flex cursor-pointer items-center gap-3 text-sm text-texto">
-          <input type="radio" name="verification" value="comunidad" class="accent-marca-azul" />
-          <VerifiedBadge type="comunidad" class="size-4" />
-          {VERIFICATION_LABEL.comunidad}
-        </label>
-
-        <label class="flex cursor-pointer items-center gap-3 text-sm text-texto">
-          <input type="radio" name="verification" value="" class="accent-suave" />
-          <span class="size-4" aria-hidden="true"></span>
-          Retirar la verificación
-        </label>
-      </fieldset>
-
-      <p id="admin-error" class="mt-4 hidden text-sm text-acento-texto"></p>
-      <p id="admin-success" class="mt-4 hidden text-sm text-acento-texto"></p>
-
-      <div class="mt-6">
-        <Button variant="primary" type="button" id="admin-submit">Aplicar</Button>
+<BaseLayout
+  title="Administración — Nodo"
+  description="Panel de administración de Nodo."
+  barraInferior={false}
+>
+  <div class="mx-auto max-w-4xl px-6 pb-24 pt-16">
+    <div class="flex items-center gap-3">
+      <ShieldCheck class="size-7 text-acento-texto" stroke-width={1.75} />
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-texto">Administración</h1>
+        <p class="text-sm text-suave">Verificación, administradores, bloqueos y eventos.</p>
       </div>
     </div>
+
+    {/*
+      Un bloque por funcion: cuenta (que es donde viven los roles y el bloqueo)
+      y eventos (el directorio). Sin pestanas: son dos tareas distintas y en
+      una sola pagina se ve el alcance de una sola mirada.
+    */}
+    <section class="mt-10 rounded-3xl border border-linea bg-superficie p-6">
+      <h2 class="text-lg font-semibold text-texto">Cuentas</h2>
+      <p class="mt-1 text-sm text-suave">
+        Busca por @usuario para ver quién es y cambiar su verificación, su rol de administrador o su bloqueo.
+      </p>
+
+      <div class="mt-4 flex max-w-md gap-2">
+        <div class="flex flex-1 overflow-hidden rounded-xl ring-1 ring-inset ring-linea focus-within:ring-2 focus-within:ring-acento">
+          <span class="flex items-center bg-fondo-alt px-3 text-sm text-suave">@</span>
+          <input
+            id="admin-username"
+            type="text"
+            autocomplete="off"
+            placeholder="usuario"
+            class="w-full bg-superficie px-3 py-2.5 text-sm text-texto placeholder:text-tenue focus-visible:outline-none"
+          />
+        </div>
+        <button
+          id="admin-buscar"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-full bg-acento px-4 py-2 text-sm font-medium text-acento-contraste transition active:scale-[0.97] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Search class="size-4" stroke-width={2} />
+          Buscar
+        </button>
+      </div>
+
+      <div id="admin-cuenta" class="mt-5 hidden">
+        <div class="flex flex-wrap items-center gap-4 rounded-2xl border border-linea bg-fondo-alt/60 p-4">
+          <span
+            id="admin-avatar"
+            class="grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-superficie text-base font-semibold text-suave"
+          ></span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate font-medium text-texto">
+              <span id="admin-nombre">—</span>
+            </p>
+            <p class="truncate text-sm text-suave">
+              @<span id="admin-username-visto">—</span>
+              <span id="admin-email" class="ml-2"></span>
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2" id="admin-estado"></div>
+        </div>
+
+        <div class="mt-4 grid gap-6 sm:grid-cols-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-suave">Verificación</p>
+            <div class="mt-2 flex flex-col gap-2">
+              <button type="button" data-accion="vpersona" class="accion rounded-xl border border-linea px-3 py-2 text-left text-sm text-texto transition hover:border-acento disabled:cursor-not-allowed disabled:opacity-50">
+                <span class="flex items-center gap-2"><VerifiedBadge type="persona" class="size-4" /> Persona</span>
+              </button>
+              <button type="button" data-accion="vcomunidad" class="accion rounded-xl border border-linea px-3 py-2 text-left text-sm text-texto transition hover:border-acento disabled:cursor-not-allowed disabled:opacity-50">
+                <span class="flex items-center gap-2"><VerifiedBadge type="comunidad" class="size-4" /> Comunidad</span>
+              </button>
+              <button type="button" data-accion="vquitar" class="accion rounded-xl border border-linea px-3 py-2 text-left text-sm text-texto transition hover:border-acento disabled:cursor-not-allowed disabled:opacity-50">
+                Retirar verificación
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-suave">Administrador</p>
+            <div class="mt-2 flex flex-col gap-2">
+              <button type="button" id="accion-admin" class="accion rounded-xl border border-linea px-3 py-2 text-left text-sm text-texto transition hover:border-acento disabled:cursor-not-allowed disabled:opacity-50"></button>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-suave">Publicación</p>
+            <div class="mt-2 flex flex-col gap-2">
+              <button type="button" id="accion-bloqueo" class="accion rounded-xl border border-linea px-3 py-2 text-left text-sm text-texto transition hover:border-acento disabled:cursor-not-allowed disabled:opacity-50"></button>
+            </div>
+          </div>
+        </div>
+
+        <p id="admin-mensaje" class="mt-4 hidden text-sm text-acento-texto"></p>
+      </div>
+    </section>
+
+    <section class="mt-10">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-texto">Eventos</h2>
+          <p class="mt-1 text-sm text-suave">
+            Todos los eventos del catálogo, incluidos los de cuentas bloqueadas. {filas.length} en total.
+          </p>
+        </div>
+      </div>
+
+      {filas.length === 0 ? (
+        <div class="mt-6 rounded-3xl border border-dashed border-linea px-6 py-14 text-center text-sm text-suave">
+          Todavía no hay eventos publicados.
+        </div>
+      ) : (
+        <ul class="mt-5 space-y-3">
+          {filas.map((fila) => {
+            const terminado = fila.endDate.getTime() < ahora;
+            const esDeBloqueado = fila.organizadorBloqueado;
+            const aforo = fila.capacity;
+            const asistentes = fila.rsvpCount;
+
+            return (
+              <li
+                class="rounded-3xl border border-linea bg-superficie p-5"
+                data-evento={fila.id}
+              >
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="font-semibold text-texto">{fila.title}</p>
+                      {esDeBloqueado && (
+                        <span class="inline-flex items-center gap-1 rounded-full bg-acento-suave px-2 py-0.5 text-[11px] font-medium text-acento-texto">
+                          <Ban class="size-3" stroke-width={2} />
+                          Autor bloqueado
+                        </span>
+                      )}
+                      {terminado && (
+                        <span class="rounded-full border border-linea px-2 py-0.5 text-[11px] font-medium text-suave">Terminado</span>
+                      )}
+                    </div>
+                    <p class="mt-1 text-sm text-suave">
+                      {formatEventDate(fila.startDate, fila.timezone)} · {formatEventTime(fila.startDate, fila.timezone)} – {formatEventTime(fila.endDate, fila.timezone)}
+                    </p>
+                    <p class="mt-0.5 text-sm text-suave">
+                      {modalidadLabel[fila.modality] ?? fila.modality}
+                      {fila.city ? ` · ${[fila.venue, fila.city].filter(Boolean).join(', ')}` : ''}
+                      {fila.comunidad ? ` · por la comunidad ${fila.comunidad}` : ''}
+                    </p>
+                    <p class="mt-2 text-xs text-suave">
+                      <span class="font-medium text-texto">{fila.organizerName}</span>
+                      {fila.organizadorAdmin && ' · admin'}
+                      {fila.organizerUid ? ` · ${fila.organizerUid.slice(0, 8)}…` : ''}
+                    </p>
+                  </div>
+
+                  <div class="flex shrink-0 flex-col items-end gap-2">
+                    <span class="rounded-full border border-linea px-3 py-1 text-xs font-medium text-texto">
+                      <Users class="mr-1 inline size-3.5" stroke-width={2} />
+                      {asistentes} {asistentes === 1 ? 'asistente' : 'asistentes'}
+                      {aforo ? ` / ${aforo}` : ''}
+                      {fila.price ? ` · ${formatEventPrice(fila)}` : ''}
+                    </span>
+                    <div class="flex gap-2">
+                      <a
+                        href={`/eventos/${fila.slug}`}
+                        class="rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-texto transition hover:border-acento"
+                      >
+                        Ver evento
+                      </a>
+                      <button
+                        type="button"
+                        data-toggle-asistentes={fila.id}
+                        class="rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-texto transition hover:border-acento"
+                      >
+                        Asistentes
+                      </button>
+                      <button
+                        type="button"
+                        data-borrar-evento={fila.id}
+                        class="rounded-full border border-acento/40 px-3 py-1.5 text-xs font-medium text-acento-texto transition hover:bg-acento-suave"
+                      >
+                        <Trash2 class="mr-1 inline size-3.5" stroke-width={2} />
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="asistentes mt-4 hidden" data-panel-asistentes={fila.id}>
+                  <p class="mb-2 text-xs text-suave">Cargando asistentes…</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   </div>
 </BaseLayout>
 
 <script>
-  const usernameField = document.getElementById('username') as HTMLInputElement;
-  const submit = document.getElementById('admin-submit') as HTMLButtonElement;
-  const errorBox = document.getElementById('admin-error') as HTMLParagraphElement;
-  const successBox = document.getElementById('admin-success') as HTMLParagraphElement;
+  const estadoMensaje = document.getElementById('admin-mensaje') as HTMLParagraphElement;
 
-  submit.addEventListener('click', async () => {
-    errorBox.classList.add('hidden');
-    successBox.classList.add('hidden');
-    submit.disabled = true;
+  function mensaje(texto: string, esError = false): void {
+    estadoMensaje.textContent = texto;
+    estadoMensaje.classList.toggle('hidden', !texto);
+    estadoMensaje.classList.toggle('text-acento-texto', esError);
+  }
 
-    const choice = document.querySelector<HTMLInputElement>('input[name="verification"]:checked');
-    const verification = choice?.value ? choice.value : null;
+  // --- Cuentas: buscar y aplicar acciones -------------------------------
+
+  const usernameInput = document.getElementById('admin-username') as HTMLInputElement;
+  const buscarButton = document.getElementById('admin-buscar') as HTMLButtonElement;
+  const cuentaBox = document.getElementById('admin-cuenta') as HTMLElement;
+
+  // El username resuelto de la ultima busqueda, para las acciones.
+  let usernameActivo = '';
+
+  function chip(texto: string, clase: string): HTMLSpanElement {
+    const el = document.createElement('span');
+    el.className = `rounded-full px-2.5 py-1 text-xs font-medium ${clase}`;
+    el.textContent = texto;
+    return el;
+  }
+
+  const etiquetaVerificacion: Record<'persona' | 'comunidad', string> = {
+    persona: 'Identidad confirmada',
+    comunidad: 'Comunidad oficial',
+  };
+
+  function estadoDelUsuario(datos: {
+    nombre: string | null;
+    email: string | null;
+    admin: boolean;
+    blocked: boolean;
+    verification: 'persona' | 'comunidad' | null;
+    tienePerfil: boolean;
+  }): void {
+    const avatar = document.getElementById('admin-avatar') as HTMLElement;
+    avatar.textContent = (datos.nombre ?? '?').charAt(0).toUpperCase();
+
+    (document.getElementById('admin-nombre') as HTMLElement).textContent = datos.nombre ?? 'Sin perfil';
+    (document.getElementById('admin-username-visto') as HTMLElement).textContent = usernameActivo;
+    const email = document.getElementById('admin-email') as HTMLElement;
+    email.textContent = datos.email ?? '';
+    email.classList.toggle('text-suave', Boolean(datos.email));
+
+    const estado = document.getElementById('admin-estado') as HTMLElement;
+    estado.innerHTML = '';
+    estado.appendChild(chip(datos.admin ? 'Administrador' : 'Cuenta normal', datos.admin ? 'bg-marca-azul/10 text-marca-azul' : 'border border-linea text-suave'));
+    estado.appendChild(chip(datos.blocked ? 'Bloqueada' : 'Puede publicar', datos.blocked ? 'bg-acento-suave text-acento-texto' : 'border border-linea text-suave'));
+    if (datos.verification) {
+      estado.appendChild(chip(etiquetaVerificacion[datos.verification], 'bg-marca-azul/10 text-marca-azul'));
+    }
+
+    // Botones de accion: el texto y la disponibilidad dependen del estado.
+    const botonAdmin = document.getElementById('accion-admin') as HTMLButtonElement;
+    botonAdmin.textContent = datos.admin ? 'Quitar administrador' : 'Hacer administrador';
+    botonAdmin.dataset.accion = datos.admin ? 'quitar-admin' : 'hacer-admin';
+
+    const botonBloqueo = document.getElementById('accion-bloqueo') as HTMLButtonElement;
+    botonBloqueo.textContent = datos.blocked ? 'Desbloquear para publicar' : 'Bloquear publicación';
+    botonBloqueo.dataset.accion = datos.blocked ? 'desbloquear' : 'bloquear';
+
+    // Los de verificacion marcan la activa.
+    const verificacionActual = datos.verification;
+    document.querySelectorAll<HTMLButtonElement>('[data-accion="vpersona"], [data-accion="vcomunidad"], [data-accion="vquitar"]').forEach((boton) => {
+      const activo =
+        (boton.dataset.accion === 'vpersona' && verificacionActual === 'persona') ||
+        (boton.dataset.accion === 'vcomunidad' && verificacionActual === 'comunidad') ||
+        (boton.dataset.accion === 'vquitar' && verificacionActual === null);
+      boton.classList.toggle('bg-marca-azul/10', activo);
+      boton.classList.toggle('ring-1', activo);
+      boton.classList.toggle('ring-marca-azul/40', activo);
+    });
+  }
+
+  async function consultar(): Promise<void> {
+    const username = usernameInput.value.trim().toLowerCase();
+
+    if (!username) {
+      mensaje('Escribe un @usuario.');
+      return;
+    }
+
+    mensaje('');
+    buscarButton.disabled = true;
 
     try {
-      const response = await fetch('/api/admin/verificacion', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: usernameField.value.trim(), verification }),
-      });
-
-      const result = await response.json();
+      const response = await fetch(`/api/admin/usuarios/${encodeURIComponent(username)}`);
+      const resultado = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error ?? 'No se pudo aplicar el cambio.');
+        throw new Error(resultado.error ?? 'No se pudo encontrar la cuenta.');
       }
 
-      successBox.textContent = verification
-        ? `@${result.username} verificada como ${verification}.`
-        : `Se retiró la verificación de @${result.username}.`;
-      successBox.classList.remove('hidden');
+      usernameActivo = username;
+      cuentaBox.classList.remove('hidden');
+      estadoDelUsuario(resultado);
     } catch (error) {
-      errorBox.textContent = error instanceof Error ? error.message : 'No se pudo aplicar el cambio.';
-      errorBox.classList.remove('hidden');
+      cuentaBox.classList.add('hidden');
+      mensaje(error instanceof Error ? error.message : 'No se pudo encontrar la cuenta.', true);
     } finally {
-      submit.disabled = false;
+      buscarButton.disabled = false;
+    }
+  }
+
+  buscarButton.addEventListener('click', consultar);
+  usernameInput.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter') consultar();
+  });
+
+  async function aplicarAccion(boton: HTMLButtonElement): Promise<void> {
+    const accion = boton.dataset.accion ?? '';
+    mensaje('');
+
+    if (!usernameActivo) {
+      mensaje('Primero busca una cuenta.', true);
+      return;
+    }
+
+    // Quitar admin y bloquear son destructivos sobre la cuenta de otro: se
+    // confirman antes de mandarlos.
+    if (accion === 'quitar-admin' || accion === 'bloquear') {
+      const aviso =
+        accion === 'quitar-admin'
+          ? `¿Quitar el acceso de administrador a @${usernameActivo}?`
+          : `¿Bloquear a @${usernameActivo}? No podrá publicar y sus eventos se ocultarán de la cartelera.`;
+      if (!window.confirm(aviso)) {
+        return;
+      }
+    }
+
+    const accionesVerificacion = ['vpersona', 'vcomunidad', 'vquitar'];
+
+    boton.disabled = true;
+
+    try {
+      const cuerpo = accionesVerificacion.includes(accion)
+        ? {
+            username: usernameActivo,
+            verification: accion === 'vpersona' ? 'persona' : accion === 'vcomunidad' ? 'comunidad' : null,
+          }
+        : { username: usernameActivo, accion };
+
+      const response = await fetch(
+        accionesVerificacion.includes(accion) ? '/api/admin/verificacion' : '/api/admin/usuarios',
+        {
+          method: accionesVerificacion.includes(accion) ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cuerpo),
+        },
+      );
+
+      const resultado = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resultado.error ?? 'No se pudo aplicar el cambio.');
+      }
+
+      // Se vuelve a consultar para que el estado pintado refleje el cambio.
+      mensaje('Cambio aplicado.');
+      await consultar();
+    } catch (error) {
+      mensaje(error instanceof Error ? error.message : 'No se pudo aplicar el cambio.', true);
+    } finally {
+      boton.disabled = false;
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.accion').forEach((boton) => {
+    boton.addEventListener('click', () => void aplicarAccion(boton));
+  });
+
+  // --- Eventos: asistentes y borrado ------------------------------------
+
+  function escapar(entrada: string | null | undefined): string {
+    return String(entrada ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function cargarAsistentes(eventoId: string, panel: HTMLElement): Promise<void> {
+    panel.innerHTML = '';
+
+    try {
+      const response = await fetch(`/api/admin/eventos/${encodeURIComponent(eventoId)}/asistentes`);
+      const resultado = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resultado.error ?? 'No se pudieron cargar los asistentes.');
+      }
+
+      const asistentes = resultado.asistentes as {
+        nombre: string;
+        username: string | null;
+        avatarUrl: string | null;
+        email: string | null;
+        admin: boolean;
+        blocked: boolean;
+        verification: 'persona' | 'comunidad' | null;
+        confirmadoEn: string | null;
+      }[];
+
+      if (asistentes.length === 0) {
+        const vacio = document.createElement('p');
+        vacio.className = 'text-sm text-suave';
+        vacio.textContent = 'Nadie ha confirmado asistencia.';
+        panel.appendChild(vacio);
+        return;
+      }
+
+      const tabla = document.createElement('table');
+      tabla.className = 'w-full text-left text-sm';
+      tabla.innerHTML = `
+        <thead>
+          <tr class="text-xs uppercase tracking-wide text-suave">
+            <th class="pb-2 pr-3 font-medium">Asistente</th>
+            <th class="pb-2 pr-3 font-medium">Correo</th>
+            <th class="pb-2 pr-3 font-medium">Confirmó</th>
+            <th class="pb-2 font-medium">Estado</th>
+          </tr>
+        </thead>
+      `;
+      const cuerpo = document.createElement('tbody');
+
+      asistentes.forEach((asistente) => {
+        const fila = document.createElement('tr');
+        fila.className = 'border-t border-linea';
+
+        const estadoChips = [
+          asistente.admin ? 'admin' : null,
+          asistente.verification ? 'verificado' : null,
+          asistente.blocked ? 'bloqueado' : null,
+        ].filter(Boolean);
+
+        fila.innerHTML = `
+          <td class="py-2.5 pr-3">
+            <div class="flex items-center gap-2.5">
+              ${asistente.avatarUrl ? `<img src="${escapar(asistente.avatarUrl)}" alt="" class="size-8 shrink-0 rounded-full object-cover">` : `<span class="grid size-8 shrink-0 place-items-center rounded-full bg-fondo-alt text-sm font-medium text-suave">${escapar(asistente.nombre.charAt(0))}</span>`}
+              <span>
+                <span class="block font-medium text-texto">${escapar(asistente.nombre)}</span>
+                ${asistente.username ? `<span class="block text-xs text-suave">@${escapar(asistente.username)}</span>` : ''}
+              </span>
+            </div>
+          </td>
+          <td class="py-2.5 pr-3 text-suave">${asistente.email ? escapar(asistente.email) : '—'}</td>
+          <td class="py-2.5 pr-3 text-suave">${asistente.confirmadoEn ? new Date(asistente.confirmadoEn).toLocaleString('es-CO') : '—'}</td>
+          <td class="py-2.5">${estadoChips.map((c) => `<span class="mr-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${c === 'bloqueado' ? 'bg-acento-suave text-acento-texto' : 'bg-marca-azul/10 text-marca-azul'}">${c === 'admin' ? 'Admin' : c === 'verificado' ? 'Verificado' : 'Bloqueado'}</span>`).join('')}</td>
+        `;
+
+        cuerpo.appendChild(fila);
+      });
+
+      tabla.appendChild(cuerpo);
+      panel.appendChild(tabla);
+    } catch (error) {
+      const aviso = document.createElement('p');
+      aviso.className = 'text-sm text-acento-texto';
+      aviso.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los asistentes.';
+      panel.appendChild(aviso);
+    }
+  }
+
+  document.addEventListener('click', (evento) => {
+    const blanco = evento.target as Element;
+
+    const abrir = blanco.closest<HTMLButtonElement>('[data-toggle-asistentes]');
+    if (abrir) {
+      const panel = document.querySelector<HTMLElement>(`[data-panel-asistentes="${abrir.dataset.toggleAsistentes}"]`);
+      if (!panel) return;
+      const visible = !panel.classList.contains('hidden');
+      panel.classList.toggle('hidden', visible);
+      if (!visible) void cargarAsistentes(abrir.dataset.toggleAsistentes ?? '', panel);
+      return;
+    }
+
+    const borrar = blanco.closest<HTMLButtonElement>('[data-borrar-evento]');
+    if (borrar) {
+      const eventoId = borrar.dataset.borrarEvento ?? '';
+      const titulo = borrar.closest('li')?.querySelector('p')?.textContent ?? 'este evento';
+
+      if (!window.confirm(`¿Borrar "${titulo}"? Se elimina con sus asistencias. No se puede deshacer.`)) {
+        return;
+      }
+
+      borrar.disabled = true;
+
+      fetch(`/api/admin/eventos/${encodeURIComponent(eventoId)}`, { method: 'DELETE' })
+        .then(async (response) => {
+          const resultado = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(resultado.error ?? 'No se pudo borrar el evento.');
+          window.location.reload();
+        })
+        .catch((error) => {
+          window.alert(error instanceof Error ? error.message : 'No se pudo borrar el evento.');
+          borrar.disabled = false;
+        });
     }
   });
 </script>

@@ -33,6 +33,9 @@ export interface UserProfile {
   // no conoce, asi que un PUT /api/perfil no puede autoconcederselos.
   verification?: VerificationType;
   admin?: boolean;
+  // Quien esta bloqueado no puede publicar eventos ni comunidades, y sus
+  // eventos dejan de verse en la cartelera (sin borrarse). Lo pone un admin.
+  blocked?: boolean;
 }
 
 // Clave de red social -> como se muestra y como se convierte en enlace.
