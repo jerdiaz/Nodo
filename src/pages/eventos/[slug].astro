@@ -733,44 +733,65 @@ function textoAsistentes(total: number): string {
     data-gen={color}
     class="pointer-events-none sticky bottom-0 z-40 px-3 pb-3 sm:px-5 sm:pb-4"
   >
-    <div class="pointer-events-auto mx-auto flex max-w-6xl items-center gap-3 rounded-[28px] border border-linea bg-superficie/95 px-4 py-3 shadow-[var(--c-sombra-alta)] backdrop-blur sm:gap-5 sm:px-6">
-      <span class="hidden h-10 w-1.5 shrink-0 rounded-full bg-[var(--g)] sm:block" aria-hidden="true"></span>
+    {/*
+      Pastilla entera y sin borde, como la suya: a este tamaño el radio fijo se
+      leia como una caja de esquinas muy redondeadas y no como una pastilla, y
+      el filo dibujaba un contorno que su barra no tiene — la separa del fondo
+      la sombra, no una linea.
 
+      Tambien se fue el filo de color del evento: en la suya no hay nada a la
+      izquierda del texto, y aqui competia con el titulo por ser lo primero
+      que se mira.
+    */}
+    <div class="pointer-events-auto mx-auto flex max-w-6xl items-center gap-3 rounded-full bg-superficie/95 px-5 py-3 shadow-[var(--c-sombra-alta)] backdrop-blur sm:gap-4 sm:px-6 sm:py-4">
       <div class="min-w-0 flex-1">
-        <p class="truncate text-xs text-suave">
+        <p class="truncate text-xs text-suave sm:text-sm">
           {formatEventDate(event.startDate, event.timezone)} · {formatEventTime(event.startDate, event.timezone)}
         </p>
-        <p class="truncate text-sm font-semibold text-texto sm:text-base">{event.title}</p>
+        <p class="truncate text-base font-bold tracking-tight text-texto sm:text-lg">{event.title}</p>
       </div>
 
       {event.price && (
-        <span class="shrink-0 rounded-full bg-fondo-alt px-3 py-1.5 text-sm font-semibold text-texto">
+        <span class="hidden shrink-0 rounded-full border border-linea bg-superficie px-4 py-1.5 text-sm font-semibold text-texto sm:inline">
           {precioLabel}
         </span>
       )}
 
+      {/*
+        Los lugares que quedan van en ambar y no en el rojo de marca, como en
+        la suya: es un aviso de que se acaba, no una accion ni un error, y en
+        rojo se confundia con el boton que tiene al lado.
+      */}
       {event.capacity && (
         <span
           data-spots
-          class="hidden shrink-0 rounded-full bg-acento-suave px-3 py-1.5 text-sm font-medium text-acento-texto sm:inline"
+          data-gen="naranja"
+          class="hidden shrink-0 rounded-full bg-[var(--g-suave)] px-4 py-1.5 text-sm font-semibold text-[var(--g-texto)] lg:inline"
         >
           {textoLugares(lugaresRestantes ?? 0)}
         </span>
       )}
 
-      <p data-rsvp-count class="hidden shrink-0 text-sm text-suave lg:block">
-        {textoAsistentes(rsvpCount)}
-      </p>
+      {/*
+        Solo cuando no hay aforo: con aforo, "quedan 19 lugares" y "19 personas
+        interesadas" son el mismo dato contado al reves, y la suya enseña uno,
+        no los dos.
+      */}
+      {!event.capacity && (
+        <p data-rsvp-count class="hidden shrink-0 text-sm text-suave lg:block">
+          {textoAsistentes(rsvpCount)}
+        </p>
+      )}
 
       <button
         id="barra-compartir"
         type="button"
         aria-label="Compartir evento"
         title="Compartir evento"
-        class="hidden size-10 shrink-0 place-items-center rounded-full border border-linea text-suave transition active:scale-[0.95] hover:border-acento hover:text-texto sm:grid"
+        class="hidden size-11 shrink-0 place-items-center rounded-full bg-fondo-alt text-suave transition active:scale-[0.95] hover:bg-linea-suave hover:text-texto sm:grid"
       >
-        <Share2 id="barra-compartir-icono" class="size-4" stroke-width={2} />
-        <Check id="barra-compartir-listo" class="hidden size-4 text-acento-texto" stroke-width={2.5} />
+        <Share2 id="barra-compartir-icono" class="size-[18px]" stroke-width={2} />
+        <Check id="barra-compartir-listo" class="hidden size-[18px] text-acento-texto" stroke-width={2.5} />
       </button>
 
       {eventEnded ? (
