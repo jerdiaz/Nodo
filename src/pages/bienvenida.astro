@@ -3,7 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Button from '../components/ui/Button.astro';
 import { getCurrentUser } from '../lib/auth';
 import { getUserProfile } from '../lib/firebase/users';
-import { USERNAME_RULES, suggestUsername } from '../lib/profileValidation';
+import { PHONE_RULES, USERNAME_RULES, suggestUsername } from '../lib/profileValidation';
 import type { UserProfile } from '../types/profile';
 
 const user = await getCurrentUser(Astro.cookies);
@@ -20,8 +20,11 @@ try {
   console.warn('No se pudo obtener el perfil desde Firebase:', error);
 }
 
-// Quien ya eligio nombre de usuario no tiene nada que hacer aqui.
-if (profile?.username) {
+// Quien ya completo las dos cosas no tiene nada que hacer aqui. El celular
+// cuenta igual que el nombre de usuario: es obligatorio, asi que a quien se
+// registro antes de que existiera el campo esta pantalla le vuelve a salir
+// hasta que lo ponga.
+if (profile?.username && profile?.phone) {
   return Astro.redirect('/perfil');
 }
 
@@ -73,11 +76,36 @@ const inputClass =
         <p id="username-hint" class="mt-1.5 text-xs text-tenue">{USERNAME_RULES}</p>
       </div>
 
+      <div>
+        <label for="phone" class="block text-sm font-medium text-texto">Celular</label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          inputmode="tel"
+          required
+          autocomplete="tel"
+          maxlength="20"
+          placeholder="+57 300 123 4567"
+          class={inputClass}
+          value={profile?.phone ?? ''}
+        />
+        {/*
+          Este texto es el consentimiento. Meta exige poder demostrar que la
+          persona acepto recibir mensajes antes de escribirle, y el sitio donde
+          se acepta es justo donde se pide el numero: por eso lo dice aqui con
+          todas las letras en vez de esconderlo en los terminos.
+        */}
+        <p class="mt-1.5 text-xs text-tenue">
+          Al continuar aceptas recibir por WhatsApp los recordatorios de los eventos a los que
+          confirmes asistencia. {PHONE_RULES}
+        </p>
+      </div>
+
       <p id="welcome-error" class="hidden text-sm text-acento-texto"></p>
 
       <div class="flex flex-wrap items-center gap-3 pt-2">
         <Button variant="primary" type="submit" id="welcome-submit">Continuar</Button>
-        <a href="/" class="text-sm text-suave transition hover:text-texto">Ahora no</a>
       </div>
     </form>
   </div>
@@ -152,6 +180,7 @@ const inputClass =
           firstName: data.get('firstName'),
           lastName: data.get('lastName'),
           username: data.get('username'),
+          phone: data.get('phone'),
           socials: {},
         }),
       });

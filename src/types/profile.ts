@@ -21,6 +21,14 @@ export interface UserProfile {
   firstName: string;
   lastName?: string;
   username?: string;
+  // Celular en E.164 (+573001234567), para los recordatorios por WhatsApp.
+  //
+  // Vive aqui y no en Firebase Auth a proposito: el campo phoneNumber de Auth
+  // significa "numero verificado" y ademas es unico entre cuentas. Este no se
+  // verifica -es una decision tomada a sabiendas- asi que meterlo ahi seria
+  // afirmar algo que no comprobamos, y un numero repetido rompería el guardado
+  // de la segunda persona en vez de dejar que el problema se vea.
+  phone?: string;
   bio?: string;
   avatarUrl?: string;
   socials: ProfileSocials;

@@ -7,6 +7,7 @@ import ImageCropper from '../components/ui/ImageCropper.astro';
 import { getUserProfile } from '../lib/firebase/users';
 import { getPendingTransfers, type TransferRequest } from '../lib/firebase/transfers';
 import { SOCIAL_FIELDS } from '../types/profile';
+import { PHONE_RULES } from '../lib/profileValidation';
 import { Rss, TriangleAlert } from '@lucide/astro';
 import { getEvents } from '../lib/firebase/events';
 import type { UserProfile } from '../types/profile';
@@ -206,6 +207,25 @@ const inputClass =
                 value={profile?.username ?? ''}
               />
             </div>
+          </div>
+
+          <div>
+            <label for="phone" class="block text-sm font-medium text-texto">Celular</label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              inputmode="tel"
+              required
+              autocomplete="tel"
+              maxlength="20"
+              placeholder="+57 300 123 4567"
+              class={inputClass}
+              value={profile?.phone ?? ''}
+            />
+            <p class="mt-1.5 text-xs text-tenue">
+              Por aquí llegan los recordatorios de tus eventos por WhatsApp. {PHONE_RULES}
+            </p>
           </div>
 
           <div>
@@ -813,6 +833,7 @@ const inputClass =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           firstName: data.get('firstName'),
+          phone: data.get('phone'),
           lastName: data.get('lastName'),
           username: data.get('username'),
           bio: data.get('bio'),
