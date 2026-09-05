@@ -19,6 +19,14 @@ import { correoConfigurado } from '../../../lib/email/resend';
 // correos ya enviados dejan de aparecer en la consulta de pendientes. Correr
 // esto de mas no manda nada dos veces, asi que la frecuencia del cron es una
 // decision de latencia, no de correccion. Cada cuarto de hora esta bien.
+//
+// OJO al llamarlo: el POST tiene que llevar `Content-Type: application/json`.
+// Sin esa cabecera, Astro lo trata como envio de formulario, le exige que el
+// Origin coincida con el del servidor y responde "Cross-site POST form
+// submissions are forbidden" antes de que esta funcion llegue a ejecutarse.
+// Un curl de cron no manda Origin, asi que sin la cabecera no entra nunca.
+// Es el mismo chequeo que ya obligo a que /api/imagenes suba el binario crudo
+// en vez de multipart.
 const LIMITE_POR_PASADA = 50;
 
 export const POST: APIRoute = async ({ request }) => {

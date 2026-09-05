@@ -185,9 +185,12 @@ esto funciona.
 5. Programar la sincronización, por ejemplo en el cron del VPS cada 6 horas:
 
    ```bash
-   curl -s -X POST -H "Authorization: Bearer $SYNC_SECRET" \
-     https://nodo-eventos.duckdns.org/api/instagram/sync
+   curl -s -X POST -H "Authorization: Bearer $SYNC_SECRET" -H "Content-Type: application/json" https://nodo-eventos.duckdns.org/api/instagram/sync
    ```
+
+   La cabecera `Content-Type` es obligatoria por la misma razon que en la
+   tarea 5: sin ella el chequeo de origen de Astro rechaza la peticion antes
+   de leer el token.
 
 > ⚠️ **El token de larga duración caduca a los 60 días.** Hay que renovarlo, o
 > la sección se quedará congelada en las últimas publicaciones sincronizadas.
@@ -257,9 +260,15 @@ consulta, así que correrlo de más no duplica nada. Cada cuarto de hora está
 bien. En el cron del VPS:
 
 ```bash
-*/15 * * * * curl -s -X POST -H "Authorization: Bearer $SYNC_SECRET" \
-  https://tudominio/api/correos/despachar > /dev/null
+*/15 * * * * curl -s -X POST -H "Authorization: Bearer $SYNC_SECRET" -H "Content-Type: application/json" https://nodo-eventos.duckdns.org/api/correos/despachar > /dev/null
 ```
+
+> **La cabecera `Content-Type: application/json` no es opcional.** Sin ella,
+> Astro trata el POST como envio de formulario, exige que el `Origin` coincida
+> con el del servidor y responde `Cross-site POST form submissions are
+> forbidden` antes de mirar siquiera el token. Un curl de cron no manda
+> `Origin`, asi que sin la cabecera el endpoint no se ejecuta nunca.
+> Comprobado contra produccion.
 
 Usa el mismo `SYNC_SECRET` que ya autoriza la sincronización de Instagram.
 
