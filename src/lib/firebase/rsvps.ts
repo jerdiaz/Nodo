@@ -156,51 +156,61 @@ export const AFORO_COMPLETO = 'AFORO_COMPLETO';
 // pidiendo el ultimo lugar a la vez pasarian las dos una comprobacion previa
 // y el evento acabaria con un asistente de mas. Dentro de la transaccion, la
 // segunda relee el contador ya actualizado y se cae.
-export async function setRsvp(eventId: string, uid: string): Promise<{ attending: true; count: number }> {
+//
+// `creado` dice si esta llamada paso de "no asistia" a "asiste": es lo que le
+// permite a la ruta decidir si deja una notificacion sin notificar de mas a
+// quien ya estaba dentro (una repeticion del POST no vuelve a avisar).
+export async function setRsvp(
+  eventId: string,
+  uid: string,
+): Promise<{ attending: true; count: number; creado: boolean }> {
   const db = getAdminDb();
   const eventRef = db.collection('events').doc(eventId);
   const rsvpRef = rsvpsCollection(eventId).doc(uid);
 
-  const count = await db.runTransaction(async (transaction) => {
+  const resultado = await db.runTransaction(async (transaction) => {
     const eventDoc = await transaction.get(eventRef);
     const current = typeof eventDoc.data()?.rsvpCount === 'number' ? (eventDoc.data()!.rsvpCount as number) : 0;
     const capacity = typeof eventDoc.data()?.capacity === 'number' ? (eventDoc.data()!.capacity as number) : null;
     const existing = await transaction.get(rsvpRef);
 
-    if (!existing.exists) {
-      if (capacity !== null && current >= capacity) {
-        throw new Error(AFORO_COMPLETO);
-      }
-
-      transaction.set(rsvpRef, { uid, createdAt: FieldValue.serverTimestamp() });
-      transaction.update(eventRef, { rsvpCount: current + 1 });
-      return current + 1;
+    if (existing.exists) {
+      return { count: current, creado: false };
     }
 
-    return current;
+    if (capacity !== null && current >= capacity) {
+      throw new Error(AFORO_COMPLETO);
+    }
+
+    transaction.set(rsvpRef, { uid, createdAt: FieldValue.serverTimestamp() });
+    transaction.update(eventRef, { rsvpCount: current + 1 });
+    return { count: current + 1, creado: true };
   });
 
-  return { attending: true, count };
+  return { attending: true, count: resultado.count, creado: resultado.creado };
 }
 
-export async function clearRsvp(eventId: string, uid: string): Promise<{ attending: false; count: number }> {
+export async function clearRsvp(
+  eventId: string,
+  uid: string,
+): Promise<{ attending: false; count: number; eliminado: boolean }> {
   const db = getAdminDb();
   const eventRef = db.collection('events').doc(eventId);
   const rsvpRef = rsvpsCollection(eventId).doc(uid);
 
-  const count = await db.runTransaction(async (transaction) => {
+  const resultado = await db.runTransaction(async (transaction) => {
     const eventDoc = await transaction.get(eventRef);
     const current = typeof eventDoc.data()?.rsvpCount === 'number' ? (eventDoc.data()!.rsvpCount as number) : 0;
     const existing = await transaction.get(rsvpRef);
 
-    if (existing.exists) {
-      transaction.delete(rsvpRef);
-      transaction.update(eventRef, { rsvpCount: Math.max(0, current - 1) });
-      return Math.max(0, current - 1);
+    if (!existing.exists) {
+      return { count: current, eliminado: false };
     }
 
-    return current;
+    transaction.delete(rsvpRef);
+    transaction.update(eventRef, { rsvpCount: Math.max(0, current - 1) });
+    return { count: Math.max(0, current - 1), eliminado: true };
   });
 
-  return { attending: false, count };
+  return { attending: false, count: resultado.count, eliminado: resultado.eliminado };
 }

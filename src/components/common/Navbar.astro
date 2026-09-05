@@ -1,5 +1,5 @@
 ---
-import { ChevronDown, LogOut, Menu, Plus, Search, Settings, ShieldCheck, User } from '@lucide/astro';
+import { Bell, ChevronDown, LogOut, Menu, Plus, Search, Settings, ShieldCheck, User } from '@lucide/astro';
 import { getDisplayUser } from '../../lib/auth';
 import ProviderIcon from '../ui/ProviderIcon.astro';
 
@@ -265,6 +265,42 @@ const enResultados =
       ]}
     >
       {user ? (
+        <>
+          {/*
+            Campana de notificaciones, al lado del avatar: a quien organiza le
+            llega un aviso cada vez que alguien confirma asistencia a su evento.
+            El panel se rellena por su cuenta (endpoint aparte); aqui solo viven
+            el disparador y el contenedor, para no arrastrar las lecturas de
+            Firestore en cada pagina.
+          */}
+          <div class="relative" data-menu data-menu-notif>
+            <button
+              id="nodo-notif-trigger"
+              type="button"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-label="Notificaciones"
+              class="relative grid size-9 place-items-center rounded-full border border-linea text-suave transition active:scale-[0.95] hover:border-acento hover:text-texto"
+            >
+              <Bell class="size-[18px]" stroke-width={2} />
+              <span
+                id="nodo-notif-badge"
+                class="pointer-events-none absolute -right-1 -top-1 hidden min-w-4 place-items-center rounded-full bg-acento px-1 text-[10px] font-bold leading-4 text-acento-contraste"
+              ></span>
+            </button>
+
+            <div
+              id="nodo-notif-panel"
+              aria-label="Notificaciones"
+              class="absolute right-0 top-full z-50 mt-2 hidden w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-linea bg-superficie shadow-[var(--c-sombra)]"
+            >
+              <div class="border-b border-linea px-4 py-3">
+                <p class="text-sm font-semibold text-texto">Notificaciones</p>
+              </div>
+              <div id="nodo-notif-lista" class="max-h-[70vh] overflow-y-auto p-2"></div>
+            </div>
+          </div>
+
         <div class="relative" data-menu>
           <button
             id="nodo-user-trigger"
@@ -349,6 +385,7 @@ const enResultados =
             </button>
           </div>
         </div>
+        </>
       ) : (
         <div class="relative" data-menu>
           <button
@@ -441,6 +478,7 @@ const enResultados =
     createMenu('nodo-login-trigger', 'nodo-login-panel', 'nodo-login-chevron'),
     createMenu('nodo-user-trigger', 'nodo-user-panel'),
     createMenu('nodo-menu-trigger', 'nodo-menu-panel'),
+    createMenu('nodo-notif-trigger', 'nodo-notif-panel'),
   ].filter((menu): menu is Menu => menu !== null);
 
   document.addEventListener('click', (event) => {
@@ -680,5 +718,123 @@ const enResultados =
       // Un respiro para que un click sobre la lista llegue a su destino.
       setTimeout(cerrar, 120);
     });
+  }
+
+  // --- Notificaciones: campana junto al avatar -------------------------
+  //
+  // El contador de no leidas se pide al cargar (endpoint ligero que solo
+  // cuenta) y la lista entera, al abrir el panel. Abrir equivale a leer:
+  // en cuanto se muestra, se marcan todas como leidas y la insignia se apaga.
+  const notifTrigger = document.getElementById('nodo-notif-trigger') as HTMLButtonElement | null;
+  const notifBadge = document.getElementById('nodo-notif-badge') as HTMLElement | null;
+  const notifLista = document.getElementById('nodo-notif-lista') as HTMLElement | null;
+
+  function pintarInsignia(cuantas: number): void {
+    if (!notifBadge) return;
+    notifBadge.textContent = cuantas > 99 ? '99+' : String(cuantas);
+    notifBadge.classList.toggle('hidden', cuantas === 0);
+    notifBadge.classList.toggle('grid', cuantas > 0);
+  }
+
+  function escapar(entrada: string | null | undefined): string {
+    return String(entrada ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function tiempoRelativo(iso: string | null): string {
+    if (!iso) return '';
+    const ms = Date.now() - new Date(iso).getTime();
+    const minutos = Math.floor(ms / 60000);
+
+    if (minutos < 1) return 'ahora mismo';
+    if (minutos < 60) return `hace ${minutos} min`;
+    const horas = Math.floor(minutos / 60);
+    if (horas < 24) return `hace ${horas} h`;
+    const dias = Math.floor(horas / 24);
+    if (dias < 7) return `hace ${dias} d`;
+    return new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+  }
+
+  function pintarLista(items: {
+    id: string;
+    eventId: string;
+    eventTitle: string;
+    actorName: string;
+    createdAt: string | null;
+  }[]): void {
+    if (!notifLista) return;
+    notifLista.textContent = '';
+
+    if (items.length === 0) {
+      const vacio = document.createElement('p');
+      vacio.className = 'px-3 py-8 text-center text-sm text-suave';
+      vacio.textContent = 'Todavía no tienes notificaciones.';
+      notifLista.appendChild(vacio);
+      return;
+    }
+
+    for (const item of items) {
+      const enlace = document.createElement('a');
+      enlace.href = `/eventos/${encodeURIComponent(item.eventId)}`;
+      enlace.className =
+        'flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-fondo-alt';
+
+      enlace.innerHTML = `
+        <span class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-acento-suave text-acento-texto">
+          <span class="text-[10px] font-bold">${escapar(item.actorName.charAt(0).toUpperCase())}</span>
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-sm text-texto">
+            <span class="font-semibold">${escapar(item.actorName)}</span> confirmó asistencia a
+            <span class="font-semibold">${escapar(item.eventTitle)}</span>
+          </span>
+          <span class="block text-xs text-suave">${escapar(tiempoRelativo(item.createdAt))}</span>
+        </span>
+      `;
+
+      notifLista.appendChild(enlace);
+    }
+  }
+
+  async function cargarNotificaciones(): Promise<void> {
+    if (!notifLista) return;
+
+    try {
+      const respuesta = await fetch('/api/notificaciones');
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(datos.error ?? 'No se pudieron cargar las notificaciones.');
+      }
+
+      pintarLista(datos.items ?? []);
+
+      // Abrir el campanario es leer: se marcan todas como leidas.
+      await fetch('/api/notificaciones/leer', { method: 'POST' }).catch(() => {});
+      pintarInsignia(0);
+    } catch {
+      notifLista.textContent = '';
+      const aviso = document.createElement('p');
+      aviso.className = 'px-3 py-8 text-center text-sm text-acento-texto';
+      aviso.textContent = 'No se pudieron cargar las notificaciones.';
+      notifLista.appendChild(aviso);
+    }
+  }
+
+  if (notifTrigger && notifLista) {
+    notifTrigger.addEventListener('click', () => {
+      const abierta = notifTrigger.getAttribute('aria-expanded') === 'true';
+      if (abierta) void cargarNotificaciones();
+    });
+
+    // Al cargar la pagina solo interesa el contador; listar en cada visita
+    // arrastraria todas las notificaciones sin que nadie abriera el panel.
+    fetch('/api/notificaciones?solo=conteo')
+      .then((respuesta) => respuesta.json())
+      .then((datos) => pintarInsignia(typeof datos.unread === 'number' ? datos.unread : 0))
+      .catch(() => {});
   }
 </script>

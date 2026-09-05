@@ -7,6 +7,7 @@ import { deleteCommunity, getCommunityByOwner } from '../../lib/firebase/communi
 import { createTransferRequest } from '../../lib/firebase/transfers';
 import { deleteUserImages } from '../../lib/images';
 import { deleteUserProfile, getDeletionCode, getUidByUsername, getUserProfile } from '../../lib/firebase/users';
+import { deleteNotificationsForUser } from '../../lib/firebase/notifications';
 
 export const DELETE: APIRoute = async ({ request, cookies }) => {
   const user = await getCurrentUser(cookies);
@@ -116,6 +117,7 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
   // cuenta y se quedarian sin imagen.
   await deleteUserImages(user.uid, mode === 'transfer' ? ['avatars'] : ['avatars', 'event-banners']);
 
+  await deleteNotificationsForUser(user.uid);
   await deleteUserProfile(user.uid);
   await getAdminAuth().deleteUser(user.uid);
 

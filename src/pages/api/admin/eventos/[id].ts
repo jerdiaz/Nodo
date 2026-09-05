@@ -3,6 +3,7 @@ import { jsonResponse } from '../../../../lib/api';
 import { getAdminUser } from '../../../../lib/auth';
 import { getAdminDb } from '../../../../lib/firebase/server';
 import { deleteEventWithRsvps } from '../../../../lib/firebase/events';
+import { deleteEventNotifications } from '../../../../lib/firebase/notifications';
 import { deleteOwnedImage } from '../../../../lib/images';
 
 // Borrar cualquier evento, sea de quien sea. Es la diferencia con el DELETE de
@@ -38,6 +39,7 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
   if (organizer.uid) {
     await deleteOwnedImage(data.bannerUrl, 'banner', organizer.uid);
     await deleteOwnedImage(data.bannerSmallUrl, 'banner', organizer.uid);
+    await deleteEventNotifications(organizer.uid, id);
   }
 
   return jsonResponse({ success: true, slug: data.slug ?? id }, 200);

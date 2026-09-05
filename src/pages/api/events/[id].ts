@@ -5,6 +5,7 @@ import { getCurrentUser } from '../../../lib/auth';
 import { validateEventPayload } from '../../../lib/eventValidation';
 import { getCommunityByOwner, toEventCommunity } from '../../../lib/firebase/communities';
 import { deleteEventWithRsvps } from '../../../lib/firebase/events';
+import { deleteEventNotifications } from '../../../lib/firebase/notifications';
 import { getAdminDb } from '../../../lib/firebase/server';
 import { deleteOwnedImage } from '../../../lib/images';
 
@@ -107,6 +108,9 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
   await deleteEventWithRsvps(id);
   await deleteOwnedImage(existingData?.bannerUrl, 'banner', user.uid);
   await deleteOwnedImage(existingData?.bannerSmallUrl, 'banner', user.uid);
+
+  // Las notificaciones que apuntaban a este evento dejan de llevar a algo.
+  await deleteEventNotifications(user.uid, id);
 
   return jsonResponse({ success: true }, 200);
 };
