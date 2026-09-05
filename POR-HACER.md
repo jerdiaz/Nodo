@@ -202,90 +202,102 @@ retirada por Meta.
 
 ---
 
-## 5. Correo transaccional — dominio, Resend y cron
+## 5. Correo transaccional — hecho, salvo el DMARC
 
-**Sin esto no sale ni un correo.** El código ya está desplegado y funcionando:
-la cola encola igual, así que nada se pierde mientras tanto — en cuanto se
-configuren las variables, todo lo acumulado sale en la siguiente pasada del
-cron. Pero hasta entonces nadie recibe confirmación, recordatorio ni aviso de
-cancelación.
+**Funcionando desde el 4 de septiembre de 2026.** Queda un solo registro DNS
+pendiente, al final de esta sección.
 
-Son cuatro pasos y el primero es el que bloquea a los otros tres.
+### Lo que quedó configurado
 
-### 5.1 Un dominio propio
+| | |
+|---|---|
+| Proveedor | [Resend](https://resend.com), cuenta `estebanmanuel600` |
+| Dominio de envío | `nodo.sentralabs.co` (**Verified**) |
+| Región | São Paulo (`sa-east-1`) |
+| DNS | Namecheap, zona de `sentralabs.co` |
+| Remitente | `Nodo <eventos@nodo.sentralabs.co>` |
 
-`nodo-eventos.duckdns.org` **no sirve para enviar correo.** DuckDNS no deja
-crear registros arbitrarios bajo el subdominio, y la verificación de cualquier
-proveedor serio exige un DKIM en `resend._domainkey.<dominio>` y un DMARC en
-`_dmarc.<dominio>`. Ninguno de los dos se puede crear ahí.
+Se envía desde un **subdominio** y no desde `sentralabs.co` para aislar la
+reputación: si la cartelera acaba en listas de spam, no se lleva por delante el
+correo de la empresa.
 
-Hay que registrar un dominio (unos USD 12 al año en Namecheap, Porkbun o
-Cloudflare) o usar un subdominio de uno que Red Global ya controle, con acceso
-al DNS. De paso conviene mudar el sitio entero: `site` en `astro.config.mjs`,
-que es de donde salen los enlaces de los correos.
+### Los registros DNS
 
-### 5.2 Verificar el dominio en Resend
+Resend **no pidió ningún MX**: resuelve el return-path con dos CNAME. Eso
+importa porque significa que no hubo que tocar `MAIL SETTINGS` en Namecheap,
+que sigue en *Email Forwarding* — el correo de `@sentralabs.co` quedó intacto.
+Si alguna guía dice que hace falta cambiar a *Custom MX*, no aplica a esta
+configuración.
 
-1. Crear cuenta en <https://resend.com> y añadir el dominio en *Domains*.
-2. Resend da tres registros DNS (SPF, DKIM y, opcionalmente, DMARC). Copiarlos
-   tal cual en el DNS del dominio.
-3. Esperar a que el estado pase a **Verified**. Suele tardar minutos; puede
-   tardar horas si el TTL del DNS es alto.
-4. Crear una API key en *API Keys*, con permiso de solo enviar.
+| Tipo | Host (relativo a `sentralabs.co`) | Para qué |
+|---|---|---|
+| TXT | `resend._domainkey.nodo` | DKIM, firma los mensajes |
+| CNAME | `send.nodo` | return-path |
+| CNAME | `rsend.nodo` | return-path |
 
-> El plan gratuito da 3.000 correos al mes y 100 al día, de sobra para el
-> volumen actual. El de pago son USD 20 al mes por 50.000.
+El Host va **sin** el dominio al final: Namecheap lo añade solo.
 
-### 5.3 Variables en el VPS
+### Las variables
 
-Añadir a `/opt/nodo/.env`:
+En `/opt/nodo/.env` del VPS, fuera de git:
 
 ```
 RESEND_API_KEY=re_...
-EMAIL_FROM="Nodo <hola@tudominio>"
-EMAIL_REPLY_TO=
+EMAIL_FROM="Nodo <eventos@nodo.sentralabs.co>"
+SYNC_SECRET=...
 ```
 
-`EMAIL_FROM` tiene que usar el dominio verificado en 5.2, o Resend rechaza el
-envío. Reiniciar: `docker compose up -d`.
+`SYNC_SECRET` se generó con `openssl rand -hex 32` y autoriza tanto el cron de
+correo como el de Instagram.
 
-### 5.4 El cron que mueve la cola
+### El cron
 
-`POST /api/correos/despachar` hace dos cosas en cada pasada: encola los
-recordatorios de los eventos que empiezan en las próximas 24 h, y envía lo que
-haya pendiente (incluidos los reintentos de lo que falló antes).
-
-Es idempotente: los ids de la cola son deterministas y lo ya enviado sale de la
-consulta, así que correrlo de más no duplica nada. Cada cuarto de hora está
-bien. En el cron del VPS:
+En el crontab del usuario `ubuntu`, cada quince minutos:
 
 ```bash
-*/15 * * * * curl -s -X POST -H "Authorization: Bearer $SYNC_SECRET" -H "Content-Type: application/json" https://nodo-eventos.duckdns.org/api/correos/despachar > /dev/null
+*/15 * * * * curl -s -X POST -H 'Authorization: Bearer $SYNC_SECRET' -H 'Content-Type: application/json' https://nodo-eventos.duckdns.org/api/correos/despachar > /dev/null
 ```
 
 > **La cabecera `Content-Type: application/json` no es opcional.** Sin ella,
-> Astro trata el POST como envio de formulario, exige que el `Origin` coincida
+> Astro trata el POST como envío de formulario, exige que el `Origin` coincida
 > con el del servidor y responde `Cross-site POST form submissions are
 > forbidden` antes de mirar siquiera el token. Un curl de cron no manda
-> `Origin`, asi que sin la cabecera el endpoint no se ejecuta nunca.
-> Comprobado contra produccion.
+> `Origin`. Comprobado contra producción; el comando de Instagram arrastraba el
+> mismo error.
 
-Usa el mismo `SYNC_SECRET` que ya autoriza la sincronización de Instagram.
+### Cómo quedó verificado
 
-**Sin este cron, las confirmaciones siguen saliendo** (la ruta de asistencia
-dispara el envío en el acto), pero no hay recordatorios y nada se reintenta si
-un envío falla.
+Primera pasada real del despachador:
 
-### Cómo verificar
+```
+{"recordatorios":2,"enviados":2,"reintentar":0,"fallidos":0}
+```
 
-Confirmar asistencia a cualquier evento con una cuenta de prueba. Debe llegar el
-correo con la invitación adjunta, y en Firestore debe aparecer un documento en
-la colección `correos` con `estado: "enviado"`. Si dice `pendiente` con
-`intentos` subiendo, el campo `error` del documento explica por qué.
+Y en la colección `correos` de Firestore, los dos documentos con
+`estado: "enviado"`, `intentos: 1`, su `idResend` y el adjunto
+`invitacion.ics`. O sea: encolar, despachar, aceptación de Resend y registro
+del envío, la cadena entera.
 
-> Las reglas de Firestore no necesitan cambios: `firestore.rules` solo abre
-> `events`, y todo lo demás —incluida la colección `correos`, que lleva las
-> direcciones de la gente— queda denegado por omisión.
+**Lo que todavía no se ha probado en producción:** que la confirmación salga al
+confirmar asistencia (ese camino dispara el envío en el acto, sin esperar al
+cron) y que los correos lleguen a la bandeja de entrada y no a spam. Las dos
+cosas se comprueban confirmando asistencia a un evento y mirando dónde cae.
+
+### Lo único pendiente: el DMARC
+
+Falta un registro. No bloquea el envío, pero conviene ponerlo antes de subir el
+volumen:
+
+| Tipo | Host | Valor |
+|---|---|---|
+| TXT | `_dmarc.nodo` | `v=DMARC1; p=none; rua=mailto:<un buzón que alguien lea>` |
+
+`p=none` solo observa, no rechaza nada, así que no puede empeorar la entrega.
+
+> ⚠️ **No poner una política DMARC estricta (`p=quarantine` o `p=reject`) en el
+> ápice `sentralabs.co`.** El reenvío de correo de Namecheap rompe SPF por
+> diseño, así que una política dura ahí mandaría a spam correo legítimo que hoy
+> llega bien. Por eso el registro va acotado a `_dmarc.nodo`.
 
 ---
 
@@ -313,8 +325,8 @@ antes de la migración porque el proyecto viejo no llegó a tener bucket:
 - Perfil, configuración, nombre de usuario, biografía y enlaces sociales.
 - Suscripción iCal al calendario propio.
 - Asistencias (RSVP) y el calendario.
-- Correos de confirmación, recordatorio y cancelación: el código está listo y la
-  cola encola, pero no envía hasta completar la tarea 5.
+- Correos de confirmación, recordatorio, cambio y cancelación, con la invitación
+  de calendario adjunta.
 - Eliminación de cuenta con transferencia o borrado en cascada.
 - Inicio de sesión con Google.
 
