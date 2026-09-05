@@ -30,6 +30,23 @@ export function formatEventTime(date: Date, timezone?: string): string {
   }).format(date);
 }
 
+// Si dos instantes caen el mismo dia del calendario en la zona del evento.
+//
+// Comparar con getTime() o con toDateString() usaria la zona del servidor, que
+// no es la del evento: a las 11 de la noche en Bogota ya es el dia siguiente en
+// UTC, y el recordatorio diria "manana" de algo que es hoy. El formato en-CA da
+// AAAA-MM-DD, que se compara como texto sin ambiguedad.
+export function esMismoDia(a: Date, b: Date, timezone?: string): boolean {
+  const formato = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: timezone || DEFAULT_TIMEZONE,
+  });
+
+  return formato.format(a) === formato.format(b);
+}
+
 export function formatEventDay(date: Date, timezone?: string): string {
   return new Intl.DateTimeFormat('en', {
     day: 'numeric',

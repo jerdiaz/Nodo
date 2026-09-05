@@ -1,4 +1,4 @@
-import { formatEventDateLong, formatEventTime } from '../format';
+import { esMismoDia, formatEventDateLong, formatEventTime } from '../format';
 
 // Los cuatro correos que manda Nodo. Cada uno se arma con los datos que la cola
 // guardo cuando el correo se encolo, no leyendo el evento en el momento de
@@ -275,16 +275,21 @@ export function componerCorreo(tipo: TipoCorreo, datos: DatosCorreo, sitio: stri
   }
 
   if (tipo === 'recordatorio') {
-    const avance = `Es mañana, ${formatEventTime(inicio, datos.timezone)}${datos.lugar ? `, ${datos.lugar}` : ''}.`;
+    // El barrido cubre de 2 a 24 horas antes, asi que un evento de esta tarde
+    // entra igual que uno de manana. Decirle "manana" a alguien que va hoy es
+    // el tipo de error que hace desconfiar del resto del mensaje.
+    const esHoy = esMismoDia(inicio, new Date(), datos.timezone);
+    const cuando = esHoy ? 'hoy' : 'mañana';
+    const avance = `Es ${cuando}, ${formatEventTime(inicio, datos.timezone)}${datos.lugar ? `, ${datos.lugar}` : ''}.`;
 
     return {
-      asunto: `Mañana: ${datos.tituloEvento}`,
+      asunto: `${esHoy ? 'Hoy' : 'Mañana'}: ${datos.tituloEvento}`,
       html: envoltura(
         avance,
         bloqueBanner(datos) +
           seccion(
             parrafo(saludo) +
-              parrafo('Mañana es tu evento. Este es el recordatorio.') +
+              parrafo(`Tu evento es ${cuando}. Este es el recordatorio.`) +
               titulo(datos.tituloEvento) +
               tarjetaDetalles(datos) +
               botones(datos, sitio),
@@ -294,7 +299,7 @@ export function componerCorreo(tipo: TipoCorreo, datos: DatosCorreo, sitio: stri
       texto: [
         saludo,
         '',
-        'Mañana es tu evento. Este es el recordatorio.',
+        `Tu evento es ${cuando}. Este es el recordatorio.`,
         '',
         ...lineasEvento(datos, sitio),
         '',
