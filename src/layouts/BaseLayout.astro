@@ -11,10 +11,10 @@ interface Props {
   description?: string;
   image?: string;
   type?: 'website' | 'article';
-  /** La pagina trae su propia barra fija abajo. La tarjeta de acceso ocupa
-      exactamente ese sitio, asi que se calla: dos piezas fijas apiladas en el
-      mismo borde no se pueden leer, y la barra de la pagina ya lleva su propia
-      llamada a iniciar sesion, ademas en contexto. */
+  /** La pagina trae su propia barra de acciones fija abajo. Esa barra ya
+      lleva su propia llamada a iniciar sesion, en contexto, asi que la tarjeta
+      de acceso se calla: dos piezas fijas apiladas en el mismo borde no se
+      pueden leer. */
   barraInferior?: boolean;
 }
 
@@ -116,15 +116,6 @@ const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
       <slot />
     </main>
     <Footer />
-
-    {/*
-      Hueco al final para las paginas con barra fija: la barra flota sobre el
-      contenido, asi que sin esto taparia para siempre la ultima franja del
-      pie -el aviso de copyright y sus enlaces- una vez llegado al final.
-      Antes se resolvia escondiendo la barra al ver el pie, pero el pie es
-      alto y la barra acababa desapareciendo a media pagina.
-    */}
-    {barraInferior && <div class="h-24" aria-hidden="true"></div>}
 
     <LoginModal />
     {!haySesion && !barraInferior && <LoginBanner />}

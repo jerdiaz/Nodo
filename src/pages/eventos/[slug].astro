@@ -703,7 +703,7 @@ function textoAsistentes(total: number): string {
   </div>
 
   {recomendados.length > 0 && (
-    <section class="mx-auto max-w-6xl px-6 pb-28">
+    <section class="mx-auto max-w-6xl px-6 pb-8">
       <div class="flex items-end justify-between gap-4">
         <h2 class="text-2xl font-bold tracking-tight text-texto">Te puede interesar</h2>
         <a
@@ -721,17 +721,17 @@ function textoAsistentes(total: number): string {
   )}
 
   {/*
-    La barra de la ficha de Meetup, pero siempre a la vista: no espera a que
-    el boton de la tarjeta se vaya de la pantalla para aparecer (en escritorio
-    la columna es pegajosa, asi que nunca llegaba a salir). Queda fija al
-    borde inferior desde el primer scroll; al llegar al pie, el hueco que
-    BaseLayout reserva con barraInferior hace que se asiente sobre el espacio
-    libre y no tape el aviso de copyright.
+    La barra de la ficha de Meetup, siempre a la vista. Es sticky y no fixed:
+    vive en el flujo como ultimo elemento del contenido, asi que se pega al
+    borde inferior del viewport mientras bajas y, al llegar al final, se
+    asienta justo despues de "Te puede interesar" -arriba del footer- en vez
+    de quedar flotando en una franja por debajo del pie. Al ser un elemento
+    del flujo tampoco tapa nunca al footer.
   */}
   <div
     id="barra-evento"
     data-gen={color}
-    class="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 sm:px-5 sm:pb-4"
+    class="pointer-events-none sticky bottom-0 z-40 px-3 pb-3 sm:px-5 sm:pb-4"
   >
     <div class="pointer-events-auto mx-auto flex max-w-6xl items-center gap-3 rounded-[28px] border border-linea bg-superficie/95 px-4 py-3 shadow-[var(--c-sombra-alta)] backdrop-blur sm:gap-5 sm:px-6">
       <span class="hidden h-10 w-1.5 shrink-0 rounded-full bg-[var(--g)] sm:block" aria-hidden="true"></span>
