@@ -1,0 +1,306 @@
+---
+// Centro de ayuda, al modo del de Meetup: cabecera con buscador, artículos
+// destacados, temas y las preguntas de cada tema.
+//
+// Meetup lo tiene en un sitio aparte, donde cada artículo es una página y cada
+// tema un índice intermedio. Aquí cabe entero en un panel de Configuración, así
+// que los tres niveles se aplanan en uno: los temas son anclas y las preguntas
+// se abren en el sitio. Sin páginas de por medio no hay nada que cargar entre
+// pregunta y respuesta, y quien busca se queda donde estaba.
+//
+// El buscador filtra en el navegador y no contra el servidor: el contenido
+// entero ya viajó con la página —son unos pocos kilobytes de texto— y una
+// petición por letra tecleada para buscar en 27 artículos no se sostiene.
+import { ArrowUpRight, Bell, CalendarPlus, ChevronDown, LifeBuoy, Search, ShieldCheck, Ticket, UserRound, Users } from '@lucide/astro';
+import Button from '../ui/Button.astro';
+import {
+  CATEGORIAS_AYUDA,
+  DESTACADOS_AYUDA,
+  articuloPorId,
+  normalizarAyuda,
+  type ArticuloAyuda,
+  type IconoAyuda,
+} from '../../lib/ayuda';
+
+// El dato de la categoría trae una clave y no el componente del icono: es un
+// .ts, y meter componentes de Astro ahí obligaría a que el archivo de contenido
+// supiera de marcado.
+const ICONOS: Record<IconoAyuda, typeof UserRound> = {
+  cuenta: UserRound,
+  publicar: CalendarPlus,
+  asistir: Ticket,
+  comunidades: Users,
+  avisos: Bell,
+  normas: ShieldCheck,
+};
+
+const destacados = DESTACADOS_AYUDA.map(articuloPorId).filter(
+  (articulo): articulo is ArticuloAyuda => articulo !== undefined,
+);
+
+const totalArticulos = CATEGORIAS_AYUDA.reduce((suma, categoria) => suma + categoria.articulos.length, 0);
+
+// El texto contra el que busca el navegador se prepara aquí, ya normalizado:
+// hacerlo en el cliente obligaría a recorrer el DOM y a limpiar tildes en cada
+// pulsación, y el resultado sería el mismo para un contenido que no cambia.
+function textoDeBusqueda(articulo: ArticuloAyuda): string {
+  return normalizarAyuda([articulo.pregunta, ...articulo.respuesta].join(' '));
+}
+---
+
+<section id="panel-ayuda" class="mt-10 hidden">
+  {/*
+    La cabecera de Meetup: un titular centrado y el campo debajo, sobre una
+    banda de fondo distinto que la separa del resto. Sin botón de buscar,
+    porque aquí el filtrado ocurre mientras se escribe y un botón prometería
+    un paso que no existe.
+  */}
+  <div class="rounded-3xl bg-fondo-alt px-6 py-10 text-center sm:py-12">
+    <h2 class="text-2xl font-bold tracking-tight text-texto sm:text-3xl">¿Cómo podemos ayudarte?</h2>
+
+    <div class="relative mx-auto mt-6 max-w-lg">
+      <Search
+        class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-tenue"
+        stroke-width={2}
+      />
+      <input
+        id="ayuda-buscador"
+        type="search"
+        autocomplete="off"
+        placeholder="Busca tu duda…"
+        aria-label="Buscar en la ayuda"
+        aria-describedby="ayuda-consejo"
+        class="w-full rounded-full bg-superficie py-3 pl-11 pr-4 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus-visible:outline-none focus:ring-2 focus:ring-acento"
+      />
+    </div>
+
+    <p id="ayuda-consejo" class="mx-auto mt-3 max-w-md text-xs text-tenue">
+      Escribe la duda como se la contarías a alguien. Por ejemplo: «no puedo entrar», «cambiar mi
+      nombre de usuario», «cancelar mi asistencia».
+    </p>
+  </div>
+
+  {/*
+    Solo aparece cuando hay algo escrito: sin búsqueda no hay nada que contar.
+
+    Oculto con el atributo `hidden` y no con la clase de Tailwind, aquí y en el
+    estado vacío de más abajo: el script los muestra con `el.hidden = false`, y
+    la clase `hidden` es un display:none que le habría ganado a esa propiedad,
+    dejándolos invisibles para siempre.
+  */}
+  <p id="ayuda-conteo" hidden class="mt-8 text-sm text-suave" role="status" aria-live="polite"></p>
+
+  <div id="ayuda-portada">
+    <section class="mt-8 rounded-3xl border border-linea bg-superficie p-6 shadow-[var(--c-sombra)]">
+      <h3 class="text-lg font-semibold text-texto">Artículos destacados</h3>
+
+      <div class="mt-5 grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+        {destacados.map((articulo) => (
+          <button type="button" data-ir={articulo.id} class="group text-left">
+            <span class="inline-flex items-start gap-1 text-sm font-medium text-acento-texto group-hover:underline">
+              {articulo.pregunta}
+              <ArrowUpRight class="mt-0.5 size-3.5 shrink-0" stroke-width={2} />
+            </span>
+            {/* Sin `block`: line-clamp necesita poner su propio display, y la
+                utilidad de display le ganaria por orden de hoja de estilos. */}
+            <span class="mt-1.5 line-clamp-2 text-sm text-suave">{articulo.respuesta[0]}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+
+    <section class="mt-10">
+      <h3 class="text-lg font-semibold text-texto">Explorar por tema</h3>
+
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        {CATEGORIAS_AYUDA.map((categoria) => {
+          const Icono = ICONOS[categoria.icono];
+
+          return (
+            <a
+              href={`#ayuda-tema-${categoria.id}`}
+              data-gen={categoria.color}
+              class="group flex gap-3 rounded-2xl border border-linea bg-superficie p-4 transition hover:border-[var(--g)]"
+            >
+              <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--g-suave)] text-[var(--g-texto)]">
+                <Icono class="size-4" stroke-width={2} />
+              </span>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-texto">{categoria.nombre}</span>
+                <span class="mt-0.5 block text-sm text-suave">{categoria.descripcion}</span>
+                <span class="mt-1 block text-xs text-tenue">
+                  {categoria.articulos.length} {categoria.articulos.length === 1 ? 'artículo' : 'artículos'}
+                </span>
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  </div>
+
+  <div class="mt-12 space-y-10">
+    {CATEGORIAS_AYUDA.map((categoria) => {
+      const Icono = ICONOS[categoria.icono];
+
+      return (
+        <section id={`ayuda-tema-${categoria.id}`} data-tema data-gen={categoria.color} class="scroll-mt-8">
+          <div class="flex items-center gap-3 border-b border-linea pb-3">
+            <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--g-suave)] text-[var(--g-texto)]">
+              <Icono class="size-4" stroke-width={2} />
+            </span>
+            <h3 class="text-base font-semibold text-texto">{categoria.nombre}</h3>
+          </div>
+
+          <div>
+            {categoria.articulos.map((articulo) => (
+              <details
+                id={`ayuda-articulo-${articulo.id}`}
+                data-articulo
+                data-texto={textoDeBusqueda(articulo)}
+                class="group border-b border-linea-suave last:border-0"
+              >
+                {/*
+                  list-none y el marcador de WebKit ocultos: la flecha la pone
+                  el chevron de la derecha, que sí puede girar al abrirse.
+                */}
+                <summary class="flex cursor-pointer list-none items-start justify-between gap-4 py-4 text-sm font-medium text-texto transition hover:text-[var(--g-texto)] [&::-webkit-details-marker]:hidden">
+                  {articulo.pregunta}
+                  <ChevronDown
+                    class="mt-0.5 size-4 shrink-0 text-suave transition group-open:rotate-180"
+                    stroke-width={2}
+                  />
+                </summary>
+
+                <div class="space-y-3 pb-5 text-sm leading-relaxed text-suave">
+                  {articulo.respuesta.map((parrafo) => <p>{parrafo}</p>)}
+
+                  {articulo.enlace && (
+                    <a
+                      href={articulo.enlace.href}
+                      class="inline-flex items-center gap-1 font-medium text-acento-texto hover:underline"
+                    >
+                      {articulo.enlace.texto}
+                      <ArrowUpRight class="size-3.5" stroke-width={2} />
+                    </a>
+                  )}
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      );
+    })}
+  </div>
+
+  <div id="ayuda-vacio" hidden class="mt-10 rounded-3xl border border-linea bg-superficie p-8 text-center">
+    <p class="text-sm font-medium text-texto">Nada coincide con esa búsqueda.</p>
+    <p class="mx-auto mt-2 max-w-sm text-sm text-suave">
+      Prueba con menos palabras, o escríbenos: si la duda no está aquí, probablemente le falte a esta
+      página.
+    </p>
+  </div>
+
+  {/* El «Submit a request» de Meetup. Nodo no tiene mesa de soporte, así que
+      lleva a los canales de la comunidad en vez de a un formulario. */}
+  <section class="mt-12 rounded-3xl border border-linea bg-fondo-alt p-6 text-center">
+    <LifeBuoy class="mx-auto size-6 text-suave" stroke-width={1.75} />
+    <p class="mt-3 text-base font-semibold text-texto">¿No encuentras lo que buscas?</p>
+    <p class="mx-auto mt-2 max-w-md text-sm text-suave">
+      Estos {totalArticulos} artículos cubren lo que más se pregunta. Para todo lo demás están los canales
+      de Red Global.
+    </p>
+    <Button variant="secondary" href="/contacto" class="mt-5">Escríbenos</Button>
+  </section>
+</section>
+
+<script>
+  import { normalizarAyuda } from '../../lib/ayuda';
+
+  const buscador = document.getElementById('ayuda-buscador') as HTMLInputElement | null;
+
+  // El panel solo existe para quien tiene sesión, igual que el resto de
+  // Configuración: sin él, no hay nada que enganchar.
+  if (buscador) {
+    const portada = document.getElementById('ayuda-portada') as HTMLElement;
+    const conteo = document.getElementById('ayuda-conteo') as HTMLElement;
+    const vacio = document.getElementById('ayuda-vacio') as HTMLElement;
+    const temas = [...document.querySelectorAll<HTMLElement>('[data-tema]')];
+    const articulos = [...document.querySelectorAll<HTMLDetailsElement>('[data-articulo]')];
+
+    function filtrar(termino: string): void {
+      const query = normalizarAyuda(termino.trim());
+
+      // Sin búsqueda se vuelve al estado de partida: portada visible y todo
+      // cerrado. Cerrar también lo que hubiera abierto antes de escribir es a
+      // propósito: deja el panel como se encontró, en vez de con respuestas
+      // desplegadas que ya no vienen de ninguna parte.
+      if (!query) {
+        articulos.forEach((articulo) => {
+          articulo.hidden = false;
+          articulo.open = false;
+        });
+        temas.forEach((tema) => (tema.hidden = false));
+        portada.hidden = false;
+        conteo.hidden = true;
+        vacio.hidden = true;
+        return;
+      }
+
+      let encontrados = 0;
+
+      articulos.forEach((articulo) => {
+        const coincide = (articulo.dataset.texto ?? '').includes(query);
+        articulo.hidden = !coincide;
+        // Abiertos: quien buscó ya dijo qué quería leer, y obligarle a un clic
+        // más por resultado no aporta nada.
+        articulo.open = coincide;
+        if (coincide) {
+          encontrados += 1;
+        }
+      });
+
+      // Un tema sin ninguna coincidencia se va entero, con su encabezado: si no,
+      // quedarían títulos sueltos sin nada debajo.
+      temas.forEach((tema) => {
+        tema.hidden = ![...tema.querySelectorAll<HTMLDetailsElement>('[data-articulo]')].some(
+          (articulo) => !articulo.hidden,
+        );
+      });
+
+      portada.hidden = true;
+      vacio.hidden = encontrados > 0;
+      conteo.hidden = false;
+      conteo.textContent =
+        encontrados === 0
+          ? `Sin resultados para «${termino.trim()}»`
+          : `${encontrados} ${encontrados === 1 ? 'resultado' : 'resultados'} para «${termino.trim()}»`;
+    }
+
+    buscador.addEventListener('input', () => filtrar(buscador.value));
+
+    // Escape limpia, que es lo que hace el aspa nativa del type="search" y lo
+    // que se espera de un campo de búsqueda.
+    buscador.addEventListener('keydown', (evento) => {
+      if (evento.key === 'Escape') {
+        buscador.value = '';
+        filtrar('');
+      }
+    });
+
+    // Un destacado no lleva a otra página: abre su artículo más abajo y lo
+    // acerca. Es el mismo destino que el enlace de Meetup, sin la carga.
+    document.querySelectorAll<HTMLButtonElement>('[data-ir]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const destino = document.getElementById(`ayuda-articulo-${boton.dataset.ir}`) as HTMLDetailsElement | null;
+
+        if (!destino) {
+          return;
+        }
+
+        destino.open = true;
+        destino.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+  }
+</script>

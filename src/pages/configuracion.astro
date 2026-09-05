@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Button from '../components/ui/Button.astro';
+import PanelAyuda from '../components/common/PanelAyuda.astro';
 import { getCurrentUser } from '../lib/auth';
 import ImageCropper from '../components/ui/ImageCropper.astro';
 import { getUserProfile } from '../lib/firebase/users';
@@ -88,8 +89,19 @@ const inputClass =
         >
           Preferencias
         </button>
+        <button
+          type="button"
+          role="tab"
+          data-tab="ayuda"
+          aria-selected="false"
+          class="tab border-b-2 pb-3 text-sm font-medium transition"
+        >
+          Ayuda
+        </button>
       </div>
     </div>
+
+    <PanelAyuda />
 
     <section id="panel-preferencias" class="mt-10 hidden">
       <h2 class="text-lg font-semibold text-texto">Apariencia</h2>
@@ -459,6 +471,7 @@ const inputClass =
   const paneles: Record<string, HTMLElement | null> = {
     cuenta: document.getElementById('panel-cuenta'),
     preferencias: document.getElementById('panel-preferencias'),
+    ayuda: document.getElementById('panel-ayuda'),
   };
 
   function abrirPestana(nombre: string): void {
@@ -474,7 +487,16 @@ const inputClass =
   }
 
   tabs.forEach((t) => t.addEventListener('click', () => abrirPestana(t.dataset.tab ?? 'cuenta')));
-  abrirPestana('cuenta');
+
+  // ?panel=ayuda abre directamente esa pestana. Hace falta para poder enlazar
+  // la ayuda desde fuera: sin esto, la unica forma de llegar seria entrar a
+  // Configuracion y pulsar. Se comprueba contra los paneles que existen, para
+  // que un valor inventado en la URL no deje la pagina sin ninguno visible.
+  // hasOwn y no `in`: `in` tambien encuentra lo que se hereda del prototipo,
+  // asi que ?panel=toString habria pasado la comprobacion y dejado la pagina
+  // sin ningun panel visible.
+  const pedido = new URLSearchParams(window.location.search).get('panel') ?? '';
+  abrirPestana(Object.hasOwn(paneles, pedido) ? pedido : 'cuenta');
 
   // --- Tema ---
   // "sistema" no se guarda como tema resuelto sino como ausencia de eleccion:
