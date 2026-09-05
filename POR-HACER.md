@@ -199,6 +199,87 @@ retirada por Meta.
 
 ---
 
+## 5. Correo transaccional — dominio, Resend y cron
+
+**Sin esto no sale ni un correo.** El código ya está desplegado y funcionando:
+la cola encola igual, así que nada se pierde mientras tanto — en cuanto se
+configuren las variables, todo lo acumulado sale en la siguiente pasada del
+cron. Pero hasta entonces nadie recibe confirmación, recordatorio ni aviso de
+cancelación.
+
+Son cuatro pasos y el primero es el que bloquea a los otros tres.
+
+### 5.1 Un dominio propio
+
+`nodo-eventos.duckdns.org` **no sirve para enviar correo.** DuckDNS no deja
+crear registros arbitrarios bajo el subdominio, y la verificación de cualquier
+proveedor serio exige un DKIM en `resend._domainkey.<dominio>` y un DMARC en
+`_dmarc.<dominio>`. Ninguno de los dos se puede crear ahí.
+
+Hay que registrar un dominio (unos USD 12 al año en Namecheap, Porkbun o
+Cloudflare) o usar un subdominio de uno que Red Global ya controle, con acceso
+al DNS. De paso conviene mudar el sitio entero: `site` en `astro.config.mjs`,
+que es de donde salen los enlaces de los correos.
+
+### 5.2 Verificar el dominio en Resend
+
+1. Crear cuenta en <https://resend.com> y añadir el dominio en *Domains*.
+2. Resend da tres registros DNS (SPF, DKIM y, opcionalmente, DMARC). Copiarlos
+   tal cual en el DNS del dominio.
+3. Esperar a que el estado pase a **Verified**. Suele tardar minutos; puede
+   tardar horas si el TTL del DNS es alto.
+4. Crear una API key en *API Keys*, con permiso de solo enviar.
+
+> El plan gratuito da 3.000 correos al mes y 100 al día, de sobra para el
+> volumen actual. El de pago son USD 20 al mes por 50.000.
+
+### 5.3 Variables en el VPS
+
+Añadir a `/opt/nodo/.env`:
+
+```
+RESEND_API_KEY=re_...
+EMAIL_FROM="Nodo <hola@tudominio>"
+EMAIL_REPLY_TO=
+```
+
+`EMAIL_FROM` tiene que usar el dominio verificado en 5.2, o Resend rechaza el
+envío. Reiniciar: `docker compose up -d`.
+
+### 5.4 El cron que mueve la cola
+
+`POST /api/correos/despachar` hace dos cosas en cada pasada: encola los
+recordatorios de los eventos que empiezan en las próximas 24 h, y envía lo que
+haya pendiente (incluidos los reintentos de lo que falló antes).
+
+Es idempotente: los ids de la cola son deterministas y lo ya enviado sale de la
+consulta, así que correrlo de más no duplica nada. Cada cuarto de hora está
+bien. En el cron del VPS:
+
+```bash
+*/15 * * * * curl -s -X POST -H "Authorization: Bearer $SYNC_SECRET" \
+  https://tudominio/api/correos/despachar > /dev/null
+```
+
+Usa el mismo `SYNC_SECRET` que ya autoriza la sincronización de Instagram.
+
+**Sin este cron, las confirmaciones siguen saliendo** (la ruta de asistencia
+dispara el envío en el acto), pero no hay recordatorios y nada se reintenta si
+un envío falla.
+
+### Cómo verificar
+
+Confirmar asistencia a cualquier evento con una cuenta de prueba. Debe llegar el
+correo con la invitación adjunta, y en Firestore debe aparecer un documento en
+la colección `correos` con `estado: "enviado"`. Si dice `pendiente` con
+`intentos` subiendo, el campo `error` del documento explica por qué.
+
+> Las reglas de Firestore no necesitan cambios: `firestore.rules` solo abre
+> `events`, y todo lo demás —incluida la colección `correos`, que lleva las
+> direcciones de la gente— queda denegado por omisión.
+
+---
+
 ## Pendiente de decisión (no es una tarea)
 
 Las reglas de Firestore (`firestore.rules`) permiten hoy que **cualquier usuario
@@ -223,6 +304,8 @@ antes de la migración porque el proyecto viejo no llegó a tener bucket:
 - Perfil, configuración, nombre de usuario, biografía y enlaces sociales.
 - Suscripción iCal al calendario propio.
 - Asistencias (RSVP) y el calendario.
+- Correos de confirmación, recordatorio y cancelación: el código está listo y la
+  cola encola, pero no envía hasta completar la tarea 5.
 - Eliminación de cuenta con transferencia o borrado en cascada.
 - Inicio de sesión con Google.
 

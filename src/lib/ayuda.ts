@@ -302,8 +302,33 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         id: 'que-notifica',
         pregunta: 'Qué avisos me manda Nodo',
         respuesta: [
-          'Hoy uno: cuando alguien confirma asistencia a un evento tuyo, te queda un aviso dentro de Nodo. Si esa persona cancela, el aviso desaparece.',
-          'No se envían correos ni notificaciones al teléfono, y no hay nada que desactivar. Los avisos se leen desde la campana de la cabecera.',
+          'Dentro de Nodo, uno: cuando alguien confirma asistencia a un evento tuyo, te queda un aviso en la campana de la cabecera. Si esa persona cancela, el aviso desaparece.',
+          'Por correo, tres: la confirmación cuando dices que vas a un evento, un recordatorio el día antes, y un aviso si quien organiza cambia la fecha o el lugar, o si cancela el evento.',
+          'No hay notificaciones al teléfono.',
+        ],
+      },
+      {
+        id: 'correo-confirmacion',
+        pregunta: 'Confirmé mi asistencia y no me llegó el correo',
+        respuesta: [
+          'El correo sale a la dirección de la cuenta con la que entraste, no a otra: si entraste con Google, llega a tu Gmail. Mira también en spam y en la pestaña de Promociones, que es donde suelen caer los primeros correos de un remitente nuevo.',
+          'Tu asistencia queda confirmada aunque el correo no llegue: lo que vale es lo que muestra la página del evento. Si ahí dice que vas, tienes tu lugar.',
+        ],
+      },
+      {
+        id: 'agregar-al-calendario',
+        pregunta: 'Cómo agrego el evento a mi calendario desde el correo',
+        respuesta: [
+          'El correo de confirmación lleva la invitación adjunta. En Gmail aparece un recuadro con el evento y un botón para agregarlo; en Apple Mail y Outlook basta con abrir el archivo adjunto.',
+          'Si después cambia la fecha o el lugar, el aviso de cambio trae una invitación nueva que reemplaza a la anterior en tu calendario en vez de duplicarla. Y si el evento se cancela, se quita solo.',
+        ],
+      },
+      {
+        id: 'dejar-de-recibir-correos',
+        pregunta: 'Cómo dejo de recibir correos de Nodo',
+        respuesta: [
+          'En la pestaña Preferencias, en «Correos», apagas los recordatorios y los avisos de cambio. El cambio vale desde ese momento y para todos tus eventos.',
+          'La confirmación de asistencia no se puede apagar: es el comprobante de algo que acabas de hacer, como el recibo de una compra. Si no quieres recibir ninguno, la vía es no confirmar asistencia.',
         ],
       },
       {
