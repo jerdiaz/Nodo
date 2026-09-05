@@ -5,6 +5,9 @@ import { getCurrentUser } from '../../../../lib/auth';
 import { getAdminDb } from '../../../../lib/firebase/server';
 import { AFORO_COMPLETO, clearRsvp, setRsvp } from '../../../../lib/firebase/rsvps';
 import { addRsvpNotification, removeRsvpNotification } from '../../../../lib/firebase/notifications';
+import { mapDocToEvent } from '../../../../lib/firebase/events';
+import { despacharCorreo, encolarCorreos, enSegundoPlano } from '../../../../lib/email/cola';
+import { getUserProfile } from '../../../../lib/firebase/users';
 
 function toDate(value: unknown): Date | null {
   if (value instanceof Timestamp) {
@@ -56,6 +59,37 @@ export const POST: APIRoute = async ({ params, cookies }) => {
         eventId: id,
         eventTitle: typeof data.title === 'string' ? data.title : 'un evento',
       });
+    }
+
+    // La confirmacion por correo, encolada y disparada sin esperarla. Va en su
+    // propio try/catch y despues de responder porque la asistencia ya esta
+    // guardada: un fallo del correo no puede convertir un RSVP correcto en un
+    // error para quien acaba de pulsar el boton.
+    //
+    // `result.creado` es la misma guarda que usa la notificacion de arriba: un
+    // POST repetido no vuelve a confirmar, asi que tampoco vuelve a escribir.
+    if (result.creado && user.email) {
+      try {
+        const perfil = await getUserProfile(user.uid).catch(() => null);
+
+        const [correoId] = await encolarCorreos({
+          evento: mapDocToEvent(event),
+          tipo: 'confirmacion',
+          destinatarios: [
+            {
+              uid: user.uid,
+              correo: user.email,
+              nombre: perfil?.firstName ?? user.name.split(' ')[0] ?? '',
+            },
+          ],
+        });
+
+        if (correoId) {
+          enSegundoPlano(despacharCorreo(correoId));
+        }
+      } catch (error) {
+        console.warn('No se pudo encolar la confirmación de asistencia:', error);
+      }
     }
 
     return jsonResponse({ attending: result.attending, count: result.count }, 200);
