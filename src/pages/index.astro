@@ -141,10 +141,10 @@ const categorias = [
 // en el HTML para que el navegador reserve el hueco con la proporcion correcta
 // y el texto no salte cuando cargan.
 const collage = [
-  { src: '/banner/comida.webp', ancho: 700, alto: 533, lado: 'izquierda', sitio: 'left-0 top-0 w-[240px] -rotate-3' },
-  { src: '/banner/arte.webp', ancho: 700, alto: 694, lado: 'izquierda', sitio: 'right-0 bottom-2 w-[250px] rotate-4' },
-  { src: '/banner/fiesta.webp', ancho: 700, alto: 592, lado: 'derecha', sitio: 'right-0 top-0 w-[240px] rotate-3' },
-  { src: '/banner/tecnologia.webp', ancho: 700, alto: 581, lado: 'derecha', sitio: 'left-0 bottom-2 w-[250px] -rotate-4' },
+  { src: '/banner/comida.webp', ancho: 700, alto: 533, lado: 'izquierda', sitio: 'left-0 top-0 w-[200px] -rotate-3' },
+  { src: '/banner/arte.webp', ancho: 700, alto: 694, lado: 'izquierda', sitio: 'right-0 bottom-2 w-[210px] rotate-4' },
+  { src: '/banner/fiesta.webp', ancho: 700, alto: 592, lado: 'derecha', sitio: 'right-0 top-0 w-[200px] rotate-3' },
+  { src: '/banner/tecnologia.webp', ancho: 700, alto: 581, lado: 'derecha', sitio: 'left-0 bottom-2 w-[210px] -rotate-4' },
 ];
 
 // Iconos sueltos alrededor del titular. El titular ocupa tres lineas de
@@ -304,19 +304,21 @@ if (MOSTRAR_PUBLICACIONES) {
       esquinas y con un hueco creciente en el medio segun se ensancha la
       pantalla.
 
-      El umbral es 1380 y no un breakpoint redondo porque es la cuenta exacta:
-      680 de texto mas dos columnas de 310 con 20px de aire cada una. Por
-      debajo no caben sin invadir el titular.
+      El umbral es 1280 y no un breakpoint redondo porque es la cuenta exacta:
+      680 de texto mas dos columnas de 260 con 20px de aire cada una. Por
+      debajo no caben sin invadir el titular. Las columnas -y las imagenes
+      que llevan dentro- se achicaron desde los 310/250px originales para
+      que la cuenta cerrara a este ancho: a 1380 sobraba aire de mas.
     */}
     <div
-      class="pointer-events-none absolute inset-x-0 top-10 mx-auto hidden h-[450px] w-[680px] min-[1380px]:block"
+      class="pointer-events-none absolute inset-x-0 top-10 mx-auto hidden h-[450px] w-[680px] min-[1280px]:block"
       aria-hidden="true"
     >
       {['izquierda', 'derecha'].map((lado) => (
         <div
           class:list={[
-            'absolute top-0 h-full w-[310px]',
-            lado === 'izquierda' ? '-left-[330px]' : '-right-[330px]',
+            'absolute top-0 h-full w-[260px]',
+            lado === 'izquierda' ? '-left-[280px]' : '-right-[280px]',
           ]}
         >
           {collage
@@ -412,7 +414,7 @@ if (MOSTRAR_PUBLICACIONES) {
         resuelve lo mismo bajando una pieza del collage debajo del boton; aqui
         van dos, que es lo que llena el ancho sin obligar a hacer scroll de mas.
       */}
-      <div class="mt-12 flex items-start justify-center gap-6 min-[1380px]:hidden">
+      <div class="mt-12 flex items-start justify-center gap-6 min-[1280px]:hidden">
         {collage.slice(0, 2).map((pieza, indice) => (
           <img
             src={pieza.src}
