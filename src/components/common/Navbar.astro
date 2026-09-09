@@ -158,118 +158,135 @@ const enResultados =
     </a>
 
     {/*
-      En movil, todo lo que no es logotipo ni buscador se recoge aqui: los
-      enlaces no caben en 375px junto a la pastilla, y repartirlos entre la
-      cabecera y el pie obligaba a recordar cual esta donde.
-
-      Va en toda pagina por debajo de lg, portada incluida: antes solo salia
-      en el listado (enResultados), y la portada entre 768-1023px se quedaba
-      sin forma de llegar a Comunidades ni a Publicar evento, ni por aqui ni
-      por la lista de enlaces (linea 139), oculta hasta lg en toda pagina.
+      Junto a la campana y el avatar, no en medio de los enlaces: son las dos
+      acciones de "abrir un menu" de la cabecera y van agrupadas. El avatar ya
+      trae Ver perfil/Configuracion/Cerrar sesion, asi que esta hamburguesa
+      solo repite esas opciones cuando el avatar esta oculto (listado movil,
+      mas abajo) — en la portada seria un menu duplicado sin sentido.
     */}
-    <div class="relative shrink-0 lg:hidden" data-menu>
-      <button
-        id="nodo-menu-trigger"
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded="false"
-        aria-label="Abrir menu"
-        class="flex size-11 items-center justify-center rounded-full text-texto transition active:scale-[0.95] hover:bg-fondo-alt"
-      >
-        <Menu class="size-5" stroke-width={2} />
-      </button>
-
-      <div
-        id="nodo-menu-panel"
-        role="menu"
-        aria-labelledby="nodo-menu-trigger"
-        class="absolute right-0 top-full z-50 mt-2 hidden w-60 overflow-hidden rounded-2xl border border-linea bg-superficie p-2 shadow-[var(--c-sombra)]"
-      >
-        <a
-          href="/"
-          role="menuitem"
-          class="block rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+    <div class="ml-auto flex shrink-0 items-center gap-3 lg:ml-0">
+      {/*
+        En movil, los enlaces del sitio que no caben junto a la pastilla se
+        recogen aqui. Va en toda pagina por debajo de lg, portada incluida:
+        antes solo salia en el listado (enResultados), y la portada entre
+        768-1023px se quedaba sin forma de llegar a Comunidades ni a Publicar
+        evento, ni por aqui ni por la lista de enlaces (linea 139).
+      */}
+      <div class="relative shrink-0 lg:hidden" data-menu>
+        <button
+          id="nodo-menu-trigger"
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-label="Abrir menu"
+          class="flex size-11 items-center justify-center rounded-full text-texto transition active:scale-[0.95] hover:bg-fondo-alt"
         >
-          Explorar
-        </a>
-        {links.map((link) => (
+          <Menu class="size-5" stroke-width={2} />
+        </button>
+
+        <div
+          id="nodo-menu-panel"
+          role="menu"
+          aria-labelledby="nodo-menu-trigger"
+          class="absolute right-0 top-full z-50 mt-2 hidden w-60 overflow-hidden rounded-2xl border border-linea bg-superficie p-2 shadow-[var(--c-sombra)]"
+        >
           <a
-            href={link.href}
+            href="/"
             role="menuitem"
             class="block rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
           >
-            {link.label}
+            Explorar
           </a>
-        ))}
-
-        <div class="my-2 h-px bg-linea"></div>
-
-        <a
-          href="/eventos/nuevo"
-          role="menuitem"
-          class="flex items-center gap-2 rounded-xl bg-cta hover:bg-cta-hover px-3 py-2.5 text-sm font-semibold text-cta-contraste transition active:scale-[0.98] hover:opacity-90"
-        >
-          <Plus class="size-4" stroke-width={2.5} />
-          Publicar evento
-        </a>
-
-        {user ? (
-          <>
+          {/* Calendario no se repite: ya esta siempre visible en la cabecera. */}
+          {links.filter((link) => link.href !== '/calendario').map((link) => (
             <a
-              href="/perfil"
+              href={link.href}
               role="menuitem"
-              class="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+              class="block rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
             >
-              <User class="size-4 shrink-0" stroke-width={1.75} />
-              Ver perfil
+              {link.label}
             </a>
-            <a
-              href="/configuracion"
-              role="menuitem"
-              class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
-            >
-              <Settings class="size-4 shrink-0" stroke-width={1.75} />
-              Configuración
-            </a>
-            {user.isAdmin && (
-              <a
-                href="/admin"
-                role="menuitem"
-                class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
-              >
-                <ShieldCheck class="size-4 shrink-0" stroke-width={1.75} />
-                Administración
-              </a>
-            )}
-            <button
-              id="nodo-logout-movil"
-              type="button"
-              role="menuitem"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-texto transition hover:bg-fondo-alt disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <LogOut class="size-4 shrink-0" stroke-width={1.75} />
-              Cerrar sesión
-            </button>
-          </>
-        ) : (
-          <button
-            id="nodo-entrar-movil"
-            type="button"
+          ))}
+
+          <div class="my-2 h-px bg-linea"></div>
+
+          <a
+            href="/eventos/nuevo"
             role="menuitem"
-            class="mt-1 w-full rounded-xl border border-linea px-3 py-2.5 text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento"
+            class="flex items-center gap-2 rounded-xl bg-cta hover:bg-cta-hover px-3 py-2.5 text-sm font-semibold text-cta-contraste transition active:scale-[0.98] hover:opacity-90"
           >
-            Iniciar sesión
-          </button>
-        )}
-      </div>
-    </div>
+            <Plus class="size-4" stroke-width={2.5} />
+            Publicar evento
+          </a>
 
-    <div
-      class:list={[
-        'ml-auto shrink-0 items-center gap-3 lg:ml-0 lg:flex',
-        enResultados ? 'hidden' : 'flex',
-      ]}
-    >
+          {/*
+            El avatar (con Ver perfil/Configuracion/Cerrar sesion) esta oculto
+            en movil mientras enResultados, asi que solo entonces esta
+            hamburguesa es la unica via y repite esas opciones. Fuera de ahi
+            el avatar ya esta visible al lado y no hace falta duplicarlas.
+          */}
+          {enResultados && (
+            <>
+              <div class="my-2 h-px bg-linea"></div>
+              {user ? (
+                <>
+                  <a
+                    href="/perfil"
+                    role="menuitem"
+                    class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+                  >
+                    <User class="size-4 shrink-0" stroke-width={1.75} />
+                    Ver perfil
+                  </a>
+                  <a
+                    href="/configuracion"
+                    role="menuitem"
+                    class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+                  >
+                    <Settings class="size-4 shrink-0" stroke-width={1.75} />
+                    Configuración
+                  </a>
+                  {user.isAdmin && (
+                    <a
+                      href="/admin"
+                      role="menuitem"
+                      class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-texto transition hover:bg-fondo-alt"
+                    >
+                      <ShieldCheck class="size-4 shrink-0" stroke-width={1.75} />
+                      Administración
+                    </a>
+                  )}
+                  <button
+                    id="nodo-logout-movil"
+                    type="button"
+                    role="menuitem"
+                    class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-texto transition hover:bg-fondo-alt disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <LogOut class="size-4 shrink-0" stroke-width={1.75} />
+                    Cerrar sesión
+                  </button>
+                </>
+              ) : (
+                <button
+                  id="nodo-entrar-movil"
+                  type="button"
+                  role="menuitem"
+                  class="w-full rounded-xl border border-linea px-3 py-2.5 text-sm font-semibold text-texto transition active:scale-[0.98] hover:border-acento"
+                >
+                  Iniciar sesión
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div
+        class:list={[
+          'shrink-0 items-center gap-3 lg:flex',
+          enResultados ? 'hidden' : 'flex',
+        ]}
+      >
       {user ? (
         <>
           {/*
@@ -431,6 +448,7 @@ const enResultados =
           </div>
         </div>
       )}
+      </div>
     </div>
   </nav>
 </header>
