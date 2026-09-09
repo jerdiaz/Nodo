@@ -19,8 +19,9 @@ const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
 
 // La cabecera cambia de forma en movil segun se este en la portada o en el
 // listado de resultados, como hace Meetup: la portada se queda en logotipo,
-// Calendario y sesion, y el listado saca el buscador y recoge lo demas en la
-// hamburguesa, que es donde uno esta afinando una busqueda.
+// Calendario, sesion y la hamburguesa (que recoge Comunidades y Publicar
+// evento); el listado ademas saca el buscador, que en la hamburguesa no
+// cabria junto a lo que ya lleva.
 //
 // La condicion es la misma que decide la vista en index.astro: el listado
 // pedido a mano, modalidad, busqueda o pasados. La ciudad no cuenta, porque
@@ -160,8 +161,13 @@ const enResultados =
       En movil, todo lo que no es logotipo ni buscador se recoge aqui: los
       enlaces no caben en 375px junto a la pastilla, y repartirlos entre la
       cabecera y el pie obligaba a recordar cual esta donde.
+
+      Va en toda pagina por debajo de lg, portada incluida: antes solo salia
+      en el listado (enResultados), y la portada entre 768-1023px se quedaba
+      sin forma de llegar a Comunidades ni a Publicar evento, ni por aqui ni
+      por la lista de enlaces (linea 139), oculta hasta lg en toda pagina.
     */}
-    <div class:list={['relative shrink-0 lg:hidden', enResultados ? '' : 'hidden']} data-menu>
+    <div class="relative shrink-0 lg:hidden" data-menu>
       <button
         id="nodo-menu-trigger"
         type="button"
