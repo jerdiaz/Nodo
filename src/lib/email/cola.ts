@@ -187,7 +187,7 @@ function invitacionPara(
   const ics = buildIcsInvitation({
     event: evento,
     correoAsistente: destinatario.correo,
-    // Como ORGANIZER va la direccion de Nodo y no la de quien organiza: el
+    // Como ORGANIZER va la direccion de Innvita y no la de quien organiza: el
     // ORGANIZER de un .ics es visible para todos los invitados, y el correo
     // personal de quien publica un evento no tiene por que serlo.
     correoOrganizador: remitente,
@@ -320,7 +320,7 @@ export async function encolarRecordatorios(): Promise<number> {
 
     // El aviso de la campana va a TODOS los que asisten, sin pasar por el
     // interruptor de avisos: ese apaga lo que llega al correo, no lo que se ve
-    // dentro de Nodo. Y va en su propio try para que un fallo escribiendo
+    // dentro de Innvita. Y va en su propio try para que un fallo escribiendo
     // avisos no impida que salgan los correos.
     try {
       await Promise.all(

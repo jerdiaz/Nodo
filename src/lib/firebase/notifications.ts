@@ -77,7 +77,7 @@ export async function addRsvpNotification(input: {
 // duplica el aviso.
 //
 // A diferencia del correo, este no obedece el interruptor de avisos: ese
-// interruptor apaga lo que llega a tu bandeja, no lo que ves dentro de Nodo.
+// interruptor apaga lo que llega a tu bandeja, no lo que ves dentro de Innvita.
 export async function addReminderNotification(input: {
   toUid: string;
   eventId: string;

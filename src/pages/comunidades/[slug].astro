@@ -44,7 +44,7 @@ const miembros = await getMemberCount(community.id).catch(() => 0);
 const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => false) : false;
 ---
 
-<BaseLayout title={`${community.name} — Nodo`} description={community.description ?? `Comunidad ${community.name} en Nodo.`}>
+<BaseLayout title={`${community.name} — Innvita`} description={community.description ?? `Comunidad ${community.name} en Innvita.`}>
   <div class="mx-auto max-w-[1200px] px-6 pb-24 pt-12">
     <header class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
       <div class="flex min-w-0 items-start gap-5">

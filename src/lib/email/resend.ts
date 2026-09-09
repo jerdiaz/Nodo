@@ -33,7 +33,7 @@ export function correoConfigurado(): boolean {
 }
 
 // Solo la direccion, sin el nombre visible. EMAIL_FROM se escribe como
-// `Nodo <hola@dominio>` porque es lo que hace que el correo llegue firmado con
+// `Innvita <hola@dominio>` porque es lo que hace que el correo llegue firmado con
 // un nombre y no con una direccion pelada, pero el ORGANIZER de un .ics tiene
 // que ser un `mailto:` limpio.
 export function direccionRemitente(): string | undefined {

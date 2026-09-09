@@ -61,7 +61,7 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         id: 'no-puedo-entrar',
         pregunta: 'No puedo entrar a mi cuenta',
         respuesta: [
-          'Nodo no usa contraseñas: se entra con tu cuenta de Google o de Microsoft, y es ese proveedor quien confirma que eres tú. Si el acceso falla, casi siempre es una de tres cosas: el navegador bloqueó la ventana emergente del proveedor, cerraste esa ventana antes de terminar, o estás eligiendo una cuenta distinta de la que usaste la primera vez.',
+          'Innvita no usa contraseñas: se entra con tu cuenta de Google o de Microsoft, y es ese proveedor quien confirma que eres tú. Si el acceso falla, casi siempre es una de tres cosas: el navegador bloqueó la ventana emergente del proveedor, cerraste esa ventana antes de terminar, o estás eligiendo una cuenta distinta de la que usaste la primera vez.',
           'Permite las ventanas emergentes para este sitio e inténtalo de nuevo. Si entraste con Google la primera vez, tu perfil, tus eventos y tus asistencias están atados a esa cuenta: con otra distinta entrarás a un perfil vacío, no al tuyo.',
         ],
       },
@@ -86,7 +86,7 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         id: 'nombre-de-usuario',
         pregunta: 'Para qué sirve el nombre de usuario',
         respuesta: [
-          'Es tu dirección pública en Nodo: con @tunombre, tu perfil queda en nodo.../u/tunombre y puedes compartirlo como cualquier enlace.',
+          'Es tu dirección pública en Innvita: con @tunombre, tu perfil queda en innvita.../u/tunombre y puedes compartirlo como cualquier enlace.',
           'Admite entre 3 y 30 caracteres: letras, números, punto, guion o guion bajo, sin empezar ni terminar en símbolo. Es único, así que si el que quieres ya está tomado el formulario te lo dice antes de guardar.',
         ],
       },
@@ -102,8 +102,8 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         id: 'palomita-verificacion',
         pregunta: 'Qué significa la palomita junto a un nombre',
         respuesta: [
-          'Hay dos, con el mismo símbolo y criterios distintos. "Identidad confirmada" dice que esa persona es quien dice ser. "Comunidad oficial" dice que ese colectivo está reconocido por Nodo.',
-          'No se solicita desde el formulario ni se puede activar uno mismo: la concede el equipo de Nodo, y puede retirarla.',
+          'Hay dos, con el mismo símbolo y criterios distintos. "Identidad confirmada" dice que esa persona es quien dice ser. "Comunidad oficial" dice que ese colectivo está reconocido por Innvita.',
+          'No se solicita desde el formulario ni se puede activar uno mismo: la concede el equipo de Innvita, y puede retirarla.',
         ],
       },
       {
@@ -161,7 +161,7 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         id: 'precio-aforo',
         pregunta: 'Cómo funcionan el precio y el aforo',
         respuesta: [
-          'Un evento sin precio es gratis: no hay que escribir un cero. Si le pones precio, eliges también la moneda entre peso colombiano, dólar y euro. Nodo no cobra ni procesa pagos: el precio es informativo y el cobro lo gestionas tú por fuera.',
+          'Un evento sin precio es gratis: no hay que escribir un cero. Si le pones precio, eliges también la moneda entre peso colombiano, dólar y euro. Innvita no cobra ni procesa pagos: el precio es informativo y el cobro lo gestionas tú por fuera.',
           'Un evento sin aforo no tiene límite de asistentes. Si le pones uno, deja de admitir confirmaciones al llenarse, y el límite se comprueba en el momento exacto de confirmar: dos personas que pulsen a la vez sobre el último lugar no pueden entrar las dos.',
         ],
       },
@@ -210,7 +210,7 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         id: 'aforo-lleno',
         pregunta: 'El evento dice que está lleno',
         respuesta: [
-          'Se alcanzó el aforo que puso quien organiza. Nodo no guarda cupo ni mantiene lista de espera: los lugares se ocupan por orden de llegada.',
+          'Se alcanzó el aforo que puso quien organiza. Innvita no guarda cupo ni mantiene lista de espera: los lugares se ocupan por orden de llegada.',
           'Puede liberarse si alguien cancela, así que vale la pena volver a mirar. Si el evento te importa mucho, escríbele a quien lo organiza desde su perfil.',
         ],
       },
@@ -277,7 +277,7 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
   {
     id: 'avisos',
     nombre: 'Calendario y avisos',
-    descripcion: 'Llevar tus eventos a tu calendario y qué te notifica Nodo.',
+    descripcion: 'Llevar tus eventos a tu calendario y qué te notifica Innvita.',
     icono: 'avisos',
     color: 'azul',
     articulos: [
@@ -299,9 +299,9 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
       },
       {
         id: 'que-notifica',
-        pregunta: 'Qué avisos me manda Nodo',
+        pregunta: 'Qué avisos me manda Innvita',
         respuesta: [
-          'Dentro de Nodo, uno: cuando alguien confirma asistencia a un evento tuyo, te queda un aviso en la campana de la cabecera. Si esa persona cancela, el aviso desaparece.',
+          'Dentro de Innvita, uno: cuando alguien confirma asistencia a un evento tuyo, te queda un aviso en la campana de la cabecera. Si esa persona cancela, el aviso desaparece.',
           'Por correo, tres: la confirmación cuando dices que vas a un evento, un recordatorio el día antes, y un aviso si quien organiza cambia la fecha o el lugar, o si cancela el evento.',
           'No hay notificaciones al teléfono.',
         ],
@@ -324,7 +324,7 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
       },
       {
         id: 'dejar-de-recibir-correos',
-        pregunta: 'Cómo dejo de recibir correos de Nodo',
+        pregunta: 'Cómo dejo de recibir correos de Innvita',
         respuesta: [
           'En la pestaña Preferencias, en «Correos», apagas los recordatorios y los avisos de cambio. El cambio vale desde ese momento y para todos tus eventos.',
           'La confirmación de asistencia no se puede apagar: es el comprobante de algo que acabas de hacer, como el recibo de una compra. Si no quieres recibir ninguno, la vía es no confirmar asistencia.',
@@ -349,10 +349,10 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
     articulos: [
       {
         id: 'que-datos',
-        pregunta: 'Qué datos guarda Nodo sobre mí',
+        pregunta: 'Qué datos guarda Innvita sobre mí',
         respuesta: [
           'Lo que trae tu cuenta del proveedor al entrar (nombre, correo y foto), lo que escribes en tu perfil, y lo que haces en la cartelera: los eventos que publicas y las asistencias que confirmas.',
-          'Nodo no guarda contraseñas —de eso se encarga Google o Microsoft— ni datos de pago, porque no procesa pagos.',
+          'Innvita no guarda contraseñas —de eso se encarga Google o Microsoft— ni datos de pago, porque no procesa pagos.',
         ],
         enlace: { texto: 'Política de privacidad', href: '/privacidad' },
       },
@@ -368,17 +368,17 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         id: 'reportar',
         pregunta: 'Cómo reporto un evento o una cuenta',
         respuesta: [
-          'Escribiéndole a Red Global por Instagram, con el enlace del evento o del perfil. Nodo no tiene un botón de reporte todavía.',
+          'Escribiéndole a Red Global por Instagram, con el enlace del evento o del perfil. Innvita no tiene un botón de reporte todavía.',
           'Una cuenta bloqueada deja de publicar eventos y comunidades, y lo que había publicado deja de verse en la cartelera sin llegar a borrarse: si el bloqueo se levanta, vuelve a aparecer.',
         ],
       },
       {
         id: 'quien-esta-detras',
-        pregunta: 'Quién está detrás de Nodo',
+        pregunta: 'Quién está detrás de Innvita',
         respuesta: [
-          'Nodo es la cartelera de Red Global Colombia, capítulo colombiano de la Global Entrepreneurship Network. No es una empresa con equipo de soporte: las dudas que no resuelva esta página se atienden por los canales de la comunidad.',
+          'Innvita es la cartelera de Red Global Colombia, capítulo colombiano de la Global Entrepreneurship Network. No es una empresa con equipo de soporte: las dudas que no resuelva esta página se atienden por los canales de la comunidad.',
         ],
-        enlace: { texto: 'Acerca de Nodo', href: '/acerca' },
+        enlace: { texto: 'Acerca de Innvita', href: '/acerca' },
       },
     ],
   },

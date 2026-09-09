@@ -33,14 +33,14 @@ const caras = await getAttendeeFaces(myEvents.map((event) => event.id), 4).catch
 const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 ---
 
-<BaseLayout title="Mis eventos — Nodo" description="Los eventos que has publicado en Nodo.">
+<BaseLayout title="Mis eventos — Innvita" description="Los eventos que has publicado en Innvita.">
   {eventDeleted && <StatusToast paramKey="deleted" message="Evento eliminado correctamente." />}
 
   <div class="mx-auto max-w-6xl px-6 pb-24 pt-16">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-texto">Mis eventos</h1>
-        <p class="mt-2 text-sm text-suave">Los eventos que has publicado en Nodo.</p>
+        <p class="mt-2 text-sm text-suave">Los eventos que has publicado en Innvita.</p>
       </div>
       <a
         href="/eventos/nuevo"

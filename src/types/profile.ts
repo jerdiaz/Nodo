@@ -8,7 +8,7 @@ export interface ProfileSocials {
 }
 
 // Dos criterios distintos, misma palomita: una certifica que la persona es
-// quien dice ser, la otra que el colectivo esta reconocido por Nodo.
+// quien dice ser, la otra que el colectivo esta reconocido por Innvita.
 export type VerificationType = 'persona' | 'comunidad';
 
 export const VERIFICATION_LABEL: Record<VerificationType, string> = {

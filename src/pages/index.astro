@@ -248,14 +248,14 @@ const eventDeleted = Astro.url.searchParams.get('deleted') === 'true';
 // "sin filtros" compartian el mismo titulo estatico en los resultados de
 // busqueda.
 const resultadosTitle = query
-  ? `${query} — Nodo`
+  ? `${query} — Innvita`
   : modalidad
-    ? `Eventos ${modalidad === 'hibrido' ? 'híbridos' : modalidad === 'virtual' ? 'virtuales' : 'presenciales'} — Nodo`
+    ? `Eventos ${modalidad === 'hibrido' ? 'híbridos' : modalidad === 'virtual' ? 'virtuales' : 'presenciales'} — Innvita`
     : ciudad
-      ? `Eventos en ${ciudad} — Nodo`
-      : 'Nodo — Eventos y cartelera comunitaria';
+      ? `Eventos en ${ciudad} — Innvita`
+      : 'Innvita — Eventos y cartelera comunitaria';
 const resultadosDescription =
-  'Eventos y actividades de las comunidades en la cartelera de Nodo.';
+  'Eventos y actividades de las comunidades en la cartelera de Innvita.';
 
 // Publicaciones de Instagram, cacheadas en Firestore por /api/instagram/sync.
 // Se lee de ahi y no de Instagram: consultar en cada visita gastaria cuota y
@@ -354,8 +354,8 @@ if (MOSTRAR_PUBLICACIONES) {
       {/*
         Tres lineas y cuatro de parrafo no son un capricho: es lo que ocupa el
         titular de Meetup, y sin ese cuerpo el banner se queda en poco mas de la
-        mitad de su alto. El texto sale del vocabulario que ya usa Nodo en la
-        seccion Que es Nodo, pero es una propuesta: el copy de marca lo decide
+        mitad de su alto. El texto sale del vocabulario que ya usa Innvita en la
+        seccion Que es Innvita, pero es una propuesta: el copy de marca lo decide
         la casa, y cambiarlo aqui no toca ninguna medida.
       */}
       <h1 class="relative text-[40px] font-bold leading-[48px] text-texto">
@@ -391,7 +391,7 @@ if (MOSTRAR_PUBLICACIONES) {
         en <span class="text-acento-texto">una sola cartelera</span>.
       </h1>
       <p class="mx-auto mt-5 text-base leading-6 tracking-[0.02em] text-suave">
-        Nodo reúne lo que organizan las comunidades del ecosistema: talleres, encuentros
+        Innvita reúne lo que organizan las comunidades del ecosistema: talleres, encuentros
         y actividades locales, publicados por quienes los hacen y abiertos a quien quiera
         llegar. Descubre lo que está pasando cerca de ti, guárdalo en tu calendario y
         confirma tu asistencia.
@@ -674,7 +674,7 @@ if (MOSTRAR_PUBLICACIONES) {
           <div class="relative py-16 text-center">
             <h2 class="text-[40px] font-bold leading-[48px] text-texto">Súmate a la cartelera</h2>
             <p class="mx-auto mt-4 max-w-[500px] text-lg leading-7 text-suave">
-              Las comunidades de la red usan Nodo para contar lo que organizan y llegar a quien
+              Las comunidades de la red usan Innvita para contar lo que organizan y llegar a quien
               todavía no las conoce. Publicar es gratis.
             </p>
             <a
@@ -768,7 +768,7 @@ if (MOSTRAR_PUBLICACIONES) {
       <section>
         <div class="mx-auto max-w-[1200px] px-6 py-20">
           <p class="text-center text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">
-            Qué es Nodo
+            Qué es Innvita
           </p>
           <h2 class="mx-auto mt-3 max-w-2xl text-center text-[32px] font-bold leading-tight text-texto">
             La cartelera del ecosistema, en un solo sitio
@@ -842,7 +842,7 @@ if (MOSTRAR_PUBLICACIONES) {
       {/*
         Titular a la izquierda y parrafo a la derecha, y debajo tres piezas con
         imagen y texto, como "En Meetup surgen amistades". Ellos ponen ahi
-        articulos de su blog; Nodo no tiene blog, asi que van las comunidades
+        articulos de su blog; Innvita no tiene blog, asi que van las comunidades
         que mas publican, que es contenido real y ademas dice algo cierto sobre
         la red en vez de rellenar el hueco.
 
@@ -853,7 +853,7 @@ if (MOSTRAR_PUBLICACIONES) {
         <section class="mx-auto max-w-[1200px] px-6 py-20">
           <div class="grid gap-6 lg:grid-cols-2 lg:gap-16">
             <h2 class="text-[32px] font-bold leading-tight text-texto">
-              En Nodo se encuentran<br />
+              En Innvita se encuentran<br />
               las comunidades
             </h2>
             <p class="max-w-prose text-suave lg:pt-2">

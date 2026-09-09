@@ -30,7 +30,7 @@ const HOSTS_MAPS = [
 ];
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
-const AGENTE = 'Nodo/1.0 (cartelera comunitaria; https://nodo-eventos.duckdns.org)';
+const AGENTE = 'Innvita/1.0 (cartelera comunitaria; https://nodo-eventos.duckdns.org)';
 
 // La politica de uso de Nominatim admite como mucho una consulta por segundo.
 // Se respeta aqui, en un unico punto, porque es el unico sitio del que salen.

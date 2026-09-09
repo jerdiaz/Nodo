@@ -1,6 +1,6 @@
 import { esMismoDia, formatEventDateLong, formatEventTime } from '../format';
 
-// Los cuatro correos que manda Nodo. Cada uno se arma con los datos que la cola
+// Los cuatro correos que manda Innvita. Cada uno se arma con los datos que la cola
 // guardo cuando el correo se encolo, no leyendo el evento en el momento de
 // enviar: la cancelacion se manda justo despues de borrar el evento, asi que en
 // ese momento ya no hay nada que leer.
@@ -86,7 +86,7 @@ ${preheader(avance)}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
   <tr><td style="height:4px;background:${ROJO};font-size:0;line-height:0;">&nbsp;</td></tr>
   <tr><td style="padding:26px 28px 0;">
-    <p style="margin:0;font-size:14px;font-weight:700;letter-spacing:-0.02em;color:${TINTA};">Nodo</p>
+    <p style="margin:0;font-size:14px;font-weight:700;letter-spacing:-0.02em;color:${TINTA};">Innvita</p>
   </td></tr>
   ${contenido}
   <tr><td style="padding:20px 28px;border-top:1px solid ${LINEA};">
@@ -242,8 +242,8 @@ function lineasEvento(datos: DatosCorreo, sitio: string): string[] {
 // apagar. La confirmacion no se puede apagar: es el recibo de algo que la
 // persona acaba de hacer.
 const PIE_AVISOS =
-  'Recibes este correo porque confirmaste tu asistencia en Nodo. Puedes dejar de recibir recordatorios y avisos desde Configuración → Preferencias.';
-const PIE_RECIBO = 'Recibes este correo porque acabas de confirmar tu asistencia en Nodo.';
+  'Recibes este correo porque confirmaste tu asistencia en Innvita. Puedes dejar de recibir recordatorios y avisos desde Configuración → Preferencias.';
+const PIE_RECIBO = 'Recibes este correo porque acabas de confirmar tu asistencia en Innvita.';
 
 export function componerCorreo(tipo: TipoCorreo, datos: DatosCorreo, sitio: string): CorreoCompuesto {
   const saludo = datos.nombreDestinatario ? `Hola, ${datos.nombreDestinatario}.` : 'Hola.';
