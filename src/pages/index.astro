@@ -156,9 +156,9 @@ const collage = [
 // fija: no representan datos, son decoracion, y por eso van con aria-hidden.
 const iconosBanner = [
   { Icono: Palette, color: 'magenta', giro: '-rotate-6', sitio: 'left-[18px] top-[2px]' },
-  { Icono: Users, color: 'celeste', giro: 'rotate-6', sitio: 'right-[6px] top-[30px]' },
-  { Icono: GraduationCap, color: 'naranja', giro: 'rotate-3', sitio: 'left-[22px] top-[84px]' },
-  { Icono: Music, color: 'azul', giro: '-rotate-3', sitio: 'right-[18px] top-[92px]' },
+  { Icono: Users, color: 'azul', giro: 'rotate-6', sitio: 'right-[6px] top-[30px]' },
+  { Icono: GraduationCap, color: 'verde', giro: 'rotate-3', sitio: 'left-[22px] top-[84px]' },
+  { Icono: Music, color: 'amarillo', giro: '-rotate-3', sitio: 'right-[18px] top-[92px]' },
 ] as const;
 
 // Ilustracion de fondo de la tarjeta de cierre, una sola imagen como la de
@@ -170,7 +170,7 @@ const FONDO_UNETE = '/banner/unete.webp';
 
 const pasos = [
   {
-    color: 'rojo' as const,
+    color: 'magenta' as const,
     Icono: Telescope,
     titulo: 'Descubre lo que pasa cerca',
     texto: 'Talleres, encuentros y convocatorias de las comunidades de la red, en un solo sitio.',
@@ -195,7 +195,7 @@ const pasos = [
   },
 ];
 
-const GEN_DESTACADAS = ['rojo', 'azul', 'magenta'] as const;
+const GEN_DESTACADAS = ['magenta', 'azul', 'verde'] as const;
 
 // Quien mas publica va primero. Se agrupa sobre los eventos que ya estan en
 // memoria, asi que esta seccion no cuesta ninguna lectura extra de Firestore.
@@ -400,7 +400,7 @@ if (MOSTRAR_PUBLICACIONES) {
       <div class="mt-8">
         <a
           href="/eventos/nuevo"
-          class="inline-flex h-[46px] items-center rounded-full bg-acento px-6 text-base font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
+          class="inline-flex h-[46px] items-center rounded-full bg-cta px-6 text-base font-semibold tracking-[0.02em] text-cta-contraste hover:bg-cta-hover transition active:scale-[0.97] hover:opacity-90"
         >
           Publicar evento
         </a>
@@ -679,7 +679,7 @@ if (MOSTRAR_PUBLICACIONES) {
             </p>
             <a
               href="/eventos/nuevo"
-              class="mt-8 inline-flex h-10 items-center rounded-full bg-acento px-5 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90"
+              class="mt-8 inline-flex h-10 items-center rounded-full bg-cta px-5 text-sm font-semibold tracking-[0.02em] text-cta-contraste hover:bg-cta-hover transition active:scale-[0.97] hover:opacity-90"
             >
               Publicar evento
             </a>

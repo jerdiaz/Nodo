@@ -18,7 +18,7 @@ interface Props {
 const { variant = 'primary', href, type = 'button', class: className, ...rest } = Astro.props;
 
 const variants = {
-  primary: 'bg-acento text-acento-contraste hover:opacity-90',
+  primary: 'bg-cta text-cta-contraste hover:bg-cta-hover',
   secondary:
     'border border-linea bg-superficie text-texto hover:border-acento hover:bg-superficie',
   danger: 'text-acento-texto hover:text-acento',

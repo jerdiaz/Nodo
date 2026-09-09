@@ -12,7 +12,7 @@ const { titulo, cta, href, color = 'magenta' } = Astro.props;
 
 // El amarillo y el celeste son demasiado claros para llevar texto blanco
 // encima: sobre ellos la tipografia va oscura. Con los otros cuatro, al reves.
-const claros: GenColor[] = ['amarillo', 'celeste'];
+const claros: GenColor[] = ['amarillo'];
 const textoOscuro = claros.includes(color);
 ---
 

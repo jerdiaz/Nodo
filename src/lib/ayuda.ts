@@ -55,7 +55,7 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
     nombre: 'Cuenta y acceso',
     descripcion: 'Entrar, tu perfil, tu nombre de usuario y cerrar la cuenta.',
     icono: 'cuenta',
-    color: 'rojo',
+    color: 'magenta',
     articulos: [
       {
         id: 'no-puedo-entrar',
@@ -121,7 +121,7 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
     nombre: 'Publicar eventos',
     descripcion: 'Crear, editar, ubicar y darle precio o aforo a un evento.',
     icono: 'publicar',
-    color: 'naranja',
+    color: 'amarillo',
     articulos: [
       {
         id: 'como-publico',
@@ -236,7 +236,7 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
     nombre: 'Comunidades',
     descripcion: 'Crear la tuya, unirte a otras y qué cambia al hacerlo.',
     icono: 'comunidades',
-    color: 'celeste',
+    color: 'azul',
     articulos: [
       {
         id: 'que-es-comunidad',

@@ -1,10 +1,11 @@
-// Reparto de los colores del anillo de GEN entre los elementos de la interfaz.
+// Reparto de los cuatro colores de la C de Conceptos entre los elementos de
+// la interfaz.
 //
 // El color se deriva del propio texto y no de la posicion en la lista: asi la
 // etiqueta "tecnologia" es del mismo color en la home, en el calendario y en
 // la ficha del evento. Si dependiera del indice, cambiaria al filtrar y el
 // color dejaria de significar nada.
-export const GEN_COLORS = ['rojo', 'naranja', 'amarillo', 'celeste', 'azul', 'magenta'] as const;
+export const GEN_COLORS = ['verde', 'amarillo', 'magenta', 'azul'] as const;
 
 export type GenColor = (typeof GEN_COLORS)[number];
 
