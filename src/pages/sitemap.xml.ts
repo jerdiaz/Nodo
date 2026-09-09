@@ -4,7 +4,7 @@ import { getEventSlugs } from '../lib/firebase/events';
 const staticPaths = ['/', '/calendario', '/comunidades'];
 
 export const GET: APIRoute = async ({ site }) => {
-  const origin = site?.origin ?? 'https://nodo-eventos.duckdns.org';
+  const origin = site?.origin ?? 'https://innvita.funconceptos.org';
 
   let eventPaths: string[] = [];
 

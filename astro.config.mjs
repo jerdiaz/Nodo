@@ -8,7 +8,7 @@ import node from '@astrojs/node';
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
-  site: 'https://nodo-eventos.duckdns.org',
+  site: 'https://innvita.funconceptos.org',
 
   vite: {
     plugins: [tailwindcss()]

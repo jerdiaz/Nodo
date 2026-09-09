@@ -1,40 +1,44 @@
 @import "tailwindcss";
 
 /* =========================================================
-   Nodo — sistema de color
-   Paleta muestreada del isotipo de Red Global (GEN Colombia):
-   el anillo multicolor de @redglobalcol.
+   Innvita — sistema de color
+   Paleta tomada del isotipo de Fundacion Conceptos: la "C"
+   segmentada en verde, amarillo, magenta y azul.
 
-   El isotipo tiene 16 colores; eso no es una paleta de interfaz.
-   Se toman cuatro anclas y, para cada una, un hermano oscurecido
-   para texto, porque casi ninguna pasa contraste sobre blanco:
-   el amarillo da 1.21 y el celeste 1.62 sobre fondo claro.
+   Cuatro anclas y, para cada una, un hermano oscurecido para
+   texto, porque ninguna pasa contraste sobre fondo claro: el
+   amarillo da 1.30 y el verde 2.79.
 
-   La relacion se invierte entre temas: el magenta es el unico
-   legible sobre blanco (7.21) y el peor sobre negro (2.62); el
-   amarillo justo al reves. Por eso cada token tiene valor por
-   tema y no uno solo.
+   El hermano de texto no se calcula contra el fondo de pagina
+   sino contra el fondo tenue de su propio chip, que es el caso
+   estricto: magenta #E5007D da 4.43 sobre la pagina, pero su
+   version de texto tiene que aguantar tambien sobre #FCE6F2.
+
+   La relacion se invierte entre temas. Sobre negro, el verde
+   (6.58), el amarillo (14.12) y el azul (6.62) sirven tal cual
+   y el magenta (4.16) es el unico que hay que aclarar. Por eso
+   cada token tiene valor por tema y no uno solo.
    ========================================================= */
 
 :root {
   /* --- Marca, valores puros del isotipo --- */
-  --marca-rojo: #ed2727;
-  --marca-amarillo: #f3f029;
-  --marca-azul: #029ec7;
-  --marca-magenta: #a80370;
-  --marca-naranja: #da881d;
-  --marca-celeste: #92d6e7;
+  --marca-verde: #3aae49;
+  --marca-amarillo: #f0e325;
+  --marca-magenta: #e5007d;
+  --marca-azul: #29a3dc;
 
-  /* --- Hermanos para texto sobre fondo claro (todos >= 4.5:1) --- */
-  --rojo-texto: #c41818;      /* 6.02 */
-  --amarillo-texto: #7a7500;  /* 4.80 */
-  --azul-texto: #0a7fa3;      /* 4.59 */
+  /* --- Hermanos para texto sobre fondo claro (>= 4.5:1 sobre la
+         pagina y sobre su propio tenue) --- */
+  --verde-texto: #2a7f35;     /* 4.89 / 4.55 */
+  --amarillo-texto: #7d7613;  /* 4.58 / 4.54 */
+  --magenta-texto: #d00072;   /* 5.22 / 4.52 */
+  --azul-texto: #1e77a1;      /* 4.87 / 4.54 */
 
   /* --- Semanticos: tema claro (por defecto) --- */
-  /* El fondo no es blanco puro, igual que el de Meetup, que va a #fcfcfd en
-     html, body y cabecera. Reservar el #ffffff para las superficies -tarjetas,
-     menus, la pastilla del buscador- hace que floten sin necesidad de borde:
-     tres puntos de diferencia no se ven como color, pero si como relieve. */
+  /* El fondo no es blanco puro. Reservar el #ffffff para las superficies
+     -tarjetas, menus, la pastilla del buscador- hace que floten sin
+     necesidad de borde: tres puntos de diferencia no se ven como color,
+     pero si como relieve. */
   --c-fondo: #fcfcfd;
   --c-fondo-alt: #f7f6f3;      /* hueso, no gris puro */
   --c-superficie: #ffffff;
@@ -45,17 +49,29 @@
   --c-texto-suave: #58585d;    /* 6.9:1 */
   --c-texto-tenue: #73737c;    /* 4.58:1, para texto real que no debe competir con el principal */
 
-  --c-acento: var(--marca-rojo);
-  --c-acento-texto: var(--rojo-texto);
-  --c-acento-contraste: #ffffff;   /* sobre el acento */
-  --c-acento-suave: #fdeaea;       /* fondo tenue del acento */
+  /* El acento es el magenta, igual que en Fundacion Conceptos. Blanco
+     sobre el da 4.54, asi que los botones solidos cumplen AA. */
+  --c-acento: var(--marca-magenta);
+  --c-acento-texto: var(--magenta-texto);
+  --c-acento-contraste: #ffffff;
+  --c-acento-suave: #fce6f2;
+
+  /* Los CTA solidos van en neutro y no en el acento, igual que en el sitio de
+     Fundacion Conceptos: negro de base, magenta al pasar el raton. El acento
+     se reserva entonces para lo que informa -chips de filtro activo, globo de
+     notificaciones, dia elegido en el calendario-, que es donde el color
+     significa algo. Si el boton mas grande de la pagina tambien fuera magenta,
+     esas senales se perderian entre el ruido. */
+  --c-cta: var(--c-texto);
+  --c-cta-hover: var(--c-acento);
+  --c-cta-contraste: #ffffff;
 
   --c-sombra: 0 1px 2px rgb(17 17 19 / 0.06), 0 12px 28px -12px rgb(17 17 19 / 0.14);
 
   /* Para las piezas que tienen que leerse como una tarjeta suelta y no como un
      bloque de la pagina. La de arriba cae casi en vertical y no asoma por los
      lados; esta abre el desenfoque y recorta menos, asi que rodea la tarjeta
-     por los costados como la del perfil de Meetup. */
+     por los costados. */
   --c-sombra-alta: 0 2px 8px rgb(17 17 19 / 0.05), 0 20px 50px -10px rgb(17 17 19 / 0.20);
 
   color-scheme: light;
@@ -73,12 +89,19 @@
   --c-texto-suave: #a1a1aa;
   --c-texto-tenue: #87878f;    /* 5.29:1 sobre el fondo del tema */
 
-  /* El rojo de marca da 4.42 sobre este fondo: suficiente para texto
-     grande y botones, no para parrafos. Se aclara para lo demas. */
-  --c-acento: #ff4d4d;
-  --c-acento-texto: #ff7a7a;
+  /* El magenta de marca da 4.16 sobre este fondo: se queda corto para
+     parrafos, asi que se aclara. Es el unico de los cuatro que lo
+     necesita; verde, amarillo y azul sirven tal cual. */
+  --c-acento: #ea3698;
+  --c-acento-texto: #ea3698;
   --c-acento-contraste: #14090a;
-  --c-acento-suave: #2a1416;
+  --c-acento-suave: #2f0f22;
+
+  /* Un CTA negro sobre este fondo seria invisible, asi que se invierte:
+     claro con texto oscuro. El hover sigue siendo el acento. */
+  --c-cta: #f4f4f5;
+  --c-cta-hover: var(--c-acento);
+  --c-cta-contraste: #111113;
 
   --c-sombra: 0 1px 1px rgb(0 0 0 / 0.3), 0 12px 28px -10px rgb(0 0 0 / 0.55);
   --c-sombra-alta: 0 2px 8px rgb(0 0 0 / 0.35), 0 20px 50px -10px rgb(0 0 0 / 0.7);
@@ -90,9 +113,9 @@
    emitan var(--c-*) en vez de congelar el valor: sin eso el cambio de tema
    en caliente no funcionaria. */
 @theme inline {
-  /* Inter sustituye a la NeuSans de Meetup, que es propietaria. Se declara
-     aqui y no solo en body para que las utilidades font-sans de Tailwind
-     apunten a lo mismo y no reaparezca el stack del sistema por debajo. */
+  /* Se declara aqui y no solo en body para que las utilidades font-sans de
+     Tailwind apunten a lo mismo y no reaparezca el stack del sistema por
+     debajo. */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
 
   --color-fondo: var(--c-fondo);
@@ -105,16 +128,19 @@
   --color-suave: var(--c-texto-suave);
   --color-tenue: var(--c-texto-tenue);
 
+  --color-cta: var(--c-cta);
+  --color-cta-hover: var(--c-cta-hover);
+  --color-cta-contraste: var(--c-cta-contraste);
+
   --color-acento: var(--c-acento);
   --color-acento-texto: var(--c-acento-texto);
   --color-acento-contraste: var(--c-acento-contraste);
   --color-acento-suave: var(--c-acento-suave);
 
+  --color-marca-verde: var(--marca-verde);
   --color-marca-amarillo: var(--marca-amarillo);
-  --color-marca-azul: var(--marca-azul);
   --color-marca-magenta: var(--marca-magenta);
-  --color-marca-naranja: var(--marca-naranja);
-  --color-marca-celeste: var(--marca-celeste);
+  --color-marca-azul: var(--marca-azul);
 }
 
 /* Sin esto, cambiar de tema hace parpadear toda la pagina. */
@@ -126,7 +152,7 @@
 }
 
 /* Lo unico que CSS alcanza del calendario nativo de datetime-local: el dia
-   seleccionado y los controles pasan del morado del sistema al rojo de marca.
+   seleccionado y los controles pasan del morado del sistema al magenta de marca.
    La forma, la tipografia y la disposicion del desplegable las pone el sistema
    operativo y no hay selector que llegue a ellas.
 
@@ -176,59 +202,55 @@ body {
 }
 
 /* =========================================================
-   Escala categorica: el anillo de GEN, usable
+   Escala categorica: la C de Conceptos, desenrollada
    ---------------------------------------------------------
-   La identidad de GEN no es "rojo": son muchos colores a la vez.
-   Pero pintar seis colores dentro del mismo bloque no da identidad,
-   da ruido. La salida es asignar UN color por elemento y que el
-   conjunto de la pagina recorra el anillo: cada etiqueta y cada
-   evento reciben el suyo de forma estable, derivado de su texto.
+   La identidad de Conceptos no es "magenta": son cuatro colores
+   a la vez. Pero pintar los cuatro dentro del mismo bloque no da
+   identidad, da ruido. La salida es asignar UN color por elemento
+   y que el conjunto de la pagina recorra la paleta: cada etiqueta
+   y cada evento reciben el suyo de forma estable, derivado de su
+   texto (ver lib/genColor.ts).
 
    Cada color trae tres valores porque uno solo no alcanza:
      --gen-X          relleno y filos (sin requisito de contraste)
-     --gen-X-texto    tipografia (AA sobre blanco y sobre su propio suave)
+     --gen-X-texto    tipografia (AA sobre la pagina y sobre su tenue)
      --gen-X-suave    fondo tenue del chip
    ========================================================= */
 
 :root {
-  --gen-rojo: #ed2727;      --gen-rojo-texto: #b81616;      --gen-rojo-suave: #fdecec;
-  --gen-naranja: #da881d;   --gen-naranja-texto: #8a5200;   --gen-naranja-suave: #fdf1e0;
-  --gen-amarillo: #f3f029;  --gen-amarillo-texto: #6e6a00;  --gen-amarillo-suave: #fbfad9;
-  --gen-azul: #029ec7;      --gen-azul-texto: #0a6e8c;      --gen-azul-suave: #e4f5fa;
-  --gen-celeste: #92d6e7;   --gen-celeste-texto: #12707f;   --gen-celeste-suave: #eaf7fa;
-  --gen-magenta: #a80370;   --gen-magenta-texto: #93035f;   --gen-magenta-suave: #fbe7f2;
+  --gen-verde: #3aae49;     --gen-verde-texto: #2a7f35;     --gen-verde-suave: #ebf7ed;
+  --gen-amarillo: #f0e325;  --gen-amarillo-texto: #7d7613;  --gen-amarillo-suave: #fefce9;
+  --gen-magenta: #e5007d;   --gen-magenta-texto: #d00072;   --gen-magenta-suave: #fce6f2;
+  --gen-azul: #29a3dc;      --gen-azul-texto: #1e77a1;      --gen-azul-suave: #eaf6fc;
 }
 
+/* Sobre negro, tres de los cuatro valores de marca ya pasan contraste, asi
+   que se usan tal cual y el color no se apaga al cambiar de tema. Solo el
+   magenta se aclara. */
 [data-theme='oscuro'] {
-  --gen-rojo: #ff6b6b;      --gen-rojo-texto: #ff6b6b;      --gen-rojo-suave: #3a1315;
-  --gen-naranja: #f0a94a;   --gen-naranja-texto: #f0a94a;   --gen-naranja-suave: #33230c;
-  --gen-amarillo: #ede84a;  --gen-amarillo-texto: #ede84a;  --gen-amarillo-suave: #2e2d0a;
-  --gen-azul: #4fc7e8;      --gen-azul-texto: #4fc7e8;      --gen-azul-suave: #0c2a33;
-  --gen-celeste: #8fe3f2;   --gen-celeste-texto: #8fe3f2;   --gen-celeste-suave: #12303a;
-  --gen-magenta: #f06bb8;   --gen-magenta-texto: #f06bb8;   --gen-magenta-suave: #330a22;
+  --gen-verde: #3aae49;     --gen-verde-texto: #3aae49;     --gen-verde-suave: #17271b;
+  --gen-amarillo: #f0e325;  --gen-amarillo-texto: #f0e325;  --gen-amarillo-suave: #302e16;
+  --gen-magenta: #ea3698;   --gen-magenta-texto: #ea3698;   --gen-magenta-suave: #2f0f22;
+  --gen-azul: #29a3dc;      --gen-azul-texto: #29a3dc;      --gen-azul-suave: #14252f;
 }
 
 /* Un elemento con data-gen expone su color en --g / --g-texto / --g-suave,
    asi el componente no necesita saber cual le toco. */
-[data-gen='rojo']     { --g: var(--gen-rojo);     --g-texto: var(--gen-rojo-texto);     --g-suave: var(--gen-rojo-suave); }
-[data-gen='naranja']  { --g: var(--gen-naranja);  --g-texto: var(--gen-naranja-texto);  --g-suave: var(--gen-naranja-suave); }
+[data-gen='verde']    { --g: var(--gen-verde);    --g-texto: var(--gen-verde-texto);    --g-suave: var(--gen-verde-suave); }
 [data-gen='amarillo'] { --g: var(--gen-amarillo); --g-texto: var(--gen-amarillo-texto); --g-suave: var(--gen-amarillo-suave); }
-[data-gen='azul']     { --g: var(--gen-azul);     --g-texto: var(--gen-azul-texto);     --g-suave: var(--gen-azul-suave); }
-[data-gen='celeste']  { --g: var(--gen-celeste);  --g-texto: var(--gen-celeste-texto);  --g-suave: var(--gen-celeste-suave); }
 [data-gen='magenta']  { --g: var(--gen-magenta);  --g-texto: var(--gen-magenta-texto);  --g-suave: var(--gen-magenta-suave); }
+[data-gen='azul']     { --g: var(--gen-azul);     --g-texto: var(--gen-azul-texto);     --g-suave: var(--gen-azul-suave); }
 
-/* La cinta: el anillo de GEN desenrollado en linea recta. Es la firma
-   de la marca y el unico sitio donde los seis colores conviven. Va como
-   degradado con paradas duras para que sea un solo elemento sin markup. */
+/* La cinta: la C de Conceptos desenrollada en linea recta. Es la firma de la
+   marca y el unico sitio donde los cuatro colores conviven. Va como degradado
+   con paradas duras para que sea un solo elemento sin markup. */
 .cinta-gen {
   height: 4px;
   background: linear-gradient(
     90deg,
-    var(--gen-rojo) 0 16.666%,
-    var(--gen-naranja) 16.666% 33.333%,
-    var(--gen-amarillo) 33.333% 50%,
-    var(--gen-celeste) 50% 66.666%,
-    var(--gen-azul) 66.666% 83.333%,
-    var(--gen-magenta) 83.333% 100%
+    var(--gen-verde) 0 25%,
+    var(--gen-amarillo) 25% 50%,
+    var(--gen-magenta) 50% 75%,
+    var(--gen-azul) 75% 100%
   );
 }

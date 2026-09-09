@@ -1,4 +1,4 @@
-// Las imagenes que Nodo muestra tienen que haber pasado por /api/imagenes, que
+// Las imagenes que Innvita muestra tienen que haber pasado por /api/imagenes, que
 // es donde se moderan con Vision y se recortan. Aceptar cualquier URL http(s)
 // dejaba colar una alojada fuera: se salta la moderacion, puede cambiar de
 // contenido despues de publicada -lo revisado y lo que se ve dejan de ser lo

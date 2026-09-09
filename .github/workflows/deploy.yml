@@ -76,12 +76,12 @@ jobs:
           # Todo curl con --max-time: sin él, un cuelgue de red dejaría el job
           # corriendo hasta el timeout del runner.
           curl -fsS --max-time 30 -o /dev/null -w "Inicio: HTTP %{http_code}\n" \
-            https://nodo-eventos.duckdns.org/
+            https://innvita.funconceptos.org/
 
           # Una ruta inexistente debe dar 404. Si diera 200, significaría que la
           # app está sirviendo la home ante cualquier URL.
           code=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" \
-            https://nodo-eventos.duckdns.org/ruta-que-no-existe)
+            https://innvita.funconceptos.org/ruta-que-no-existe)
           if [ "$code" = "404" ]; then
             echo "404:    HTTP 404 (correcto)"
           else

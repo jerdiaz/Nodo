@@ -19,8 +19,8 @@ interface Props {
 }
 
 const {
-  title = 'Nodo — Eventos y cartelera comunitaria',
-  description = 'Descubre y publica eventos locales en Nodo, la cartelera comunitaria minimalista.',
+  title = 'Innvita — Eventos y cartelera comunitaria',
+  description = 'Descubre y publica eventos locales en Innvita, la cartelera comunitaria minimalista.',
   image,
   type = 'website',
   barraInferior = false,
@@ -34,7 +34,7 @@ const haySesion = (await getCurrentUser(Astro.cookies)) !== null;
 
 const siteOrigin = Astro.site?.origin ?? Astro.url.origin;
 const canonicalUrl = new URL(Astro.url.pathname, siteOrigin).toString();
-const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
+const ogImageUrl = new URL(image || '/og-innvita.png', siteOrigin).toString();
 ---
 
 <html lang="es">
@@ -80,6 +80,12 @@ const ogImageUrl = new URL(image || '/logo-icon.png', siteOrigin).toString();
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
     />
     <link rel="icon" href="/favicon.ico" sizes="any" />
+    {/*
+      El SVG va despues del .ico a proposito: los navegadores que lo entienden
+      se quedan con el ultimo que sepan leer, y este escala a cualquier tamano
+      sin los dientes de sierra del PNG en pantallas grandes.
+    */}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

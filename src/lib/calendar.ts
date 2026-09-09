@@ -99,7 +99,7 @@ export function buildIcsCalendar(events: NodoEvent[], calendarName: string): str
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Nodo//Cartelera Comunitaria//ES',
+    'PRODID:-//Innvita//Cartelera Comunitaria//ES',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
@@ -120,7 +120,7 @@ export function buildIcsEvent(event: NodoEvent): string {
   return unirLineasIcs([
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Nodo//Cartelera Comunitaria//ES',
+    'PRODID:-//Innvita//Cartelera Comunitaria//ES',
     'CALSCALE:GREGORIAN',
     ...toIcsEventLines(event),
     'END:VCALENDAR',
@@ -165,7 +165,7 @@ export function buildIcsInvitation({
   return unirLineasIcs([
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Nodo//Cartelera Comunitaria//ES',
+    'PRODID:-//Innvita//Cartelera Comunitaria//ES',
     'CALSCALE:GREGORIAN',
     `METHOD:${metodo}`,
     'BEGIN:VEVENT',

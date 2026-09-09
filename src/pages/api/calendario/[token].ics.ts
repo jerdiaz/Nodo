@@ -42,7 +42,7 @@ export const GET: APIRoute = async ({ params }) => {
     (event) => event.organizer.uid === uid || attendedIds.has(event.id),
   );
 
-  const body = buildIcsCalendar(mine, 'Nodo — Mis eventos');
+  const body = buildIcsCalendar(mine, 'Innvita — Mis eventos');
 
   return new Response(body, {
     status: 200,

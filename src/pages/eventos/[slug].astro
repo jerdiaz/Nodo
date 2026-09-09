@@ -294,7 +294,7 @@ function textoAsistentes(total: number): string {
 ---
 
 <BaseLayout
-  title={`${event.title} — Nodo`}
+  title={`${event.title} — Innvita`}
   description={event.description}
   image={event.bannerUrl}
   type="article"
@@ -788,7 +788,7 @@ function textoAsistentes(total: number): string {
       {event.capacity && (
         <span
           data-spots
-          data-gen="naranja"
+          data-gen="amarillo"
           class="hidden shrink-0 rounded-full bg-[var(--g-suave)] px-4 py-1.5 text-sm font-semibold text-[var(--g-texto)] lg:inline"
         >
           {textoLugares(lugaresRestantes ?? 0)}
