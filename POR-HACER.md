@@ -8,7 +8,7 @@ acceso a la consola de Firebase / Google Cloud del proyecto.
 | **Proyecto** | `nododb` |
 | **Número de proyecto** | `1005485040427` |
 | **Consola** | <https://console.firebase.google.com/project/nododb> |
-| **Sitio** | <https://nodo-eventos.duckdns.org> |
+| **Sitio** | <https://innvita.funconceptos.org> |
 
 > **Migración de proyecto (3 de septiembre de 2026).** Nodo vivía en
 > `nodo-comunidad`, cuya cuenta creadora tenía la facturación desactivada. Todo
@@ -140,7 +140,7 @@ Sobre uno de estos dos documentos:
 
 ### Cómo verificar
 
-Recargar el sitio y abrir <https://nodo-eventos.duckdns.org/admin>. Debe
+Recargar el sitio y abrir <https://innvita.funconceptos.org/admin>. Debe
 mostrar el panel en vez de un 404.
 
 A partir de ahí se conceden verificaciones desde la propia aplicación, sin
@@ -185,7 +185,7 @@ esto funciona.
 5. Programar la sincronización, por ejemplo en el cron del VPS cada 6 horas:
 
    ```bash
-   curl -s -X POST -H "Authorization: Bearer $SYNC_SECRET" -H "Content-Type: application/json" https://nodo-eventos.duckdns.org/api/instagram/sync
+   curl -s -X POST -H "Authorization: Bearer $SYNC_SECRET" -H "Content-Type: application/json" https://innvita.funconceptos.org/api/instagram/sync
    ```
 
    La cabecera `Content-Type` es obligatoria por la misma razon que en la
@@ -255,7 +255,7 @@ correo como el de Instagram.
 En el crontab del usuario `ubuntu`, cada quince minutos:
 
 ```bash
-*/15 * * * * curl -s -X POST -H 'Authorization: Bearer $SYNC_SECRET' -H 'Content-Type: application/json' https://nodo-eventos.duckdns.org/api/correos/despachar > /dev/null
+*/15 * * * * curl -s -X POST -H 'Authorization: Bearer $SYNC_SECRET' -H 'Content-Type: application/json' https://innvita.funconceptos.org/api/correos/despachar > /dev/null
 ```
 
 > **La cabecera `Content-Type: application/json` no es opcional.** Sin ella,

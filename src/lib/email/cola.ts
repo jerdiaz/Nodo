@@ -33,7 +33,7 @@ const MAX_INTENTOS = 5;
 // La pagina para los enlaces de los correos. Sale de `site` en
 // astro.config.mjs, que es donde ya vive la direccion publica del sitio: al
 // mudarse a un dominio propio se cambia ahi y los correos van detras.
-const SITIO = import.meta.env.SITE ?? 'https://nodo-eventos.duckdns.org';
+const SITIO = import.meta.env.SITE ?? 'https://innvita.funconceptos.org';
 
 export interface DestinatarioCorreo {
   uid: string;
