@@ -447,7 +447,17 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     const inicioSugerido = new Date();
     inicioSugerido.setHours(inicioSugerido.getHours() + 1, 0, 0, 0);
     startDateInput.value = toLocalInputValue(inicioSugerido);
-    startDateInput.min = startDateInput.value;
+
+    // El minimo es "ahora", al siguiente cuarto de hora, y no la sugerencia:
+    // la sugerencia es una comodidad, el minimo es lo que el servidor acepta.
+    // Con el minimo en "ahora + 1 h" el selector prohibia empezar en veinte
+    // minutos, que es perfectamente valido.
+    const minimo = new Date();
+    minimo.setSeconds(0, 0);
+    const resto = minimo.getMinutes() % 15;
+    if (resto !== 0) minimo.setMinutes(minimo.getMinutes() + (15 - resto));
+    startDateInput.min = toLocalInputValue(minimo);
+
 
     const finSugerido = new Date(inicioSugerido);
     finSugerido.setHours(finSugerido.getHours() + 1);

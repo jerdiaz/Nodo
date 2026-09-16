@@ -145,6 +145,46 @@ const { id, name, label, value = '', class: triggerClass = '' } = Astro.props;
       return d ? soloDia(d) : null;
     };
 
+    const minimoExacto = (): Date | null => desdeValor(oculto.min);
+
+    // Los dias anteriores al minimo ya se bloquean en el calendario; esto hace
+    // lo mismo con las horas. Sin ello, quien elegia "hoy" podia escoger las
+    // nueve de la manana a mediodia, y el servidor le devolvia "no puede ser
+    // en el pasado" para una fecha que el selector le acababa de ofrecer.
+    //
+    // Solo aplica cuando el dia elegido ES el dia del minimo: al dia siguiente
+    // todas las horas valen.
+    function pintarHoras(): void {
+      const tope = minimoExacto();
+      const mismoDia = tope !== null && soloDia(fecha) === soloDia(tope);
+
+      for (const opcion of Array.from(selHora.options)) {
+        opcion.disabled = mismoDia && Number(opcion.value) < tope.getHours();
+      }
+
+      const horaElegida = Number(selHora.value);
+      const mismaHora = mismoDia && horaElegida === tope.getHours();
+
+      for (const opcion of Array.from(selMinuto.options)) {
+        opcion.disabled = mismaHora && Number(opcion.value) < tope.getMinutes();
+      }
+    }
+
+    // Si la fecha quedo por debajo del minimo (por ejemplo, al pasar de
+    // manana a hoy conservando una hora que hoy ya paso), se sube al minimo
+    // redondeado al siguiente cuarto de hora, que es la primera opcion que
+    // el selector permite elegir.
+    function ajustarAlMinimo(): void {
+      const tope = minimoExacto();
+      if (!tope || fecha.getTime() >= tope.getTime()) return;
+
+      const ajustada = new Date(tope);
+      const resto = ajustada.getMinutes() % 15;
+      if (resto !== 0) ajustada.setMinutes(ajustada.getMinutes() + (15 - resto));
+      ajustada.setSeconds(0, 0);
+      fecha = ajustada;
+    }
+
     function pintarEtiqueta(): void {
       if (!oculto.value) {
         etiqueta.textContent = 'Elegir fecha';
@@ -185,6 +225,7 @@ const { id, name, label, value = '', class: triggerClass = '' } = Astro.props;
 
         boton.addEventListener('click', () => {
           fecha = new Date(actual.getFullYear(), actual.getMonth(), actual.getDate(), fecha.getHours(), fecha.getMinutes());
+          ajustarAlMinimo();
           confirmar();
           pintarMes();
         });
@@ -199,6 +240,7 @@ const { id, name, label, value = '', class: triggerClass = '' } = Astro.props;
       oculto.value = aValor(fecha);
       selHora.value = String(fecha.getHours());
       selMinuto.value = String(fecha.getMinutes());
+      pintarHoras();
       pintarEtiqueta();
       oculto.dispatchEvent(new Event('change', { bubbles: true }));
     }
@@ -212,6 +254,7 @@ const { id, name, label, value = '', class: triggerClass = '' } = Astro.props;
         selHora.value = String(fecha.getHours());
         selMinuto.value = String(fecha.getMinutes());
         pintarMes();
+        pintarHoras();
         // El foco entra al panel: sin esto, abrirlo con teclado lo deja colgado
         // y el primer Tab se pierde en la pagina de atras.
         const dia = dias.querySelector<HTMLButtonElement>('button:not(:disabled)');
@@ -253,6 +296,9 @@ const { id, name, label, value = '', class: triggerClass = '' } = Astro.props;
     for (const sel of [selHora, selMinuto]) {
       sel.addEventListener('change', () => {
         fecha = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), Number(selHora.value), Number(selMinuto.value));
+        // Cambiar la hora puede dejar el minuto elegido por debajo del minimo
+        // (a las 12:07, hora 12 con minuto 00): se corrige en vez de aceptarlo.
+        ajustarAlMinimo();
         confirmar();
       });
     }

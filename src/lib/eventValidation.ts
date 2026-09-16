@@ -197,7 +197,13 @@ export function validateEventPayload(
     return { error: 'La fecha de fin no es válida.' };
   }
 
-  if (!options.allowPastStart && startDate.getTime() < Date.now()) {
+  // Cinco minutos de margen: quien elige "ahora" en el selector y tarda un
+  // rato en darle a publicar no ha puesto una fecha en el pasado, ha puesto
+  // la de ahora. Sin el margen, ese caso fallaba con un mensaje que parecia
+  // mentira.
+  const TOLERANCIA_MS = 5 * 60_000;
+
+  if (!options.allowPastStart && startDate.getTime() < Date.now() - TOLERANCIA_MS) {
     return { error: 'La fecha de inicio no puede ser en el pasado.' };
   }
 
