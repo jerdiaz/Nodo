@@ -1,15 +1,18 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Button from '../components/ui/Button.astro';
+import SocialIcon from '../components/ui/SocialIcon.astro';
+
+const correoSentra = 'atencionsentralabs@gmail.com';
 ---
 
-<BaseLayout title="Contacto — Innvita" description="Cómo ponerte en contacto con Red Global y con GEN.">
+<BaseLayout title="Contacto — Innvita" description="Cómo ponerte en contacto con Red Global y con quienes desarrollan Innvita.">
   <section class="mx-auto max-w-2xl px-6 pb-24 pt-16">
     <p class="text-sm font-medium text-acento-texto">Innvita</p>
     <h1 class="mt-2 text-3xl font-bold tracking-tight text-texto">Contacto</h1>
     <p class="mt-3 text-suave">
-      Innvita no tiene un equipo de soporte propio: es la cartelera de Red Global. Estos son los canales de la
-      comunidad y de la red.
+      Innvita no tiene un equipo de soporte propio: es la cartelera de Red Global. Para lo de la comunidad,
+      la comunidad; para lo del sitio, quienes lo construyen.
     </p>
 
     <div class="mt-10 space-y-6">
@@ -22,14 +25,43 @@ import Button from '../components/ui/Button.astro';
       </div>
 
       <div class="rounded-3xl border border-linea bg-superficie p-6 shadow-[var(--c-sombra)]">
-        <h2 class="text-sm font-medium uppercase tracking-wide text-tenue">Global Entrepreneurship Network</h2>
-        <p class="mt-2 text-suave">
-          Red Global es el capítulo colombiano de GEN. Para asuntos de la red global: formulario de contacto o
-          +1 (202) 683-4100.
+        {/*
+          El logo tiene el texto en blanco, pensado para el pie oscuro. Sobre
+          esta tarjeta desapareceria, asi que hay una variante con el texto en
+          el azul marino del propio isotipo (public/logo/sentralabs-oscuro.png)
+          para el tema claro, y la original para el oscuro. El tema vive en
+          data-theme del <html>, de ahi la variante arbitraria.
+        */}
+        <img
+          src="/logo/sentralabs-oscuro.png"
+          alt="Sentra Labs"
+          width="1458"
+          height="513"
+          class="h-8 w-auto [[data-theme=oscuro]_&]:hidden"
+        />
+        <img
+          src="/logo/sentralabs.png"
+          alt="Sentra Labs"
+          width="1458"
+          height="513"
+          class="hidden h-8 w-auto [[data-theme=oscuro]_&]:block"
+        />
+        <p class="mt-4 text-suave">
+          Sentra Labs desarrolla Innvita. Si encuentras un error, algo no funciona como esperabas o quieres
+          colaborar con el proyecto, escríbenos.
         </p>
-        <Button variant="secondary" href="https://genglobal.org/contact" target="_blank" rel="noopener noreferrer" class="mt-4">
-          Formulario de contacto de GEN
-        </Button>
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <Button variant="secondary" href={`mailto:${correoSentra}`}>{correoSentra}</Button>
+          <a
+            href="https://www.instagram.com/sentralabs.co/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram de Sentra Labs"
+            class="flex size-10 items-center justify-center rounded-full border border-linea text-suave transition active:scale-[0.95] hover:border-acento hover:text-texto"
+          >
+            <SocialIcon name="instagram" class="size-4" />
+          </a>
+        </div>
       </div>
     </div>
   </section>
