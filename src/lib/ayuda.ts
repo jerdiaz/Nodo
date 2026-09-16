@@ -161,7 +161,8 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         id: 'precio-aforo',
         pregunta: 'Cómo funcionan el precio y el aforo',
         respuesta: [
-          'Un evento sin precio es gratis: no hay que escribir un cero. Si le pones precio, eliges también la moneda entre peso colombiano, dólar y euro. Innvita no cobra ni procesa pagos: el precio es informativo y el cobro lo gestionas tú por fuera.',
+          'Un evento sin precio es gratis: no hay que escribir un cero. Si le pones precio, eliges también la moneda entre peso colombiano, dólar y euro. Innvita no cobra ni procesa pagos: el cobro lo gestionas tú por fuera.',
+          'En un evento de pago, cada persona reserva su lugar y tú ves su correo y su celular en la lista de asistentes para cuadrar el pago. Cuando lo recibas, márcalo como confirmado ahí mismo: en ese momento le llega el correo con la invitación y, si el evento es virtual, el enlace de conexión. Hasta entonces el enlace no se le muestra.',
           'Un evento sin aforo no tiene límite de asistentes. Si le pones uno, deja de admitir confirmaciones al llenarse, y el límite se comprueba en el momento exacto de confirmar: dos personas que pulsen a la vez sobre el último lugar no pueden entrar las dos.',
         ],
       },
@@ -196,6 +197,14 @@ export const CATEGORIAS_AYUDA: CategoriaAyuda[] = [
         respuesta: [
           'En la ficha del evento, con el botón de asistir. Hace falta haber iniciado sesión; si no la tienes, se te pide entrar y vuelves al mismo evento.',
           'La confirmación es inmediata y no necesita aprobación de quien organiza.',
+        ],
+      },
+      {
+        id: 'evento-de-pago',
+        pregunta: 'Cómo funciona asistir a un evento de pago',
+        respuesta: [
+          'Innvita no cobra: el pago se acuerda directamente con quien organiza. Al reservar tu lugar, quien organiza recibe tu correo y tu celular para contactarte y cuadrar el pago, y por eso hace falta un celular en tu perfil.',
+          'Mientras el pago esté pendiente, tu lugar está reservado pero no confirmado. Cuando quien organiza lo confirme, te llega un correo con la invitación y, si el evento es virtual, el enlace de conexión, que también aparece en la página del evento.',
         ],
       },
       {

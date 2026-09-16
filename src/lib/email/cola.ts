@@ -39,6 +39,9 @@ export interface DestinatarioCorreo {
   uid: string;
   correo: string;
   nombre: string;
+  // Solo lo usa el correo de pago pendiente, para decirle a la persona a que
+  // numero le van a escribir.
+  celular?: string;
 }
 
 interface DocumentoCorreo {
@@ -104,6 +107,7 @@ export async function resolverDestinatarios(
         uid,
         correo,
         nombre: perfil?.firstName ?? '',
+        celular: perfil?.phone,
       },
     ];
   });
@@ -141,6 +145,7 @@ function datosDelEvento(
   evento: NodoEvent,
   destinatario: DestinatarioCorreo,
   cambios?: string[],
+  pagoPendiente = false,
 ): DatosCorreo {
   // joinLocationParts y no un join a secas: los tres campos los escribe quien
   // publica y nada impide poner "UTB" de lugar y "UTB" de direccion, que sin
@@ -167,6 +172,7 @@ function datosDelEvento(
     enlaceCalendario: getGoogleCalendarUrl(evento),
     organizador: evento.community?.name ?? evento.organizer.name,
     cambios,
+    ...(pagoPendiente ? { pagoPendiente: true, celular: destinatario.celular } : {}),
   };
 }
 
@@ -177,6 +183,7 @@ function invitacionPara(
   evento: NodoEvent,
   destinatario: DestinatarioCorreo,
   metodo: 'REQUEST' | 'CANCEL',
+  conEnlaceDeReunion = true,
 ): AdjuntoCorreo | undefined {
   const remitente = direccionRemitente();
 
@@ -194,6 +201,7 @@ function invitacionPara(
     nombreOrganizador: evento.community?.name ?? evento.organizer.name,
     metodo,
     secuencia: secuenciaAhora(),
+    conEnlaceDeReunion,
   });
 
   return {
@@ -213,6 +221,9 @@ export interface EncolarOpciones {
   // 'actualizacion': dos ediciones distintas son dos correos, dos guardados
   // identicos del mismo formulario son uno.
   version?: string;
+  // Confirmacion de un evento de pago: reserva el lugar, pero ni el correo ni
+  // la invitacion llevan el enlace de reunion. Ese llega con 'pago-confirmado'.
+  pagoPendiente?: boolean;
 }
 
 // Un lote de Firestore admite 500 escrituras, y getAll() tampoco es gratis con
@@ -239,6 +250,7 @@ async function encolarLote({
   destinatarios,
   cambios,
   version,
+  pagoPendiente = false,
 }: EncolarOpciones): Promise<string[]> {
   if (destinatarios.length === 0) {
     return [];
@@ -272,8 +284,8 @@ async function encolarLote({
       para: destinatario.correo,
       uid: destinatario.uid,
       eventoId: evento.id,
-      datos: datosDelEvento(evento, destinatario, cambios),
-      adjunto: invitacionPara(evento, destinatario, metodo),
+      datos: datosDelEvento(evento, destinatario, cambios, pagoPendiente),
+      adjunto: invitacionPara(evento, destinatario, metodo, !pagoPendiente),
       estado: 'pendiente',
       intentos: 0,
     };

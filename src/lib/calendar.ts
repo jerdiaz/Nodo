@@ -161,6 +161,9 @@ interface OpcionesInvitacion {
   nombreOrganizador: string;
   metodo: 'REQUEST' | 'CANCEL';
   secuencia: number;
+  // Sin enlace de reunion: la confirmacion de un evento de pago reserva el
+  // lugar pero el enlace llega solo cuando quien organiza confirma el pago.
+  conEnlaceDeReunion?: boolean;
 }
 
 export function buildIcsInvitation({
@@ -170,6 +173,7 @@ export function buildIcsInvitation({
   nombreOrganizador,
   metodo,
   secuencia,
+  conEnlaceDeReunion = true,
 }: OpcionesInvitacion): string {
   return unirLineasIcs([
     'BEGIN:VCALENDAR',
@@ -184,7 +188,7 @@ export function buildIcsInvitation({
     `DTEND:${toUtcBasicDate(event.endDate)}`,
     `SUMMARY:${escapeIcsText(event.title)}`,
     `DESCRIPTION:${escapeIcsText(event.description)}`,
-    `LOCATION:${escapeIcsText(getFullEventLocation(event))}`,
+    `LOCATION:${escapeIcsText(getFullEventLocation(event, { conEnlaceDeReunion }))}`,
     `ORGANIZER;CN=${escapeIcsText(nombreOrganizador)}:mailto:${correoOrganizador}`,
     `ATTENDEE;CN=${correoAsistente};RSVP=FALSE;PARTSTAT=ACCEPTED;ROLE=REQ-PARTICIPANT:mailto:${correoAsistente}`,
     `SEQUENCE:${secuencia}`,

@@ -5,6 +5,10 @@ import { getUserProfiles } from './users';
 export interface RsvpInfo {
   count: number;
   attending: boolean;
+  // Solo significa algo en eventos de pago. Lo marca quien organiza cuando
+  // recibe el dinero; hasta entonces la asistencia existe pero el enlace de
+  // reunion no se entrega.
+  pagoConfirmado: boolean;
 }
 
 function rsvpsCollection(eventId: string) {
@@ -47,6 +51,7 @@ export interface RsvpEntry {
   // Cuando confirmo. Es null en un documento sin marca de tiempo, que hoy no
   // deberia existir: setRsvp es el unico que escribe aqui.
   createdAt: Date | null;
+  pagoConfirmado: boolean;
 }
 
 // Quienes han confirmado, en orden de llegada y como mucho `max`. Devuelve el
@@ -66,8 +71,44 @@ export async function getRsvpEntries(eventId: string, max: number): Promise<Rsvp
     return {
       uid: doc.id,
       createdAt: createdAt instanceof Timestamp ? createdAt.toDate() : null,
+      pagoConfirmado: doc.data()?.pagoConfirmado === true,
     };
   });
+}
+
+export const SIN_ASISTENCIA = 'SIN_ASISTENCIA';
+
+// El pago de un evento de pago lo confirma quien organiza, a mano, cuando le
+// llega el dinero por fuera: Innvita no cobra ni procesa pagos. Es el unico
+// campo de la asistencia que no escribe la propia persona.
+//
+// Devuelve si el estado cambio de verdad: quien llama solo manda el correo
+// con el enlace cuando se pasa de pendiente a confirmado, no al repetir un
+// clic ni al volver a marcarlo tras desmarcarlo por error.
+export async function setPagoConfirmado(
+  eventId: string,
+  uid: string,
+  confirmado: boolean,
+): Promise<{ cambio: boolean }> {
+  const ref = rsvpsCollection(eventId).doc(uid);
+  const doc = await ref.get();
+
+  if (!doc.exists) {
+    throw new Error(SIN_ASISTENCIA);
+  }
+
+  const antes = doc.data()?.pagoConfirmado === true;
+
+  if (antes === confirmado) {
+    return { cambio: false };
+  }
+
+  await ref.update({
+    pagoConfirmado: confirmado,
+    pagoConfirmadoEn: confirmado ? FieldValue.serverTimestamp() : FieldValue.delete(),
+  });
+
+  return { cambio: true };
 }
 
 export interface AttendeeFace {
@@ -144,11 +185,11 @@ export async function getRsvpInfo(eventId: string, uid?: string): Promise<RsvpIn
     typeof stored === 'number' ? stored : (await rsvpsRef.count().get()).data().count;
 
   if (!uid) {
-    return { count, attending: false };
+    return { count, attending: false, pagoConfirmado: false };
   }
 
   const doc = await rsvpsRef.doc(uid).get();
-  return { count, attending: doc.exists };
+  return { count, attending: doc.exists, pagoConfirmado: doc.data()?.pagoConfirmado === true };
 }
 
 // Lo lanza setRsvp cuando ya no quedan lugares. Es un mensaje centinela, como

@@ -45,6 +45,20 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     return jsonResponse({ error: 'Este evento ya terminó.' }, 400);
   }
 
+  // Evento de pago: hace falta un celular en el perfil, porque el pago se
+  // cuadra por fuera y quien organiza necesita como contactar a la persona.
+  // Es obligatorio desde la bienvenida, pero una cuenta anterior a eso puede
+  // no tenerlo todavia: aqui se comprueba de nuevo, que es donde importa.
+  const esDePago = typeof data.price === 'number' && data.price > 0;
+  const perfil = await getUserProfile(user.uid).catch(() => null);
+
+  if (esDePago && !perfil?.phone) {
+    return jsonResponse(
+      { error: 'Para asistir a un evento de pago necesitas un celular en tu perfil. Añádelo en Configuración.' },
+      400,
+    );
+  }
+
   try {
     const result = await setRsvp(id, user.uid);
 
@@ -70,8 +84,6 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     // POST repetido no vuelve a confirmar, asi que tampoco vuelve a escribir.
     if (result.creado && user.email) {
       try {
-        const perfil = await getUserProfile(user.uid).catch(() => null);
-
         const [correoId] = await encolarCorreos({
           evento: mapDocToEvent(event),
           tipo: 'confirmacion',
@@ -80,8 +92,12 @@ export const POST: APIRoute = async ({ params, cookies }) => {
               uid: user.uid,
               correo: user.email,
               nombre: perfil?.firstName ?? user.name.split(' ')[0] ?? '',
+              celular: perfil?.phone,
             },
           ],
+          // En un evento de pago la confirmacion reserva el lugar sin enlace:
+          // el enlace llega con el correo de pago confirmado.
+          pagoPendiente: esDePago,
         });
 
         if (correoId) {
@@ -95,12 +111,23 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     // El enlace de reunion se entrega aqui, al confirmar, y solo aqui: la ficha
     // no lo lleva en el HTML de quien no ha confirmado, asi que este es el
     // unico camino por el que llega al navegador ademas del correo.
+    // En un evento de pago, una asistencia recien creada esta pendiente de
+    // pago y el enlace no se entrega: lo entrega quien organiza al confirmar.
     const meetingUrl =
-      result.attending && data.modality !== 'presencial' && typeof data.meetingUrl === 'string'
+      result.attending && !esDePago && data.modality !== 'presencial' && typeof data.meetingUrl === 'string'
         ? data.meetingUrl
         : undefined;
 
-    return jsonResponse({ attending: result.attending, count: result.count, meetingUrl }, 200);
+    return jsonResponse(
+      {
+        attending: result.attending,
+        count: result.count,
+        meetingUrl,
+        pagoPendiente: esDePago,
+        celular: esDePago ? perfil?.phone : undefined,
+      },
+      200,
+    );
   } catch (error) {
     if (error instanceof Error && error.message === AFORO_COMPLETO) {
       return jsonResponse({ error: 'Este evento ya llenó su aforo.' }, 409);

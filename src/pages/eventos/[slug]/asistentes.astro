@@ -5,11 +5,11 @@ import VerifiedBadge from '../../../components/ui/VerifiedBadge.astro';
 import { getCurrentUser } from '../../../lib/auth';
 import { getEventBySlug } from '../../../lib/firebase/events';
 import { getRsvpEntries } from '../../../lib/firebase/rsvps';
-import { getUserProfiles } from '../../../lib/firebase/users';
-import { formatEventDateLong, formatEventTime } from '../../../lib/format';
+import { getEmailsByUid, getUserProfiles } from '../../../lib/firebase/users';
+import { formatEventDateLong, formatEventPrice, formatEventTime } from '../../../lib/format';
 import { genColorForEvent } from '../../../lib/genColor';
 import { SOCIAL_FIELDS, type SocialKey } from '../../../types/profile';
-import { ArrowLeft, CalendarDays, Users } from '@lucide/astro';
+import { ArrowLeft, CalendarDays, Check, Clock, Users } from '@lucide/astro';
 import type { UserProfile } from '../../../types/profile';
 
 const { slug } = Astro.params;
@@ -42,6 +42,15 @@ const perfiles = await getUserProfiles(entradas.map((entrada) => entrada.uid)).c
   () => new Map<string, UserProfile>(),
 );
 
+// En un evento de pago, quien organiza necesita como contactar a cada
+// persona para cuadrar el pago: aqui si se enseñan el correo y el celular, y
+// asi lo dice la pagina de Privacidad y el aviso que ve la persona antes de
+// reservar. En uno gratuito no hace falta y no se piden.
+const esDePago = typeof event.price === 'number' && event.price > 0;
+const correos = esDePago
+  ? await getEmailsByUid(entradas.map((entrada) => entrada.uid)).catch(() => new Map<string, string | null>())
+  : new Map<string, string | null>();
+
 interface EnlaceSocial {
   key: SocialKey | 'website';
   href: string;
@@ -53,6 +62,8 @@ interface Asistente {
   nombre: string;
   confirmadoEl: Date | null;
   enlaces: EnlaceSocial[];
+  correo: string | null;
+  pagoConfirmado: boolean;
 }
 
 function enlacesSociales(perfil: UserProfile): EnlaceSocial[] {
@@ -91,6 +102,8 @@ const asistentes: Asistente[] = entradas.flatMap((entrada) => {
       nombre: [perfil.firstName, perfil.lastName].filter(Boolean).join(' ') || 'Sin nombre',
       confirmadoEl: entrada.createdAt,
       enlaces: enlacesSociales(perfil),
+      correo: correos.get(perfil.uid) ?? null,
+      pagoConfirmado: entrada.pagoConfirmado,
     },
   ];
 });
@@ -149,12 +162,20 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
     </div>
 
     {/*
-      Lo que se enseña aqui es el perfil publico de cada quien, el mismo que
-      cualquiera ve en /u/<usuario>. El correo no: se recoge al iniciar sesion
-      para identificar la cuenta, y la pagina de Privacidad no dice que se
-      comparta con quien organiza. Cambiarlo es una decision de producto y de
-      esa pagina, no de esta plantilla.
+      En un evento gratuito se enseña el perfil publico de cada quien, el
+      mismo que cualquiera ve en /u/<usuario>: ni correo ni celular. En uno
+      de pago si, porque el pago se cuadra por fuera y quien organiza tiene
+      que poder escribirle a la persona. La pagina de Privacidad lo dice, y la
+      persona lo ve antes de reservar.
     */}
+    {esDePago && (
+      <div class="mt-6 rounded-2xl border border-linea bg-fondo-alt p-4 text-sm text-suave">
+        Evento de pago ({formatEventPrice(event)}). Cada persona reserva su lugar; tú confirmas el pago cuando lo
+        recibas, y en ese momento le llega el correo con la invitación
+        {event.modality !== 'presencial' ? ' y el enlace de conexión' : ''}.
+      </div>
+    )}
+    <p id="pago-aviso" hidden class="mt-3 text-sm text-acento-texto"></p>
     {asistentes.length === 0 ? (
       <div class="mt-8 rounded-3xl border border-dashed border-linea px-6 py-16 text-center">
         <p class="text-base font-medium text-texto">Todavía no hay nadie confirmado</p>
@@ -164,8 +185,8 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
       </div>
     ) : (
       <ul class="mt-6 divide-y divide-linea overflow-hidden rounded-3xl border border-linea bg-superficie">
-        {asistentes.map(({ perfil, nombre, confirmadoEl, enlaces }) => (
-          <li class="flex items-start gap-4 p-5">
+        {asistentes.map(({ perfil, nombre, confirmadoEl, enlaces, correo, pagoConfirmado }) => (
+          <li class="flex items-start gap-4 p-5" data-asistente={perfil.uid}>
             {perfil.avatarUrl ? (
               <img src={perfil.avatarUrl} alt="" class="size-12 shrink-0 rounded-full object-cover" />
             ) : (
@@ -210,6 +231,25 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
                 <p class="mt-2 line-clamp-2 text-sm leading-6 text-suave">{perfil.bio}</p>
               )}
 
+              {esDePago && (
+                <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  {correo && (
+                    <a href={`mailto:${correo}`} class="text-acento-texto hover:underline">{correo}</a>
+                  )}
+                  {perfil.phone && (
+                    <a
+                      href={`https://wa.me/${perfil.phone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-acento-texto hover:underline"
+                    >
+                      {perfil.phone}
+                    </a>
+                  )}
+                  {!correo && !perfil.phone && <span class="text-tenue">Sin datos de contacto</span>}
+                </div>
+              )}
+
               {enlaces.length > 0 && (
                 <div class="mt-3 flex flex-wrap items-center gap-2">
                   {enlaces.map((enlace) => (
@@ -228,6 +268,31 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
               )}
             </div>
 
+            {esDePago && (
+              <button
+                type="button"
+                data-pago
+                data-confirmado={pagoConfirmado ? 'true' : 'false'}
+                class:list={[
+                  'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60',
+                  pagoConfirmado
+                    ? 'bg-acento-suave text-acento-texto ring-1 ring-inset ring-acento'
+                    : 'border border-linea text-texto hover:border-acento',
+                ]}
+              >
+                {pagoConfirmado ? (
+                  <>
+                    <Check class="size-3.5" stroke-width={2.5} />
+                    Pago confirmado
+                  </>
+                ) : (
+                  <>
+                    <Clock class="size-3.5" stroke-width={2} />
+                    Confirmar pago
+                  </>
+                )}
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -240,3 +305,42 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
     )}
   </div>
 </BaseLayout>
+
+<script>
+  // Confirmar o desmarcar el pago de cada persona. Tras aplicar se recarga:
+  // el estado del boton y el texto viven en el servidor, y recargar es la
+  // forma mas simple de que la pagina diga exactamente lo que hay guardado.
+  const aviso = document.getElementById('pago-aviso') as HTMLParagraphElement | null;
+  const eventoId = window.location.pathname.split('/')[2] ?? '';
+
+  document.querySelectorAll<HTMLButtonElement>('[data-pago]').forEach((boton) => {
+    boton.addEventListener('click', async () => {
+      const fila = boton.closest<HTMLElement>('[data-asistente]');
+      const uid = fila?.dataset.asistente ?? '';
+      const confirmado = boton.dataset.confirmado !== 'true';
+
+      // Desmarcar es una correccion y conviene confirmarla; marcar es el
+      // camino normal y no.
+      if (!confirmado && !window.confirm('¿Marcar este pago como pendiente otra vez?')) return;
+
+      boton.disabled = true;
+      if (aviso) aviso.hidden = true;
+
+      try {
+        const respuesta = await fetch(
+          `/api/events/${encodeURIComponent(eventoId)}/asistentes/${encodeURIComponent(uid)}`,
+          { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmado }) },
+        );
+        const resultado = await respuesta.json().catch(() => ({}));
+        if (!respuesta.ok) throw new Error(resultado.error ?? 'No se pudo guardar.');
+        window.location.reload();
+      } catch (error) {
+        if (aviso) {
+          aviso.textContent = error instanceof Error ? error.message : 'No se pudo guardar.';
+          aviso.hidden = false;
+        }
+        boton.disabled = false;
+      }
+    });
+  });
+</script>

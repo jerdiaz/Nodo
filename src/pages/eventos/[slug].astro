@@ -4,6 +4,7 @@ import StatusToast from '../../components/common/StatusToast.astro';
 import ShareButtons from '../../components/events/ShareButtons.astro';
 import Badge from '../../components/ui/Badge.astro';
 import { getCurrentUser } from '../../lib/auth';
+import { getUserProfile } from '../../lib/firebase/users';
 import EventCard from '../../components/events/EventCard.astro';
 import { filterEvents, getEventBySlug, getEvents } from '../../lib/firebase/events';
 import { normalizeCityName } from '../../lib/eventValidation';
@@ -49,6 +50,7 @@ const MAX_ASISTENTES = 12;
 
 let rsvpCount = 0;
 let isAttending = false;
+let pagoConfirmado = false;
 let uidsAsistentes: string[] = [];
 
 try {
@@ -59,6 +61,7 @@ try {
 
   rsvpCount = info.count;
   isAttending = info.attending;
+  pagoConfirmado = info.pagoConfirmado;
   uidsAsistentes = uids.map((entrada) => entrada.uid);
 } catch (error) {
   console.warn('No se pudo obtener la asistencia del evento:', error);
@@ -221,7 +224,15 @@ const tzAbbreviation = new Intl.DateTimeFormat('es', { timeZone: event.timezone,
 // El enlace de reunion se gana confirmando asistencia. Quien organiza lo ve
 // siempre, que para eso lo puso. Todo lo que se pinta para el resto -la ficha,
 // los botones de calendario, el JSON-LD- va sin el.
-const puedeVerEnlace = isAttending || isOwner;
+// En un evento de pago, ademas, el pago tiene que estar confirmado por quien
+// organiza: hasta entonces la asistencia es una reserva.
+const esDePago = typeof event.price === 'number' && event.price > 0;
+const pagoPendiente = esDePago && isAttending && !pagoConfirmado && !isOwner;
+const puedeVerEnlace = isOwner || (isAttending && (!esDePago || pagoConfirmado));
+
+// El celular al que quien organiza va a escribir, para decirselo a la
+// persona. Solo se lee cuando hace falta enseñarlo.
+const celularAsistente = pagoPendiente ? (await getUserProfile(user!.uid).catch(() => null))?.phone : undefined;
 
 const googleCalendarUrl = getGoogleCalendarUrl(event, { conEnlaceDeReunion: puedeVerEnlace });
 const icsDataUrl = getIcsDataUrl(event, { conEnlaceDeReunion: puedeVerEnlace });
@@ -503,7 +514,7 @@ function textoAsistentes(total: number): string {
                   script de abajo lo pinta en este mismo hueco sin recargar.
                 */}
                 {event.meetingUrl && event.modality !== 'presencial' && (
-                  <div data-enlace-reunion class="mt-0.5">
+                  <div data-enlace-reunion data-de-pago={esDePago ? 'true' : 'false'} class="mt-0.5">
                     {puedeVerEnlace ? (
                       <a
                         href={event.meetingUrl}
@@ -513,6 +524,17 @@ function textoAsistentes(total: number): string {
                       >
                         {event.meetingUrl}
                       </a>
+                    ) : pagoPendiente ? (
+                      <p class="text-sm text-suave">
+                        Tu lugar está reservado. Quien organiza te contactará
+                        {celularAsistente ? ` al ${celularAsistente}` : ''} para cuadrar el pago; al confirmarlo
+                        recibirás el enlace aquí y por correo.
+                      </p>
+                    ) : esDePago ? (
+                      <p class="text-sm text-suave">
+                        Reserva tu lugar para recibir el enlace. Quien organiza recibirá tu correo y tu celular
+                        para cuadrar el pago; al confirmarlo te enviará el enlace.
+                      </p>
                     ) : (
                       <p class="text-sm text-suave">
                         Confirma tu asistencia para recibir el enlace. Te llega también por correo.
@@ -889,12 +911,19 @@ function textoAsistentes(total: number): string {
           data-rsvp
           data-event-id={event.id}
           data-attending={isAttending ? 'true' : 'false'}
+          data-de-pago={esDePago ? 'true' : 'false'}
           class="group inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-acento px-8 text-base font-semibold text-acento-contraste transition active:scale-[0.97] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 data-[attending=true]:bg-acento-suave data-[attending=true]:text-acento-texto data-[attending=true]:ring-1 data-[attending=true]:ring-inset data-[attending=true]:ring-acento"
         >
-          <span class="inline-flex items-center gap-2 group-data-[attending=true]:hidden">Asistir</span>
+          {/*
+            En un evento de pago el boton dice lo que de verdad pasa: se
+            reserva, no se asiste, hasta que quien organiza confirme el pago.
+          */}
+          <span class="inline-flex items-center gap-2 group-data-[attending=true]:hidden">
+            {esDePago ? 'Reservar lugar' : 'Asistir'}
+          </span>
           <span class="hidden items-center gap-2 group-data-[attending=true]:inline-flex">
             <Check class="size-5" stroke-width={2.5} />
-            Asistes
+            {esDePago ? (pagoConfirmado ? 'Pago confirmado' : 'Reservado · pago pendiente') : 'Asistes'}
           </span>
         </button>
       ) : (
@@ -1015,7 +1044,12 @@ function textoAsistentes(total: number): string {
           const huecoEnlace = document.querySelector<HTMLElement>('[data-enlace-reunion]');
           if (huecoEnlace) {
             huecoEnlace.textContent = '';
-            if (result.attending && typeof result.meetingUrl === 'string' && result.meetingUrl) {
+            if (result.attending && result.pagoPendiente) {
+              const aviso = document.createElement('p');
+              aviso.className = 'text-sm text-suave';
+              aviso.textContent = `Tu lugar está reservado. Quien organiza te contactará${result.celular ? ` al ${result.celular}` : ''} para cuadrar el pago; al confirmarlo recibirás el enlace aquí y por correo.`;
+              huecoEnlace.appendChild(aviso);
+            } else if (result.attending && typeof result.meetingUrl === 'string' && result.meetingUrl) {
               const enlace = document.createElement('a');
               enlace.href = result.meetingUrl;
               enlace.target = '_blank';
@@ -1026,7 +1060,10 @@ function textoAsistentes(total: number): string {
             } else if (!result.attending) {
               const aviso = document.createElement('p');
               aviso.className = 'text-sm text-suave';
-              aviso.textContent = 'Confirma tu asistencia para recibir el enlace. Te llega también por correo.';
+              aviso.textContent =
+                huecoEnlace.dataset.dePago === 'true'
+                  ? 'Reserva tu lugar para recibir el enlace. Quien organiza recibirá tu correo y tu celular para cuadrar el pago; al confirmarlo te enviará el enlace.'
+                  : 'Confirma tu asistencia para recibir el enlace. Te llega también por correo.';
               huecoEnlace.appendChild(aviso);
             }
           }

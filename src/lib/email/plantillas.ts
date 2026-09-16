@@ -4,7 +4,7 @@ import { esMismoDia, formatEventDateLong, formatEventTime } from '../format';
 // guardo cuando el correo se encolo, no leyendo el evento en el momento de
 // enviar: la cancelacion se manda justo despues de borrar el evento, asi que en
 // ese momento ya no hay nada que leer.
-export type TipoCorreo = 'confirmacion' | 'recordatorio' | 'actualizacion' | 'cancelacion';
+export type TipoCorreo = 'confirmacion' | 'recordatorio' | 'actualizacion' | 'cancelacion' | 'pago-confirmado';
 
 export interface DatosCorreo {
   nombreDestinatario: string;
@@ -32,6 +32,12 @@ export interface DatosCorreo {
   meetingUrl?: string;
   precio?: string;
   enlaceCalendario?: string;
+  // Evento de pago con el pago aun sin confirmar: la confirmacion reserva el
+  // lugar y lo dice, pero no lleva el enlace de reunion ni promete nada mas
+  // hasta que quien organiza confirme. Con el, el celular al que le van a
+  // escribir para cuadrar el pago.
+  pagoPendiente?: boolean;
+  celular?: string;
 }
 
 export interface CorreoCompuesto {
@@ -250,6 +256,38 @@ export function componerCorreo(tipo: TipoCorreo, datos: DatosCorreo, sitio: stri
   const inicio = new Date(datos.inicioIso);
   const cuandoCorto = `${formatEventDateLong(inicio, datos.timezone)}, ${formatEventTime(inicio, datos.timezone)}`;
 
+  if (tipo === 'confirmacion' && datos.pagoPendiente) {
+    // Evento de pago: el lugar queda reservado, no confirmado. Innvita no
+    // cobra; el pago se cuadra por fuera con quien organiza, que tiene el
+    // celular de esta persona para eso. Sin enlace de reunion ni boton de
+    // calendario: los dos llegan con el correo de pago confirmado.
+    const avance = `Reservaste tu lugar${datos.precio ? ` (${datos.precio})` : ''}. Quien organiza te contactará para el pago.`;
+    const intro = 'Reservaste tu lugar en';
+    const contacto = datos.celular
+      ? `Quien organiza te contactará al ${datos.celular} para cuadrar el pago.`
+      : 'Quien organiza te contactará para cuadrar el pago.';
+    const despues = `${contacto} Cuando lo confirme, recibirás otro correo con todo lo que necesitas para ir${datos.meetingUrl ? ', incluido el enlace de conexión' : ''}.`;
+    const sinEnlaces = { ...datos, meetingUrl: undefined, enlaceCalendario: undefined };
+
+    return {
+      asunto: `Lugar reservado en ${datos.tituloEvento} — pago pendiente`,
+      html: envoltura(
+        avance,
+        bloqueBanner(datos) +
+          seccion(
+            parrafo(saludo) +
+              parrafo(intro) +
+              titulo(datos.tituloEvento) +
+              tarjetaDetalles(sinEnlaces) +
+              `<p style="margin:18px 0 0;padding:14px 18px;background:#fdeaea;border-radius:12px;font-size:15px;line-height:22px;color:${TINTA};">${escaparHtml(despues)}</p>` +
+              botones(sinEnlaces, sitio),
+          ),
+        PIE_RECIBO,
+      ),
+      texto: [saludo, '', intro, ...lineasEvento(sinEnlaces, sitio), '', despues, '', PIE_RECIBO].join('\n'),
+    };
+  }
+
   if (tipo === 'confirmacion') {
     const avance = `Tu lugar está confirmado. ${cuandoCorto}${datos.lugar ? `, ${datos.lugar}` : ''}.`;
 
@@ -271,6 +309,32 @@ export function componerCorreo(tipo: TipoCorreo, datos: DatosCorreo, sitio: stri
         PIE_RECIBO,
       ),
       texto: [saludo, '', 'Tienes un lugar en:', '', ...lineasEvento(datos, sitio), '', PIE_RECIBO].join('\n'),
+    };
+  }
+
+  if (tipo === 'pago-confirmado') {
+    // El correo que de verdad confirma un evento de pago: llega cuando quien
+    // organiza marca el pago como recibido, y es el que lleva el enlace de
+    // reunion y la invitacion completa.
+    const avance = `Pago confirmado. ${cuandoCorto}${datos.lugar ? `, ${datos.lugar}` : ''}.`;
+    const intro = 'Quien organiza confirmó tu pago. Ya tienes tu lugar en';
+
+    return {
+      asunto: `Pago confirmado: ${datos.tituloEvento}`,
+      html: envoltura(
+        avance,
+        bloqueBanner(datos) +
+          seccion(
+            parrafo(saludo) +
+              parrafo(intro) +
+              titulo(datos.tituloEvento) +
+              tarjetaDetalles(datos) +
+              botones(datos, sitio) +
+              nota('Adjuntamos la invitación para que la agregues a tu calendario.'),
+          ),
+        PIE_RECIBO,
+      ),
+      texto: [saludo, '', intro, ...lineasEvento(datos, sitio), '', PIE_RECIBO].join('\n'),
     };
   }
 
