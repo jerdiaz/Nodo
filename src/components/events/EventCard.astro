@@ -29,9 +29,10 @@ const modalityLabel: Record<EventModality, string> = {
 
 const ModalityIcon = event.modality === 'virtual' ? Video : MapPin;
 
-// En el listado manda la comunidad y no la persona: el evento se publica en su
-// nombre. Quien lo creo se ve al entrar en la ficha.
-const autor = event.community ?? event.organizer;
+// En el listado manda la comunidad, o si no hay, la entidad organizadora que
+// haya cargado quien publico -ninguna de las dos es necesariamente la
+// persona de la cuenta. Quien lo creo se ve al entrar en la ficha.
+const autorNombre = event.community?.name ?? event.organizingEntity?.name ?? event.organizer.name;
 const locationLabel = getEventLocationLabel(event);
 const firstTag = event.tags[0];
 // El color dice de que va el evento: sale de su primera etiqueta, no de su
@@ -101,7 +102,7 @@ const caras = attendees.slice(0, 4);
       </p>
 
       <p class="mt-1 flex min-w-0 items-center gap-1.5 text-sm text-suave">
-        <span class="truncate">por {autor.name}</span>
+        <span class="truncate">por {autorNombre}</span>
 
         {/*
           La palomita es siempre de quien publico el evento, tambien cuando en

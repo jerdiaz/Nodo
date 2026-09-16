@@ -1,6 +1,7 @@
 ---
 import { Bell, ChevronDown, LogOut, Menu, Plus, Search, Settings, ShieldCheck, User } from '@lucide/astro';
 import { getDisplayUser } from '../../lib/auth';
+import { LATAM_COUNTRIES } from '../../types/event';
 import ProviderIcon from '../ui/ProviderIcon.astro';
 
 const user = await getDisplayUser(Astro.cookies);
@@ -16,6 +17,7 @@ const links = [
 // viendo su ciudad escrita al navegar a la ficha de un evento y volver.
 const searchQuery = Astro.url.searchParams.get('q') ?? '';
 const searchCity = Astro.url.searchParams.get('ciudad') ?? '';
+const searchCountry = Astro.url.searchParams.get('pais') ?? '';
 
 // La cabecera cambia de forma en movil segun se este en la portada o en el
 // listado de resultados, como hace Meetup: la portada se queda en logotipo,
@@ -120,6 +122,29 @@ const enResultados =
           class="absolute left-0 top-full z-50 mt-2 max-h-72 w-64 overflow-auto rounded-2xl border border-linea bg-superficie p-1.5 shadow-[var(--c-sombra-alta)]"
         ></ul>
       </div>
+
+      <span
+        class="hidden h-5 w-px shrink-0 bg-linea transition group-focus-within:bg-transparent lg:block"
+        aria-hidden="true"
+      ></span>
+
+      {/*
+        Lista fija, a diferencia de ciudad: no hace falta autocompletar contra
+        el catalogo, un <select> nativo alcanza y funciona incluso sin JS
+        (esta pastilla es un <form method="get"> normal).
+      */}
+      <select
+        name="pais"
+        aria-label="Filtrar por país"
+        class="hidden h-9 min-w-0 flex-[0.6] truncate rounded-full bg-transparent px-4 text-sm tracking-[0.02em] text-texto outline-none transition focus:bg-superficie focus:shadow-[var(--c-sombra)] lg:block"
+      >
+        <option value="">País</option>
+        {LATAM_COUNTRIES.map((pais) => (
+          <option value={pais.code} selected={searchCountry === pais.code}>
+            {pais.name}
+          </option>
+        ))}
+      </select>
       <button
         type="submit"
         aria-label="Buscar"

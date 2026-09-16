@@ -5,11 +5,12 @@ import { buildFilterHref } from '../../lib/eventFilterHref';
 interface Props {
   selectedModality?: string;
   selectedCity?: string;
+  selectedCountry?: string;
   selectedTimeframe?: 'past';
   selectedSearch?: string;
 }
 
-const { selectedModality, selectedCity, selectedTimeframe, selectedSearch } = Astro.props;
+const { selectedModality, selectedCity, selectedCountry, selectedTimeframe, selectedSearch } = Astro.props;
 
 const modalities: { label: string; value?: string }[] = [
   { label: 'Todos', value: undefined },
@@ -28,6 +29,7 @@ const modalities: { label: string; value?: string }[] = [
         href={buildFilterHref({
           modality: modality.value,
           city: nextCity,
+          country: selectedCountry,
           timeframe: selectedTimeframe,
           search: selectedSearch,
           // Estas pestañas solo se ven dentro del listado, asi que ninguna

@@ -17,6 +17,7 @@ export function getEventJsonLd(event: NodoEvent, pageUrl: string): Record<string
         '@type': 'PostalAddress',
         streetAddress: event.address,
         addressLocality: event.city,
+        addressCountry: event.country,
       },
     });
   }
@@ -38,9 +39,12 @@ export function getEventJsonLd(event: NodoEvent, pageUrl: string): Record<string
     eventAttendanceMode: ATTENDANCE_MODE[event.modality],
     eventStatus: 'https://schema.org/EventScheduled',
     location: locations.length === 1 ? locations[0] : locations,
+    // Misma prioridad que ya usa la tarjeta de la cartelera: comunidad,
+    // luego entidad organizadora, y solo si no hay ninguna la persona que
+    // publico.
     organizer: {
       '@type': 'Organization',
-      name: event.organizer.name,
+      name: event.community?.name ?? event.organizingEntity?.name ?? event.organizer.name,
     },
     url: pageUrl,
   };

@@ -30,7 +30,7 @@ import {
   UtensilsCrossed,
   Video,
 } from '@lucide/astro';
-import { filterEvents, getEvents, getFilterCities } from '../lib/firebase/events';
+import { filterEvents, getEvents, getFilterCities, getFilterCountries } from '../lib/firebase/events';
 import { buildFilterHref } from '../lib/eventFilterHref';
 import { genColor } from '../lib/genColor';
 import { getAttendeeFaces } from '../lib/firebase/rsvps';
@@ -41,6 +41,7 @@ import type { NodoEvent } from '../types/event';
 
 const modalidad = Astro.url.searchParams.get('modalidad') ?? undefined;
 const ciudad = Astro.url.searchParams.get('ciudad') ?? undefined;
+const pais = Astro.url.searchParams.get('pais') ?? undefined;
 const query = Astro.url.searchParams.get('q') ?? undefined;
 const timeframe: 'upcoming' | 'past' = Astro.url.searchParams.get('tiempo') === 'pasados' ? 'past' : 'upcoming';
 
@@ -54,8 +55,9 @@ try {
 
 const timeframeEvents = filterEvents(allEvents, { timeframe });
 const cities = getFilterCities(timeframeEvents);
+const countries = getFilterCountries(timeframeEvents);
 
-const events = filterEvents(allEvents, { modality: modalidad, city: ciudad, timeframe, search: query });
+const events = filterEvents(allEvents, { modality: modalidad, city: ciudad, country: pais, timeframe, search: query });
 
 // La home tiene dos caras. Sin filtros es una portada: carriles por modalidad,
 // categorias y explicacion, para que quien llega de cero vea contenido real sin
@@ -73,7 +75,8 @@ const proximos = filterEvents(allEvents, { timeframe: 'upcoming' });
 // algo cerca los quiere ver. En el carril en linea solo entra lo puramente
 // virtual, para que ningun evento salga dos veces en la misma pagina.
 const presencialesTodos = proximos.filter((event) => event.modality !== 'virtual');
-const presenciales = ciudad ? filterEvents(presencialesTodos, { city: ciudad }) : presencialesTodos;
+const presenciales =
+  ciudad || pais ? filterEvents(presencialesTodos, { city: ciudad, country: pais }) : presencialesTodos;
 const virtuales = proximos.filter((event) => event.modality === 'virtual');
 
 // Cuatro por fila y una sola fila, como los carriles de Meetup. Lo que sobra
@@ -439,6 +442,7 @@ if (MOSTRAR_PUBLICACIONES) {
           <EventFilter
             selectedModality={modalidad}
             selectedCity={ciudad}
+            selectedCountry={pais}
             selectedTimeframe={timeframe === 'past' ? 'past' : undefined}
             selectedSearch={query}
           />
@@ -458,8 +462,10 @@ if (MOSTRAR_PUBLICACIONES) {
         </div>
         <SecondaryFilters
           cities={cities}
+          countries={countries}
           selectedModality={modalidad}
           selectedCity={ciudad}
+          selectedCountry={pais}
           selectedTimeframe={timeframe === 'past' ? 'past' : undefined}
           selectedSearch={query}
         />
@@ -569,7 +575,7 @@ if (MOSTRAR_PUBLICACIONES) {
               es cuando la portada mas se parece a un callejon sin salida.
             */}
             <a
-              href={buildFilterHref({ modality: 'presencial', city: ciudad, list: true })}
+              href={buildFilterHref({ modality: 'presencial', city: ciudad, country: pais, list: true })}
               class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
             >
               Ver todos los eventos
@@ -592,7 +598,7 @@ if (MOSTRAR_PUBLICACIONES) {
           {presenciales.length > LIMITE_MOVIL && (
             <div class="mt-8 sm:hidden">
               <a
-                href={buildFilterHref({ modality: 'presencial', city: ciudad, list: true })}
+                href={buildFilterHref({ modality: 'presencial', city: ciudad, country: pais, list: true })}
                 class="flex h-11 w-full items-center justify-center rounded-full border border-linea bg-superficie text-sm font-semibold tracking-[0.02em] text-texto transition active:scale-[0.98] hover:border-acento"
               >
                 Ver más eventos

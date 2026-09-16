@@ -2,7 +2,7 @@
 import Card from '../ui/Card.astro';
 import ImageCropper from '../ui/ImageCropper.astro';
 import Button from '../ui/Button.astro';
-import { EVENT_CURRENCIES, type NodoEvent } from '../../types/event';
+import { EVENT_CURRENCIES, LATAM_COUNTRIES, type NodoEvent } from '../../types/event';
 import type { NodoCommunity } from '../../types/community';
 import DateTimePicker from './DateTimePicker.astro';
 
@@ -91,6 +91,36 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
       />
     </div>
 
+    {/*
+      Opcional y siempre visible, a diferencia de "Publicar como": no depende
+      de administrar una comunidad en Innvita. Cubre a quien sube el evento
+      por encargo de alguien mas -una fundacion, una empresa, otra persona-
+      que no tiene por que tener cuenta ni comunidad aqui.
+    */}
+    <div>
+      <label class="block text-sm font-medium text-texto">¿Quién organiza? <span class="text-tenue">(opcional)</span></label>
+      <div class="mt-1.5 grid gap-3 sm:grid-cols-2">
+        <input
+          id="organizingEntityName"
+          name="organizingEntityName"
+          type="text"
+          maxlength="120"
+          class={inputClassFila}
+          placeholder="Nombre de quien organiza"
+          value={event?.organizingEntity?.name ?? ''}
+        />
+        <input
+          id="organizingEntityUrl"
+          name="organizingEntityUrl"
+          type="url"
+          class={inputClassFila}
+          placeholder="Sitio web o red social"
+          value={event?.organizingEntity?.url ?? ''}
+        />
+      </div>
+      <p class="mt-1.5 text-xs text-tenue">Déjalo vacío si tú mismo eres quien organiza.</p>
+    </div>
+
     {community && (
       <div>
         <label class="block text-sm font-medium text-texto">Publicar como</label>
@@ -131,6 +161,25 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
           </button>
         </div>
       <input type="hidden" id="modality" name="modality" value={event?.modality ?? 'presencial'} />
+    </div>
+
+    {/*
+      Fuera de data-field-group="location" a proposito: ese grupo se oculta
+      entero en modalidad virtual, pero el pais tiene sentido incluso ahi -
+      dice de donde es la entidad organizadora aunque el evento no tenga
+      sitio fisico. Solo se exige (ver required en el script) cuando tambien
+      se exige la ciudad.
+    */}
+    <div>
+      <label for="country" class="block text-sm font-medium text-texto">País</label>
+      <select id="country" name="country" class={inputClass}>
+        <option value="" selected={!event?.country}>Selecciona un país</option>
+        {LATAM_COUNTRIES.map((pais) => (
+          <option value={pais.code} selected={event?.country === pais.code}>
+            {pais.name}
+          </option>
+        ))}
+      </select>
     </div>
 
     <div data-field-group="location" class="space-y-4">
@@ -349,6 +398,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
   const locationGroup = document.querySelector('[data-field-group="location"]') as HTMLElement;
   const onlineGroup = document.querySelector('[data-field-group="online"]') as HTMLElement;
   const cityInput = document.getElementById('city') as HTMLInputElement;
+  const countrySelect = document.getElementById('country') as HTMLSelectElement;
   const meetingUrlInput = document.getElementById('meetingUrl') as HTMLInputElement;
   const bannerUrlInput = document.getElementById('bannerUrl') as HTMLInputElement;
   const bannerSmallUrlInput = document.getElementById('bannerSmallUrl') as HTMLInputElement;
@@ -473,6 +523,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     onlineGroup.classList.toggle('hidden', !showOnline);
 
     cityInput.required = showLocation;
+    countrySelect.required = showLocation;
     meetingUrlInput.required = showOnline;
   }
 
@@ -979,6 +1030,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
         description: formData.get('description'),
         modality: formData.get('modality'),
         city: formData.get('city') || undefined,
+        country: formData.get('country') || undefined,
         venue: formData.get('venue') || undefined,
         address: formData.get('address') || undefined,
         meetingUrl: formData.get('meetingUrl') || undefined,
@@ -996,6 +1048,8 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
         endDate: toIsoStringOrEmpty(formData.get('endDate'), eventTimezone),
         timezone: eventTimezone || undefined,
         publishAs: formData.get('publishAs') || undefined,
+        organizingEntityName: formData.get('organizingEntityName') || undefined,
+        organizingEntityUrl: formData.get('organizingEntityUrl') || undefined,
         tags: tagsRaw
           .split(',')
           .map((tag) => tag.trim())

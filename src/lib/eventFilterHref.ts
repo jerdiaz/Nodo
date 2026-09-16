@@ -1,6 +1,7 @@
 export interface FilterHrefOverrides {
   modality?: string;
   city?: string;
+  country?: string;
   timeframe?: 'past';
   search?: string;
   // Pide el listado explicitamente, sin depender de que haya algun filtro
@@ -14,6 +15,7 @@ export function buildFilterHref(overrides: FilterHrefOverrides): string {
   const params = new URLSearchParams();
   if (overrides.modality) params.set('modalidad', overrides.modality);
   if (overrides.city) params.set('ciudad', overrides.city);
+  if (overrides.country) params.set('pais', overrides.country);
   if (overrides.timeframe === 'past') params.set('tiempo', 'pasados');
   if (overrides.search) params.set('q', overrides.search);
   if (overrides.list) params.set('ver', 'todos');

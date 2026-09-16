@@ -331,10 +331,12 @@ function textoAsistentes(total: number): string {
         </h1>
 
         {/*
-          Quien organiza es siempre la persona, tambien cuando el evento sale
-          en la cartelera a nombre de una comunidad: es con ella con quien se
-          habla si algo no cuadra. La comunidad tiene su propia tarjeta debajo,
-          que es donde de verdad se puede pulsar para conocerla.
+          Quien aparece aqui es siempre la persona (event.organizer), tambien
+          cuando el evento sale a nombre de una comunidad o de una entidad
+          organizadora: es con ella con quien se habla si algo no cuadra. La
+          etiqueta cambia a "Publicado por" en esos dos casos -ahi esta
+          persona no es quien organiza, es quien lo subio- y se queda en
+          "Organiza" cuando es la unica que hay.
         */}
         <div class="mt-6 flex items-center gap-3">
           {event.organizer.avatarUrl ? (
@@ -345,7 +347,7 @@ function textoAsistentes(total: number): string {
             </div>
           )}
           <div class="min-w-0">
-            <p class="text-xs text-tenue">Organiza</p>
+            <p class="text-xs text-tenue">{event.community || event.organizingEntity ? 'Publicado por' : 'Organiza'}</p>
             <p class="flex items-center gap-1.5 font-semibold text-texto">
               {/*
                 Solo se enlaza si tiene nombre de usuario: la URL del perfil
@@ -365,7 +367,7 @@ function textoAsistentes(total: number): string {
           </div>
         </div>
 
-        {event.community && (
+        {event.community ? (
           <a
             href={`/comunidades/${event.community.slug}`}
             class="mt-5 flex items-center gap-4 rounded-2xl border border-linea bg-superficie p-3 transition hover:border-[var(--g)]"
@@ -383,6 +385,29 @@ function textoAsistentes(total: number): string {
             </div>
             <ChevronRight class="size-5 shrink-0 text-tenue" stroke-width={2} />
           </a>
+        ) : (
+          event.organizingEntity && (
+            <div class="mt-5 flex items-center gap-4 rounded-2xl border border-linea bg-superficie p-3">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs text-tenue">Organiza</p>
+                {event.organizingEntity.url ? (
+                  <a
+                    href={event.organizingEntity.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="truncate font-semibold text-texto transition hover:text-acento-texto"
+                  >
+                    {event.organizingEntity.name}
+                  </a>
+                ) : (
+                  <p class="truncate font-semibold text-texto">{event.organizingEntity.name}</p>
+                )}
+              </div>
+              {event.organizingEntity.url && (
+                <SquareArrowOutUpRight class="size-5 shrink-0 text-tenue" stroke-width={1.75} />
+              )}
+            </div>
+          )
         )}
       </header>
 

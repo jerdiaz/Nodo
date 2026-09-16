@@ -4,13 +4,16 @@ import { buildFilterHref } from '../../lib/eventFilterHref';
 
 interface Props {
   cities: string[];
+  countries: { code: string; name: string }[];
   selectedModality?: string;
   selectedCity?: string;
+  selectedCountry?: string;
   selectedTimeframe?: 'past';
   selectedSearch?: string;
 }
 
-const { cities, selectedModality, selectedCity, selectedTimeframe, selectedSearch } = Astro.props;
+const { cities, countries, selectedModality, selectedCity, selectedCountry, selectedTimeframe, selectedSearch } =
+  Astro.props;
 
 const showCityFilter = !selectedModality || selectedModality === 'presencial';
 ---
@@ -19,7 +22,7 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
   {showCityFilter && cities.length > 0 && (
     <div class="flex flex-wrap justify-end gap-2">
       <a
-        href={buildFilterHref({ modality: selectedModality, timeframe: selectedTimeframe, search: selectedSearch, list: true })}
+        href={buildFilterHref({ modality: selectedModality, country: selectedCountry, timeframe: selectedTimeframe, search: selectedSearch, list: true })}
         class={cn(
           'rounded-full px-3 py-1 text-xs font-medium transition active:scale-[0.97]',
           !selectedCity
@@ -34,6 +37,7 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
           href={buildFilterHref({
             modality: selectedModality,
             city,
+            country: selectedCountry,
             timeframe: selectedTimeframe,
             search: selectedSearch,
             list: true,
@@ -46,6 +50,47 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
           )}
         >
           {city}
+        </a>
+      ))}
+    </div>
+  )}
+
+  {/*
+    Sin la condicion de showCityFilter: el pais no se oculta en modalidad
+    virtual, a diferencia de la ciudad, porque un evento virtual si puede
+    tener pais (el de la entidad organizadora).
+  */}
+  {countries.length > 0 && (
+    <div class="flex flex-wrap justify-end gap-2">
+      <a
+        href={buildFilterHref({ modality: selectedModality, city: selectedCity, timeframe: selectedTimeframe, search: selectedSearch, list: true })}
+        class={cn(
+          'rounded-full px-3 py-1 text-xs font-medium transition active:scale-[0.97]',
+          !selectedCountry
+            ? 'bg-acento text-acento-contraste'
+            : 'bg-superficie text-suave hover:text-texto',
+        )}
+      >
+        Todos los países
+      </a>
+      {countries.map((country) => (
+        <a
+          href={buildFilterHref({
+            modality: selectedModality,
+            city: selectedCity,
+            country: country.code,
+            timeframe: selectedTimeframe,
+            search: selectedSearch,
+            list: true,
+          })}
+          class={cn(
+            'rounded-full px-3 py-1 text-xs font-medium transition active:scale-[0.97]',
+            selectedCountry === country.code
+              ? 'bg-acento text-acento-contraste'
+              : 'bg-superficie text-suave hover:text-texto',
+          )}
+        >
+          {country.name}
         </a>
       ))}
     </div>

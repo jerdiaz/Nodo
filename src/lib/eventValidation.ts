@@ -1,4 +1,11 @@
-import { EVENT_CURRENCIES, type EventCurrency, type EventModality } from '../types/event';
+import {
+  EVENT_CURRENCIES,
+  LATAM_COUNTRIES,
+  type EventCountryCode,
+  type EventCurrency,
+  type EventModality,
+  type EventOrganizingEntity,
+} from '../types/event';
 import { esImagenSubida } from './imagenSubida';
 
 const VALID_MODALITIES: EventModality[] = ['presencial', 'virtual', 'hibrido'];
@@ -10,6 +17,7 @@ const DEFAULT_TIMEZONE = 'America/Bogota';
 const MAX_DESCRIPTION_LENGTH = 3000;
 const MAX_CITY_LENGTH = 80;
 const MAX_VENUE_LENGTH = 120;
+const MAX_ORGANIZING_ENTITY_NAME_LENGTH = 120;
 const MAX_ADDRESS_LENGTH = 200;
 const MAX_URL_LENGTH = 500;
 const MAX_TAGS = 10;
@@ -60,6 +68,7 @@ export interface ValidatedEventInput {
   description: string;
   modality: EventModality;
   city?: string;
+  country?: EventCountryCode;
   venue?: string;
   address?: string;
   meetingUrl?: string;
@@ -74,6 +83,7 @@ export interface ValidatedEventInput {
   price?: number;
   currency?: EventCurrency;
   capacity?: number;
+  organizingEntity?: EventOrganizingEntity;
 }
 
 // Acepta numero o cadena porque el formulario manda lo que hay en un input de
@@ -126,12 +136,17 @@ export function validateEventPayload(
   }
 
   const city = typeof payload.city === 'string' ? normalizeCityName(payload.city) : '';
+  const country = typeof payload.country === 'string' ? payload.country.trim().toUpperCase() : '';
   const venue = typeof payload.venue === 'string' ? payload.venue.trim() : '';
   const address = typeof payload.address === 'string' ? payload.address.trim() : '';
   const meetingUrl = typeof payload.meetingUrl === 'string' ? payload.meetingUrl.trim() : '';
 
   if (city.length > MAX_CITY_LENGTH) {
     return { error: `La ciudad no puede superar los ${MAX_CITY_LENGTH} caracteres.` };
+  }
+
+  if (country && !LATAM_COUNTRIES.some((pais) => pais.code === country)) {
+    return { error: 'El país no es válido.' };
   }
 
   if (venue.length > MAX_VENUE_LENGTH) {
@@ -148,6 +163,13 @@ export function validateEventPayload(
 
   if ((modality === 'presencial' || modality === 'hibrido') && !city) {
     return { error: 'La ciudad es obligatoria para eventos presenciales o híbridos.' };
+  }
+
+  // El pais existe en modalidad virtual (para decir de donde es la entidad
+  // organizadora), pero solo se exige cuando ademas hace falta la ciudad:
+  // ahi si hay un sitio fisico que ubicar.
+  if ((modality === 'presencial' || modality === 'hibrido') && !country) {
+    return { error: 'El país es obligatorio para eventos presenciales o híbridos.' };
   }
 
   if ((modality === 'virtual' || modality === 'hibrido') && (!meetingUrl || !isHttpUrl(meetingUrl))) {
@@ -276,12 +298,39 @@ export function validateEventPayload(
     return { error: `El aforo no puede superar los ${MAX_CAPACITY} asistentes.` };
   }
 
+  const organizingEntityName =
+    typeof payload.organizingEntityName === 'string' ? payload.organizingEntityName.trim() : '';
+  const organizingEntityUrl =
+    typeof payload.organizingEntityUrl === 'string' ? payload.organizingEntityUrl.trim() : '';
+
+  if (organizingEntityName.length > MAX_ORGANIZING_ENTITY_NAME_LENGTH) {
+    return { error: `El nombre de quien organiza no puede superar los ${MAX_ORGANIZING_ENTITY_NAME_LENGTH} caracteres.` };
+  }
+
+  if (organizingEntityUrl.length > MAX_URL_LENGTH) {
+    return { error: 'El enlace de quien organiza es demasiado largo.' };
+  }
+
+  if (organizingEntityUrl && !isHttpUrl(organizingEntityUrl)) {
+    return { error: 'El enlace de quien organiza no es válido.' };
+  }
+
+  // Un enlace sin nombre no se puede mostrar: no hay con que etiquetarlo.
+  if (organizingEntityUrl && !organizingEntityName) {
+    return { error: 'Agrega el nombre de quien organiza para poder guardar el enlace.' };
+  }
+
+  const organizingEntity: EventOrganizingEntity | undefined = organizingEntityName
+    ? { name: organizingEntityName, url: organizingEntityUrl || undefined }
+    : undefined;
+
   return {
     data: {
       title,
       description,
       modality: modality as EventModality,
       city: city || undefined,
+      country: (country || undefined) as EventCountryCode | undefined,
       venue: venue || undefined,
       address: address || undefined,
       meetingUrl: meetingUrl || undefined,
@@ -296,6 +345,7 @@ export function validateEventPayload(
       price,
       currency,
       capacity: aforo,
+      organizingEntity,
     },
   };
 }

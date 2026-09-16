@@ -2,11 +2,12 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from './server';
 import { getUserProfiles } from './users';
 import { normalizeCityName } from '../eventValidation';
-import type { NodoEvent } from '../../types/event';
+import { LATAM_COUNTRIES, type EventCountryCode, type NodoEvent } from '../../types/event';
 
 export interface EventFilters {
   modality?: string;
   city?: string;
+  country?: string;
   timeframe?: 'upcoming' | 'past' | 'all';
   search?: string;
   organizerUid?: string;
@@ -51,6 +52,7 @@ export function mapDocToEvent(doc: FirebaseFirestore.DocumentSnapshot): NodoEven
     bannerSmallUrl: data.bannerSmallUrl,
     modality: data.modality,
     city: data.city,
+    country: data.country,
     venue: data.venue,
     address: data.address,
     meetingUrl: data.meetingUrl,
@@ -60,6 +62,7 @@ export function mapDocToEvent(doc: FirebaseFirestore.DocumentSnapshot): NodoEven
     tags: data.tags ?? [],
     organizer: data.organizer,
     community: data.community,
+    organizingEntity: data.organizingEntity,
     rsvpCount: typeof data.rsvpCount === 'number' ? data.rsvpCount : undefined,
     latitude: typeof data.latitude === 'number' ? data.latitude : undefined,
     longitude: typeof data.longitude === 'number' ? data.longitude : undefined,
@@ -136,6 +139,13 @@ export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoE
       return false;
     }
 
+    // Igualdad exacta y no normalizada: el pais se guarda como codigo de una
+    // lista cerrada (LATAM_COUNTRIES), no como texto libre, asi que no hay
+    // variantes de mayusculas/tildes que reconciliar como con la ciudad.
+    if (filters.country && event.country !== filters.country) {
+      return false;
+    }
+
     if (filters.timeframe === 'upcoming' && event.endDate.getTime() < now) {
       return false;
     }
@@ -168,6 +178,17 @@ export function getFilterCities(events: NodoEvent[]): string[] {
   );
 
   return [...cities].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+// Los paises que de verdad tienen algun evento proximo, no la lista entera de
+// LATAM_COUNTRIES: ofrecer un pais sin eventos llevaria a un filtro vacio,
+// igual que ya evita getFilterCities con la ciudad.
+export function getFilterCountries(events: NodoEvent[]): { code: string; name: string }[] {
+  const codes = new Set(
+    events.map((event) => event.country).filter((code): code is EventCountryCode => Boolean(code)),
+  );
+
+  return LATAM_COUNTRIES.filter((pais) => codes.has(pais.code)).map((pais) => ({ code: pais.code, name: pais.name }));
 }
 
 export async function getEvents(filters?: EventFilters): Promise<NodoEvent[]> {
