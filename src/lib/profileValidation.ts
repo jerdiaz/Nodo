@@ -1,16 +1,6 @@
+import { isHttpUrl, normalizeHttpUrl } from './url';
 import { SOCIAL_FIELDS, type ProfileSocials, type UserProfile } from '../types/profile';
 
-// `new URL()` acepta "javascript:alert(1)" como URL valida. Estos valores se
-// pintan luego como href en el perfil, asi que el protocolo se comprueba de
-// forma explicita en vez de dar por buena cualquier URL parseable.
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
 
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,28}[a-z0-9])$/;
 const HANDLE_PATTERN = /^[A-Za-z0-9._-]{1,60}$/;
@@ -166,7 +156,7 @@ export function validateProfilePayload(body: unknown): { data: ValidatedProfile 
 
   const website = typeof rawSocials.website === 'string' ? rawSocials.website.trim() : '';
   if (website) {
-    const normalized = /^https?:\/\//i.test(website) ? website : `https://${website}`;
+    const normalized = normalizeHttpUrl(website);
     if (!isHttpUrl(normalized)) {
       return { error: 'El sitio web no es una URL válida.' };
     }

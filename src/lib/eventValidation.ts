@@ -1,3 +1,4 @@
+import { isHttpUrl, normalizeHttpUrl } from './url';
 import {
   EVENT_CURRENCIES,
   LATAM_COUNTRIES,
@@ -29,17 +30,6 @@ const MAX_TAG_LENGTH = 40;
 const MAX_PRICE = 100_000_000;
 const MAX_CAPACITY = 100_000;
 
-// new URL() acepta "javascript:alert(1)" como URL valida. Estos valores se
-// pintan luego como enlace o como <img>, asi que el protocolo se comprueba de
-// forma explicita en vez de dar por buena cualquier URL parseable.
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
 
 function isValidTimezone(value: string): boolean {
   try {
@@ -139,7 +129,7 @@ export function validateEventPayload(
   const country = typeof payload.country === 'string' ? payload.country.trim().toUpperCase() : '';
   const venue = typeof payload.venue === 'string' ? payload.venue.trim() : '';
   const address = typeof payload.address === 'string' ? payload.address.trim() : '';
-  const meetingUrl = typeof payload.meetingUrl === 'string' ? payload.meetingUrl.trim() : '';
+  const meetingUrl = typeof payload.meetingUrl === 'string' ? normalizeHttpUrl(payload.meetingUrl) : '';
 
   if (city.length > MAX_CITY_LENGTH) {
     return { error: `La ciudad no puede superar los ${MAX_CITY_LENGTH} caracteres.` };
@@ -301,7 +291,7 @@ export function validateEventPayload(
   const organizingEntityName =
     typeof payload.organizingEntityName === 'string' ? payload.organizingEntityName.trim() : '';
   const organizingEntityUrl =
-    typeof payload.organizingEntityUrl === 'string' ? payload.organizingEntityUrl.trim() : '';
+    typeof payload.organizingEntityUrl === 'string' ? normalizeHttpUrl(payload.organizingEntityUrl) : '';
 
   if (organizingEntityName.length > MAX_ORGANIZING_ENTITY_NAME_LENGTH) {
     return { error: `El nombre de quien organiza no puede superar los ${MAX_ORGANIZING_ENTITY_NAME_LENGTH} caracteres.` };
