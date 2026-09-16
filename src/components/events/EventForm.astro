@@ -37,6 +37,10 @@ function toDatetimeLocalValue(date: Date, timezone: string): string {
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
 }
 
+// El campo visible del pais muestra el nombre; el codigo viaja en un campo
+// oculto. Al editar, se prellena con el nombre del que el evento ya tiene.
+const nombrePais = LATAM_COUNTRIES.find((pais) => pais.code === event?.country)?.name ?? '';
+
 const startValue = event ? toDatetimeLocalValue(event.startDate, event.timezone) : '';
 const endValue = event ? toDatetimeLocalValue(event.endDate, event.timezone) : '';
 const tagsValue = event ? event.tags.join(', ') : '';
@@ -170,22 +174,51 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
       sitio fisico. Solo se exige (ver required en el script) cuando tambien
       se exige la ciudad.
     */}
-    <div>
-      <label for="country" class="block text-sm font-medium text-texto">País</label>
-      <select id="country" name="country" class={inputClass}>
-        <option value="" selected={!event?.country}>Selecciona un país</option>
-        {LATAM_COUNTRIES.map((pais) => (
-          <option value={pais.code} selected={event?.country === pais.code}>
-            {pais.name}
-          </option>
-        ))}
-      </select>
+    {/*
+      Un campo de texto con lista, y no un <select>: con veinte paises, poder
+      escribir "col" y elegir es mas rapido que desplegar y buscar con la
+      vista. Se puede seguir abriendo la lista entera con solo enfocar. El
+      codigo del pais viaja en el campo oculto; lo visible es el nombre.
+    */}
+    <div class="relative">
+      <label for="country-buscar" class="block text-sm font-medium text-texto">País</label>
+      <input type="hidden" id="country" name="country" value={event?.country ?? ''} />
+      <input
+        id="country-buscar"
+        type="text"
+        class={inputClass}
+        placeholder="Escribe o elige un país"
+        value={nombrePais}
+        data-paises={JSON.stringify(LATAM_COUNTRIES)}
+      />
+      <ul
+        id="country-lista"
+        hidden
+        class="absolute left-0 top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-2xl border border-linea bg-superficie p-1.5 shadow-[var(--c-sombra-alta)]"
+      ></ul>
     </div>
 
     <div data-field-group="location" class="space-y-4">
-      <div>
+      {/*
+        Sugiere ciudades del pais elegido segun se escribe, contra Places
+        restringido a ese pais. Sigue siendo texto libre: si la ciudad no
+        aparece, lo escrito se guarda igual.
+      */}
+      <div class="relative">
         <label for="city" class="block text-sm font-medium text-texto">Ciudad</label>
-        <input id="city" name="city" type="text" class={inputClass} placeholder="Bogotá" value={event?.city ?? ''} />
+        <input
+          id="city"
+          name="city"
+          type="text"
+          class={inputClass}
+          placeholder="Escribe para buscar"
+          value={event?.city ?? ''}
+        />
+        <ul
+          id="city-lista"
+          hidden
+          class="absolute left-0 top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-2xl border border-linea bg-superficie p-1.5 shadow-[var(--c-sombra-alta)]"
+        ></ul>
       </div>
       <div>
         <label for="venue" class="block text-sm font-medium text-texto">Lugar</label>
@@ -388,6 +421,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
 
 <script>
   import 'leaflet/dist/leaflet.css';
+  import { claveDeBusqueda, montarCombobox } from '../../lib/combobox';
 
   const form = document.getElementById('event-form') as HTMLFormElement;
   const modalityInput = document.getElementById('modality') as HTMLInputElement;
@@ -398,7 +432,13 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
   const locationGroup = document.querySelector('[data-field-group="location"]') as HTMLElement;
   const onlineGroup = document.querySelector('[data-field-group="online"]') as HTMLElement;
   const cityInput = document.getElementById('city') as HTMLInputElement;
-  const countrySelect = document.getElementById('country') as HTMLSelectElement;
+  // El pais ya no es un <select>: el codigo vive en este campo oculto y el
+  // nombre en el combobox de al lado. Quien leia countrySelect.value sigue
+  // leyendo el codigo, que es lo que siempre fue.
+  const countrySelect = document.getElementById('country') as HTMLInputElement;
+  const countryBuscar = document.getElementById('country-buscar') as HTMLInputElement;
+  const countryLista = document.getElementById('country-lista') as HTMLElement;
+  const cityLista = document.getElementById('city-lista') as HTMLElement;
   const meetingUrlInput = document.getElementById('meetingUrl') as HTMLInputElement;
   const bannerUrlInput = document.getElementById('bannerUrl') as HTMLInputElement;
   const bannerSmallUrlInput = document.getElementById('bannerSmallUrl') as HTMLInputElement;
@@ -458,7 +498,6 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     if (resto !== 0) minimo.setMinutes(minimo.getMinutes() + (15 - resto));
     startDateInput.min = toLocalInputValue(minimo);
 
-
     const finSugerido = new Date(inicioSugerido);
     finSugerido.setHours(finSugerido.getHours() + 1);
     endDateInput.value = toLocalInputValue(finSugerido);
@@ -488,6 +527,103 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
 
   startDateInput.addEventListener('change', actualizarLimiteFin);
   actualizarLimiteFin();
+
+  // --- Pais: lista fija, se filtra escribiendo ---------------------------------
+  const paises: { code: string; name: string }[] = JSON.parse(countryBuscar.dataset.paises ?? '[]');
+  const paisPorCodigo = (code: string) => paises.find((pais) => pais.code === code);
+
+  montarCombobox({
+    input: countryBuscar,
+    lista: countryLista,
+    // Cero: con solo enfocar se abre la lista entera, que con veinte paises
+    // es lo que uno espera de un selector.
+    minimo: 0,
+    esperaMs: 0,
+    buscar: (texto) => {
+      const escrito = claveDeBusqueda(texto);
+      const elegido = paisPorCodigo(countrySelect.value);
+
+      // Si lo escrito es exactamente el pais ya elegido, se enseña la lista
+      // entera: quien abre el campo con "Colombia" puesto quiere cambiarlo,
+      // no ver a Colombia como unico resultado.
+      const filtro = elegido && claveDeBusqueda(elegido.name) === escrito ? '' : escrito;
+
+      return paises
+        .filter((pais) => !filtro || claveDeBusqueda(pais.name).includes(filtro))
+        .map((pais) => ({ valor: pais.code, etiqueta: pais.name }));
+    },
+    alElegir: (opcion) => {
+      const cambio = countrySelect.value !== opcion.valor;
+      countrySelect.value = opcion.valor;
+      countryBuscar.value = opcion.etiqueta;
+
+      // Una ciudad elegida para otro pais deja de valer: mejor vacio que un
+      // evento con pais y ciudad que se contradicen.
+      if (cambio && cityInput.value) {
+        cityInput.value = '';
+      }
+
+      countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
+    },
+    vacio: () => 'Ningún país coincide',
+  });
+
+  // Al salir del campo, lo visible tiene que ser un pais de verdad. Un texto a
+  // medias que coincide con uno solo se acepta como si se hubiera elegido;
+  // cualquier otra cosa vuelve al pais que estaba (o a nada).
+  countryBuscar.addEventListener('blur', () => {
+    const escrito = claveDeBusqueda(countryBuscar.value);
+    const candidatos = escrito ? paises.filter((pais) => claveDeBusqueda(pais.name).includes(escrito)) : [];
+    const exacto = paises.find((pais) => claveDeBusqueda(pais.name) === escrito);
+    const unico = exacto ?? (candidatos.length === 1 ? candidatos[0] : undefined);
+
+    if (unico) {
+      if (countrySelect.value !== unico.code) {
+        countrySelect.value = unico.code;
+        if (cityInput.value) cityInput.value = '';
+        countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      countryBuscar.value = unico.name;
+      return;
+    }
+
+    countryBuscar.value = paisPorCodigo(countrySelect.value)?.name ?? '';
+  });
+
+  // --- Ciudad: sugerencias del pais elegido, contra Places -------------------
+  // Sesion propia para Places, distinta de la de direcciones: Google factura
+  // por sesion, y mezclar las dos busquedas en una alargaria la de direcciones
+  // con consultas que no le pertenecen.
+  let sesionCiudad = crypto.randomUUID();
+
+  montarCombobox({
+    input: cityInput,
+    lista: cityLista,
+    minimo: 2,
+    esperaMs: 250,
+    buscar: async (texto) => {
+      const pais = countrySelect.value ? `&pais=${encodeURIComponent(countrySelect.value)}` : '';
+      const respuesta = await fetch(
+        `/api/ubicacion?tipo=ciudad&q=${encodeURIComponent(texto)}&sesion=${sesionCiudad}${pais}`,
+      );
+      const datos = await respuesta.json();
+      const sitios: { nombre: string; direccion?: string }[] = datos.resultados ?? [];
+
+      return sitios.slice(0, 8).map((sitio) => ({
+        valor: sitio.nombre,
+        etiqueta: sitio.nombre,
+        // La region y el pais, para distinguir las dos Cartagena.
+        detalle: sitio.direccion,
+      }));
+    },
+    alElegir: (opcion) => {
+      cityInput.value = opcion.valor;
+      sesionCiudad = crypto.randomUUID();
+      cityInput.dispatchEvent(new Event('change', { bubbles: true }));
+    },
+    vacio: (texto) =>
+      `No encontramos «${texto.trim()}»${countrySelect.value ? ' en ese país' : ''}. Puedes escribirla igual.`,
+  });
 
   // --- Modalidad: tabs segmentadas ---
   function setActiveModalityTab(value: string): void {

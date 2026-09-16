@@ -77,6 +77,14 @@ export async function buscarSugerencias(
 
   if (opciones.soloCiudades) {
     cuerpo.includedPrimaryTypes = ['(cities)'];
+
+    // Para ciudades el pais no sesga: restringe. Elegir Colombia y que salga
+    // una ciudad de Venezuela seria guardar un evento con pais y ciudad que
+    // se contradicen. Las direcciones siguen solo sesgadas (arriba), porque
+    // ahi el punto exacto si puede caer fuera.
+    if (opciones.regionCode) {
+      cuerpo.includedRegionCodes = [opciones.regionCode.toLowerCase()];
+    }
   }
 
   const respuesta = await fetch(AUTOCOMPLETE, {
