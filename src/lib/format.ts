@@ -1,4 +1,4 @@
-import type { NodoEvent } from '../types/event';
+import { LATAM_COUNTRIES, type NodoEvent } from '../types/event';
 
 const DEFAULT_TIMEZONE = 'America/Bogota';
 
@@ -136,9 +136,19 @@ export function joinLocationParts(...partes: (string | undefined)[]): string {
     .join(', ');
 }
 
+// El nombre del pais a partir del codigo. Devuelve el codigo si no lo conoce,
+// que es mejor que nada para un dato que ya esta guardado.
+export function getCountryName(code: string | undefined): string {
+  if (!code) return '';
+  return LATAM_COUNTRIES.find((pais) => pais.code === code)?.name ?? code;
+}
+
+// Un virtual dirigido a un pais lo dice en la etiqueta: "En linea · Colombia"
+// le cuenta a quien mira la tarjeta si el evento es para el antes de abrirlo.
+// Sin pais, es para todos, y "En linea" a secas ya lo dice.
 export function getEventLocationLabel(event: NodoEvent): string {
   if (event.modality === 'virtual') {
-    return 'En línea';
+    return event.country ? `En línea · ${getCountryName(event.country)}` : 'En línea';
   }
 
   return joinLocationParts(event.venue, event.city);

@@ -72,8 +72,12 @@ export interface NodoEvent {
   modality: EventModality;
   city?: string;
   // Se guarda el codigo (ver LATAM_COUNTRIES), no el nombre. Obligatorio
-  // junto a city para presencial/hibrido; opcional en virtual, donde solo
-  // sirve para decir de donde es la entidad organizadora.
+  // junto a city para presencial/hibrido: es donde ocurre.
+  //
+  // En virtual significa otra cosa: a quien va dirigido. Con pais, el evento
+  // es solo para ese pais; sin pais, esta abierto a todos y aparece en la
+  // cartelera de cualquier pais. Es la misma pregunta que se hace quien lo
+  // mira -"¿esto es para mi?"-, y por eso no hace falta un campo aparte.
   country?: EventCountryCode;
   venue?: string;
   address?: string;

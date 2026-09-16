@@ -41,6 +41,11 @@ function toDatetimeLocalValue(date: Date, timezone: string): string {
 // oculto. Al editar, se prellena con el nombre del que el evento ya tiene.
 const nombrePais = LATAM_COUNTRIES.find((pais) => pais.code === event?.country)?.name ?? '';
 
+// Para un virtual, el pais guardado dice a quien va dirigido: con pais, solo
+// ese; sin pais, todos. Un evento nuevo arranca en "todos", que es lo normal
+// de algo que se ve desde cualquier sitio.
+const alcanceInicial = event?.modality === 'virtual' && event.country ? 'pais' : 'todos';
+
 const startValue = event ? toDatetimeLocalValue(event.startDate, event.timezone) : '';
 const endValue = event ? toDatetimeLocalValue(event.endDate, event.timezone) : '';
 const tagsValue = event ? event.tags.join(', ') : '';
@@ -168,11 +173,46 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     </div>
 
     {/*
+      Solo en virtual. Presencial e hibrido ocurren en un sitio y el pais es
+      ese; un virtual se ve desde cualquier parte, asi que hay que preguntar
+      a quien va dirigido. La respuesta se traduce en si se guarda pais o no.
+    */}
+    <div data-field-group="reach" class="hidden">
+      <label class="block text-sm font-medium text-texto">¿Quién puede participar?</label>
+      <div
+        class="mt-1.5 grid grid-cols-2 gap-1 rounded-2xl border border-linea bg-fondo-alt p-1"
+        role="radiogroup"
+        aria-label="Alcance del evento"
+      >
+        <button
+          type="button"
+          role="radio"
+          aria-checked={alcanceInicial === 'todos'}
+          data-reach-option="todos"
+          class="reach-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]"
+        >
+          Todos los países
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={alcanceInicial === 'pais'}
+          data-reach-option="pais"
+          class="reach-tab rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]"
+        >
+          Solo un país
+        </button>
+      </div>
+      <p class="mt-1.5 text-xs text-tenue">
+        Un evento abierto aparece en la cartelera de todos los países.
+      </p>
+      <input type="hidden" id="reachMode" value={alcanceInicial} />
+    </div>
+
+    {/*
       Fuera de data-field-group="location" a proposito: ese grupo se oculta
-      entero en modalidad virtual, pero el pais tiene sentido incluso ahi -
-      dice de donde es la entidad organizadora aunque el evento no tenga
-      sitio fisico. Solo se exige (ver required en el script) cuando tambien
-      se exige la ciudad.
+      entero en modalidad virtual, y el pais tambien se pide ahi cuando el
+      evento va dirigido a un solo pais. Cuando se exige lo decide el script.
     */}
     {/*
       Un campo de texto con lista, y no un <select>: con veinte paises, poder
@@ -180,7 +220,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
       vista. Se puede seguir abriendo la lista entera con solo enfocar. El
       codigo del pais viaja en el campo oculto; lo visible es el nombre.
     */}
-    <div class="relative">
+    <div data-field-group="country" class="relative">
       <label for="country-buscar" class="block text-sm font-medium text-texto">País</label>
       <input type="hidden" id="country" name="country" value={event?.country ?? ''} />
       <input
@@ -431,6 +471,10 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
   const publishInput = document.getElementById('publishAs') as HTMLInputElement | null;
   const locationGroup = document.querySelector('[data-field-group="location"]') as HTMLElement;
   const onlineGroup = document.querySelector('[data-field-group="online"]') as HTMLElement;
+  const reachGroup = document.querySelector('[data-field-group="reach"]') as HTMLElement;
+  const countryGroup = document.querySelector('[data-field-group="country"]') as HTMLElement;
+  const reachModeInput = document.getElementById('reachMode') as HTMLInputElement;
+  const reachTabs = document.querySelectorAll<HTMLButtonElement>('.reach-tab');
   const cityInput = document.getElementById('city') as HTMLInputElement;
   // El pais ya no es un <select>: el codigo vive en este campo oculto y el
   // nombre en el combobox de al lado. Quien leia countrySelect.value sigue
@@ -668,10 +712,42 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     locationGroup.classList.toggle('hidden', !showLocation);
     onlineGroup.classList.toggle('hidden', !showOnline);
 
+    // El alcance solo se pregunta en virtual. El pais se pide si el evento
+    // ocurre en un sitio, o si es virtual y va dirigido a un solo pais.
+    const esVirtual = modality === 'virtual';
+    const showCountry = showLocation || (esVirtual && reachModeInput.value === 'pais');
+
+    reachGroup.classList.toggle('hidden', !esVirtual);
+    countryGroup.classList.toggle('hidden', !showCountry);
+
     cityInput.required = showLocation;
-    countrySelect.required = showLocation;
+    countrySelect.required = showCountry;
     meetingUrlInput.required = showOnline;
   }
+
+  function setActiveReachTab(value: string): void {
+    reachTabs.forEach((tab) => {
+      const isActive = tab.dataset.reachOption === value;
+      tab.setAttribute('aria-checked', String(isActive));
+      tab.classList.toggle('bg-acento', isActive);
+      tab.classList.toggle('text-acento-contraste', isActive);
+      tab.classList.toggle('shadow-sm', isActive);
+      tab.classList.toggle('text-suave', !isActive);
+      tab.classList.toggle('hover:text-texto', !isActive);
+    });
+  }
+
+  reachTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const value = tab.dataset.reachOption;
+      if (!value) return;
+      reachModeInput.value = value;
+      setActiveReachTab(value);
+      updateConditionalFields();
+    });
+  });
+
+  setActiveReachTab(reachModeInput.value);
 
   modalityTabs.forEach((tab) => {
     tab.addEventListener('click', () => {
@@ -1181,6 +1257,9 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
         modality: formData.get('modality'),
         city: formData.get('city') || undefined,
         country: formData.get('country') || undefined,
+        // El servidor lo usa para exigir el pais en "solo un pais" y para
+        // descartarlo en "todos", pase lo que pase con el campo de arriba.
+        alcance: modalityInput.value === 'virtual' ? reachModeInput.value : undefined,
         venue: formData.get('venue') || undefined,
         address: formData.get('address') || undefined,
         meetingUrl: formData.get('meetingUrl') || undefined,

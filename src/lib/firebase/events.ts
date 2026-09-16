@@ -143,7 +143,13 @@ export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoE
     // lista cerrada (LATAM_COUNTRIES), no como texto libre, asi que no hay
     // variantes de mayusculas/tildes que reconciliar como con la ciudad.
     if (filters.country && event.country !== filters.country) {
-      return false;
+      // Un virtual sin pais esta abierto a todos: quien filtra por el suyo
+      // tiene que verlo. Solo se descarta lo que es de otro pais.
+      const abiertoATodos = event.modality === 'virtual' && !event.country;
+
+      if (!abiertoATodos) {
+        return false;
+      }
     }
 
     if (filters.timeframe === 'upcoming' && event.endDate.getTime() < now) {

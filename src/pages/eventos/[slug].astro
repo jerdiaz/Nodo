@@ -17,6 +17,7 @@ import {
   formatEventPrice,
   formatEventTime,
   getRemainingSpots,
+  getCountryName,
   joinLocationParts,
 } from '../../lib/format';
 import { genColorForEvent } from '../../lib/genColor';
@@ -481,7 +482,13 @@ function textoAsistentes(total: number): string {
               </span>
               <div class="min-w-0 flex-1">
                 {event.modality === 'virtual' ? (
-                  <p class="font-semibold text-texto">Evento en línea</p>
+                  <>
+                    <p class="font-semibold text-texto">Evento en línea</p>
+                    {/* A quien va dirigido, que es lo primero que uno mira antes de apuntarse. */}
+                    <p class="text-sm text-suave">
+                      {event.country ? `Solo para ${getCountryName(event.country)}` : 'Abierto a todos los países'}
+                    </p>
+                  </>
                 ) : (
                   <p class="font-semibold text-texto">{physicalLocation}</p>
                 )}

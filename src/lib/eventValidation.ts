@@ -162,6 +162,20 @@ export function validateEventPayload(
     return { error: 'El país es obligatorio para eventos presenciales o híbridos.' };
   }
 
+  // En virtual el formulario pregunta a quien va dirigido. Viene como
+  // `alcance` y se comprueba aqui y no solo en el formulario: sin esto, elegir
+  // "solo un pais" y no elegir ninguno se guardaria en silencio como abierto a
+  // todos, que es lo contrario de lo que se pidio.
+  const alcance = typeof payload.alcance === 'string' ? payload.alcance : '';
+
+  if (modality === 'virtual' && alcance === 'pais' && !country) {
+    return { error: 'Elige el país al que va dirigido el evento.' };
+  }
+
+  // Y "todos" borra el pais aunque el formulario lo mande: lo que manda es la
+  // eleccion, no lo que quedo escrito en un campo que ya no se ve.
+  const countryFinal = modality === 'virtual' && alcance === 'todos' ? '' : country;
+
   if ((modality === 'virtual' || modality === 'hibrido') && (!meetingUrl || !isHttpUrl(meetingUrl))) {
     return { error: 'Se requiere un enlace de reunión válido para eventos virtuales o híbridos.' };
   }
@@ -326,7 +340,7 @@ export function validateEventPayload(
       description,
       modality: modality as EventModality,
       city: city || undefined,
-      country: (country || undefined) as EventCountryCode | undefined,
+      country: (countryFinal || undefined) as EventCountryCode | undefined,
       venue: venue || undefined,
       address: address || undefined,
       meetingUrl: meetingUrl || undefined,
