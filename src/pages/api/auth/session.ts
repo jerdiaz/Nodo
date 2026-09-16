@@ -41,7 +41,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     try {
       const profile = await getUserProfile(decoded.uid);
-      needsOnboarding = !profile?.username;
+      // El celular es obligatorio desde que existe el campo: quien se registro
+      // antes tiene nombre de usuario pero no celular, y tambien pasa por
+      // la bienvenida hasta que lo ponga. Es la unica puerta que todo el
+      // mundo cruza, asi que "sin salida" se decide aqui.
+      needsOnboarding = !profile?.username || !profile?.phone;
     } catch (error) {
       // Si Firestore falla, entrar es mas importante que dar la bienvenida.
       console.warn('No se pudo comprobar el perfil tras iniciar sesión:', error);

@@ -5,6 +5,7 @@ import { getCurrentUser } from '../lib/auth';
 import { getUserProfile } from '../lib/firebase/users';
 import { PHONE_RULES, USERNAME_RULES, suggestUsername } from '../lib/profileValidation';
 import type { UserProfile } from '../types/profile';
+import { rutaInterna } from '../lib/rutaInterna';
 
 const user = await getCurrentUser(Astro.cookies);
 
@@ -24,8 +25,13 @@ try {
 // cuenta igual que el nombre de usuario: es obligatorio, asi que a quien se
 // registro antes de que existiera el campo esta pantalla le vuelve a salir
 // hasta que lo ponga.
+// A donde ir al terminar: a lo que se venia a hacer si se sabe, y si no a la
+// portada. El perfil recien creado esta vacio y es lo menos util que se le
+// puede enseñar a alguien que acaba de llegar.
+const destino = rutaInterna(Astro.url.searchParams.get('destino'), '/');
+
 if (profile?.username && profile?.phone) {
-  return Astro.redirect('/perfil');
+  return Astro.redirect(destino);
 }
 
 // El proveedor devuelve el nombre completo en un solo campo; se parte para
@@ -45,7 +51,7 @@ const inputClass =
       quieres que te encuentren.
     </p>
 
-    <form id="welcome-form" novalidate class="mt-8 space-y-5">
+    <form id="welcome-form" novalidate class="mt-8 space-y-5" data-destino={destino}>
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
           <label for="firstName" class="block text-sm font-medium text-texto">Nombre</label>
@@ -191,7 +197,8 @@ const inputClass =
         throw new Error(result.error ?? 'No se pudo guardar tu perfil.');
       }
 
-      window.location.href = '/perfil';
+      // Ya validado en el servidor con rutaInterna: solo rutas de este sitio.
+      window.location.href = form.dataset.destino || '/';
     } catch (error) {
       errorBox.textContent = error instanceof Error ? error.message : 'No se pudo guardar tu perfil.';
       errorBox.classList.remove('hidden');

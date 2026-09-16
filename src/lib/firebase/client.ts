@@ -36,14 +36,16 @@ async function completeSignIn(userCredential: UserCredential, redirectTo?: strin
   // Sin nombre de usuario aun: se pasa por la bienvenida para elegirlo y
   // corregir el nombre que venga del proveedor, en vez de recargar y dejar a
   // la persona sin saber que puede cambiarlo.
-  if (result.needsOnboarding) {
-    window.location.href = '/bienvenida';
-    return;
-  }
-
   // Se vuelve a comprobar aqui, que es donde se navega de verdad: asi ningun
   // sitio que llame a esta funcion puede colar un destino ajeno.
   const destino = redirectTo ? rutaInterna(redirectTo, '') : '';
+
+  if (result.needsOnboarding) {
+    // El destino viaja con la bienvenida: quien entro desde un evento vuelve
+    // al evento al terminar, no a una pagina que no pidio.
+    window.location.href = destino ? `/bienvenida?destino=${encodeURIComponent(destino)}` : '/bienvenida';
+    return;
+  }
 
   if (destino) {
     window.location.href = destino;
