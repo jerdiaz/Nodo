@@ -172,12 +172,31 @@ export function filterEvents(events: NodoEvent[], filters?: EventFilters): NodoE
 // ya esta en Firestore: eventos publicados antes conviven con "cartagena" y
 // "Cartagena" como si fueran ciudades distintas. Agrupar aqui, en vez de
 // migrar los documentos, resuelve el filtro sin tocar datos ya publicados.
+//
+// normalizeCityName solo arregla mayusculas, no tildes: "Bogota" y "Bogotá"
+// pasan por ella como dos nombres distintos, y sin esto saldrian como dos
+// pills en el filtro aunque filterEvents ya las trate como la misma ciudad
+// al comparar (ve normalizeForSearch). Se agrupan aqui por la clave sin
+// tildes, prefiriendo como etiqueta la variante que SI las lleva -mas
+// probable que este bien escrita que la que no.
 export function getFilterCities(events: NodoEvent[]): string[] {
-  const cities = new Set(
-    events.filter((event): event is NodoEvent & { city: string } => Boolean(event.city)).map((event) => normalizeCityName(event.city)),
-  );
+  const porClave = new Map<string, string>();
 
-  return [...cities].sort((a, b) => a.localeCompare(b, 'es'));
+  for (const event of events) {
+    if (!event.city) {
+      continue;
+    }
+
+    const nombre = normalizeCityName(event.city);
+    const clave = normalizeForSearch(nombre);
+    const actual = porClave.get(clave);
+
+    if (!actual || (/[^\x00-\x7F]/.test(nombre) && !/[^\x00-\x7F]/.test(actual))) {
+      porClave.set(clave, nombre);
+    }
+  }
+
+  return [...porClave.values()].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 // Los paises que de verdad tienen algun evento proximo, no la lista entera de
