@@ -10,6 +10,7 @@ import Franja from '../components/common/Franja.astro';
 import {
   ArrowUpRight,
   BookOpen,
+  CalendarDays,
   Briefcase,
   Dumbbell,
   Film,
@@ -88,6 +89,25 @@ const presenciales =
   ciudad || pais ? filterEvents(presencialesTodos, { city: ciudad, country: pais }) : presencialesTodos;
 const virtuales = proximos.filter((event) => event.modality === 'virtual');
 
+const hayProximos = proximos.length > 0;
+
+// Sin nada por venir, la portada enseña lo ultimo que paso. Antes se quedaba
+// en un cuadro que decia "aun no hay eventos publicados" aunque hubiera seis,
+// todos pasados, y con el se iban tambien las secciones que explican el
+// producto. Una comunidad que acaba de hacer seis eventos no es una comunidad
+// sin eventos: es una que todavia no ha puesto el siguiente.
+const recientes = hayProximos
+  ? []
+  : filterEvents(allEvents, { timeframe: 'past' }).sort(
+      (a, b) => b.startDate.getTime() - a.startDate.getTime(),
+    );
+
+// Categorias y comunidades salen de lo proximo cuando lo hay, y de todo el
+// historial cuando no: son secciones sobre la red, no sobre esta semana. Para
+// el historial se recorre del mas reciente al mas antiguo, asi lo que cada
+// comunidad enseña como "su ultimo evento" es de verdad el ultimo.
+const baseCatalogo = hayProximos ? proximos : [...allEvents].reverse();
+
 // Cuatro por fila y una sola fila, como los carriles de Meetup. Lo que sobra
 // vive detras de "Ver todos los eventos", que lleva al listado completo.
 const LIMITE_CARRIL = 4;
@@ -127,7 +147,7 @@ function iconoCategoria(etiqueta: string) {
 }
 
 const categorias = [
-  ...proximos
+  ...baseCatalogo
     .flatMap((event) => event.tags)
     .reduce((mapa, etiqueta) => {
       const clave = etiqueta.normalize('NFD').replace(/[^\x00-\x7F]/g, '').toLowerCase().trim();
@@ -215,7 +235,7 @@ const GEN_DESTACADAS = ['magenta', 'azul', 'verde'] as const;
 // La clave es la comunidad cuando el evento se publico en su nombre, y la
 // persona cuando no: asi una comunidad no aparece partida en dos filas segun
 // quien de sus eventos se mire.
-const comunidades = [...proximos.reduce((mapa, evento) => {
+const comunidades = [...baseCatalogo.reduce((mapa, evento) => {
   const autor = evento.community ?? evento.organizer;
   const clave = evento.community?.id ?? evento.organizer.uid;
   const enlace = evento.community ? `/comunidades/${evento.community.slug}` : '/comunidades';
@@ -247,7 +267,9 @@ const posicionesPaso = [
 // llamada, que por dentro consulta todos los eventos a la vez.
 const eventosVisibles = vistaResultados
   ? events
-  : [...presenciales.slice(0, LIMITE_CARRIL), ...virtuales.slice(0, LIMITE_CARRIL)];
+  : hayProximos
+    ? [...presenciales.slice(0, LIMITE_CARRIL), ...virtuales.slice(0, LIMITE_CARRIL)]
+    : recientes.slice(0, LIMITE_CARRIL);
 
 const caras = await getAttendeeFaces(
   eventosVisibles.map((event) => event.id),
@@ -511,12 +533,63 @@ if (MOSTRAR_PUBLICACIONES) {
         </div>
       )}
     </section>
-  ) : proximos.length === 0 ? (
-    <section class="mx-auto max-w-[1200px] px-6 pb-24 pt-4">
-      <EmptyState />
-    </section>
   ) : (
     <>
+      {/*
+        Sin eventos proximos, en el hueco de los carriles va o el vacio de
+        verdad (nunca se publico nada) o lo ultimo que paso. El resto de la
+        portada -Sumate, que es Innvita, categorias, comunidades- sigue, porque
+        habla del producto y no del inventario de esta semana.
+      */}
+      {!hayProximos && recientes.length === 0 && (
+        <section class="mx-auto max-w-[1200px] px-6 pt-6">
+          <EmptyState />
+        </section>
+      )}
+
+      {!hayProximos && recientes.length > 0 && (
+        <section class="mx-auto max-w-[1200px] px-6 pt-6">
+          <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-acento-texto">
+                <CalendarDays class="size-3.5" stroke-width={2} />
+                Recientes
+              </p>
+              <h2 class="mt-2 text-2xl font-bold tracking-tight text-texto">Lo último que pasó</h2>
+              <p class="mt-2 max-w-xl text-sm text-suave">
+                Ahora mismo no hay eventos próximos. Estos son los últimos; el siguiente puede ser el tuyo.
+              </p>
+            </div>
+
+            <a
+              href={buildFilterHref({ timeframe: 'past', list: true })}
+              class="text-sm font-semibold tracking-[0.02em] text-acento-texto transition hover:opacity-80"
+            >
+              Ver todos los pasados
+            </a>
+          </div>
+
+          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {recientes.slice(0, LIMITE_CARRIL).map((event, indice) => (
+              <div class:list={[indice >= LIMITE_MOVIL ? 'hidden sm:block' : '']}>
+                <EventCard event={event} attendees={caras.get(event.id)} />
+              </div>
+            ))}
+          </div>
+
+          {recientes.length > LIMITE_MOVIL && (
+            <div class="mt-8 sm:hidden">
+              <a
+                href={buildFilterHref({ timeframe: 'past', list: true })}
+                class="flex h-11 w-full items-center justify-center rounded-full border border-linea bg-superficie text-sm font-semibold tracking-[0.02em] text-texto transition active:scale-[0.98] hover:border-acento"
+              >
+                Ver más eventos
+              </a>
+            </div>
+          )}
+        </section>
+      )}
+
       <!--
         Un carril por modalidad en vez de un filtro. Con poco inventario dos
         secciones llenan la pagina y no exigen que nadie haga clic para ver la
@@ -755,7 +828,7 @@ if (MOSTRAR_PUBLICACIONES) {
           <div class="mt-8 grid grid-cols-2 gap-4 pb-4 sm:-mx-6 sm:flex sm:snap-x sm:gap-5 sm:overflow-x-auto sm:px-6 sm:pb-10 sm:pt-3">
             {categorias.map((categoria, indice) => (
               <a
-                href={buildFilterHref({ search: categoria.nombre })}
+                href={buildFilterHref({ search: categoria.nombre, ...(hayProximos ? {} : { timeframe: 'all' }) })}
                 data-gen={categoria.color}
                 class:list={[
                   'group relative flex h-[150px] w-full shrink-0 snap-start flex-col justify-between rounded-3xl bg-superficie p-5 shadow-[var(--c-sombra)] transition hover:-translate-y-1 sm:w-[230px]',
@@ -929,10 +1002,21 @@ if (MOSTRAR_PUBLICACIONES) {
                     {comunidad.autor.name}
                   </h3>
                   <p class="mt-2 text-sm leading-6 text-suave">
-                    {comunidad.total === 1
-                      ? 'Tiene un evento próximo en la cartelera'
-                      : `Tiene ${comunidad.total} eventos próximos en la cartelera`}, y el siguiente es{' '}
-                    <span class="text-texto">{comunidad.proximo.title}</span>.
+                    {hayProximos ? (
+                      <>
+                        {comunidad.total === 1
+                          ? 'Tiene un evento próximo en la cartelera'
+                          : `Tiene ${comunidad.total} eventos próximos en la cartelera`}, y el siguiente es{' '}
+                        <span class="text-texto">{comunidad.proximo.title}</span>.
+                      </>
+                    ) : (
+                      <>
+                        {comunidad.total === 1
+                          ? 'Ha organizado un evento en la cartelera'
+                          : `Ha organizado ${comunidad.total} eventos en la cartelera`}; el último fue{' '}
+                        <span class="text-texto">{comunidad.proximo.title}</span>.
+                      </>
+                    )}
                   </p>
                 </a>
               </article>
