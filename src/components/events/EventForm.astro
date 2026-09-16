@@ -774,8 +774,12 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
     const consultaLanzada = consulta;
 
     try {
+      // Sesga la busqueda al pais ya elegido en el formulario, si lo hay:
+      // sin esto, alguien publicando desde Mexico recibe sugerencias
+      // pensadas para Colombia por defecto.
+      const paisElegido = countrySelect.value ? `&pais=${encodeURIComponent(countrySelect.value)}` : '';
       const response = await fetch(
-        `/api/ubicacion?q=${encodeURIComponent(consulta)}&sesion=${sesionBusqueda}`,
+        `/api/ubicacion?q=${encodeURIComponent(consulta)}&sesion=${sesionBusqueda}${paisElegido}`,
       );
       const result = await response.json();
 

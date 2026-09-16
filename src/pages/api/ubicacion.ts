@@ -165,7 +165,7 @@ function aSitio(entrada: RespuestaNominatim): Sitio | null {
   };
 }
 
-async function buscarEnNominatim(consulta: string, soloColombia: boolean): Promise<Sitio[]> {
+async function buscarEnNominatim(consulta: string, codigoPais?: string): Promise<Sitio[]> {
   const params = new URLSearchParams({
     q: consulta,
     format: 'jsonv2',
@@ -174,8 +174,8 @@ async function buscarEnNominatim(consulta: string, soloColombia: boolean): Promi
     'accept-language': 'es',
   });
 
-  if (soloColombia) {
-    params.set('countrycodes', 'co');
+  if (codigoPais) {
+    params.set('countrycodes', codigoPais.toLowerCase());
   }
 
   await esperarTurno();
@@ -205,6 +205,9 @@ export const GET: APIRoute = async ({ url, cookies }) => {
   }
 
   const sessionToken = url.searchParams.get('sesion') ?? undefined;
+  // El pais que ya se eligio en el formulario, si se llego a el antes de
+  // buscar la direccion. Sin el, la busqueda cae a su sesgo por defecto.
+  const pais = url.searchParams.get('pais') || undefined;
 
   // Segunda mitad del flujo de Google: el autocompletado devuelve nombres sin
   // coordenadas, y el punto se pide solo del que se acaba eligiendo. Es lo que
@@ -257,7 +260,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       }
 
       if (nombre) {
-        return jsonResponse({ resultados: await buscarTexto(nombre, false) }, 200);
+        return jsonResponse({ resultados: await buscarTexto(nombre, false, undefined, pais) }, 200);
       }
 
       return jsonResponse(
@@ -268,7 +271,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
     const soloCiudades = url.searchParams.get('tipo') === 'ciudad';
 
-    return jsonResponse({ resultados: await buscarTexto(consulta, soloCiudades, sessionToken) }, 200);
+    return jsonResponse({ resultados: await buscarTexto(consulta, soloCiudades, sessionToken, pais) }, 200);
   } catch (error) {
     console.warn('No se pudo resolver la ubicación:', error);
     return jsonResponse({ error: 'No se pudo buscar la ubicación. Inténtalo de nuevo.' }, 502);
@@ -283,16 +286,19 @@ async function buscarTexto(
   consulta: string,
   soloCiudades: boolean,
   sessionToken?: string,
+  pais?: string,
 ): Promise<Sitio[]> {
   if (hayClaveDePlaces()) {
     try {
-      return await buscarSugerencias(consulta, { soloCiudades, sessionToken });
+      return await buscarSugerencias(consulta, { soloCiudades, sessionToken, regionCode: pais });
     } catch (error) {
       console.warn('Places falló; se sigue con Nominatim:', error);
     }
   }
 
-  const enColombia = await buscarEnNominatim(consulta, true);
+  // Sin pais elegido todavia, el sesgo por defecto sigue siendo Colombia -el
+  // pais de origen del producto- antes de abrir la busqueda al mundo entero.
+  const enElPaisElegido = await buscarEnNominatim(consulta, pais || 'CO');
 
-  return enColombia.length > 0 ? enColombia : buscarEnNominatim(consulta, false);
+  return enElPaisElegido.length > 0 ? enElPaisElegido : buscarEnNominatim(consulta);
 }

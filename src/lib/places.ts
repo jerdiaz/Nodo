@@ -59,13 +59,16 @@ interface PrediccionGoogle {
  */
 export async function buscarSugerencias(
   consulta: string,
-  opciones: { soloCiudades?: boolean; sessionToken?: string } = {},
+  opciones: { soloCiudades?: boolean; sessionToken?: string; regionCode?: string } = {},
 ): Promise<Sitio[]> {
   const cuerpo: Record<string, unknown> = {
     input: consulta,
     languageCode: 'es',
-    // Sesga hacia Colombia sin excluir el resto: un evento puede ser fuera.
-    regionCode: 'CO',
+    // Sesga hacia el pais elegido en el formulario sin excluir el resto: un
+    // evento puede tener el punto fuera de ese pais. Sin pais todavia elegido
+    // (o editando un evento de antes de que existiera el campo), cae a
+    // Colombia, que sigue siendo el pais de origen del producto.
+    regionCode: opciones.regionCode || 'CO',
   };
 
   if (opciones.sessionToken) {
