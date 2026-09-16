@@ -144,8 +144,18 @@ const modalidadLabel: Record<EventModality, string> = {
                   <p class="text-xs text-suave">
                     {cuenta.username ? `@${cuenta.username}` : 'sin nombre de usuario'}
                     {cuenta.email ? ` · ${cuenta.email}` : ''}
-                    {` · ${proveedorLabel[cuenta.proveedor] ?? cuenta.proveedor}`}
+                    {cuenta.proveedor === 'desconocido'
+                      ? ' · sin proveedor de acceso'
+                      : ` · ${proveedorLabel[cuenta.proveedor] ?? cuenta.proveedor}`}
                   </p>
+                  {/*
+                    Sin correo ni proveedor no hay nada humano que enseñar, y el
+                    uid es lo unico que dice que es: "seed-organizer-ada" se
+                    explica solo, y nadie puede entrar con una cuenta asi.
+                  */}
+                  {!cuenta.email && cuenta.proveedor === 'desconocido' && (
+                    <p class="mt-0.5 font-mono text-[11px] text-tenue">{cuenta.uid}</p>
+                  )}
                 </td>
                 <td class="whitespace-nowrap px-4 py-3 text-suave">
                   {cuenta.creado ? formatEventDate(cuenta.creado) : '—'}
@@ -190,12 +200,19 @@ const modalidadLabel: Record<EventModality, string> = {
                         ['vquitar', 'Quitar verificación', !cuenta.verification],
                         [cuenta.admin ? 'quitar-admin' : 'hacer-admin', cuenta.admin ? 'Quitar administrador' : 'Hacer administrador', false],
                         [cuenta.blocked ? 'desbloquear' : 'bloquear', cuenta.blocked ? 'Desbloquear' : 'Bloquear', false],
+                        // Borrar va al final y solo si no es admin: a un admin
+                        // se le quita el rol primero, que es la friccion que
+                        // uno quiere delante de este boton.
+                        ['borrar', 'Eliminar cuenta', cuenta.admin],
                       ].map(([accion, etiqueta, deshabilitado]) => (
                         <button
                           type="button"
                           data-accion-fila={accion}
                           disabled={Boolean(deshabilitado)}
-                          class="block w-full rounded-xl px-3 py-2 text-left text-sm text-texto transition hover:bg-fondo-alt disabled:cursor-not-allowed disabled:opacity-40"
+                          class:list={[
+                            'block w-full rounded-xl px-3 py-2 text-left text-sm transition hover:bg-fondo-alt disabled:cursor-not-allowed disabled:opacity-40',
+                            accion === 'borrar' ? 'mt-1 border-t border-linea-suave pt-2 text-acento-texto' : 'text-texto',
+                          ]}
                         >
                           {etiqueta}
                         </button>
@@ -595,7 +612,17 @@ const modalidadLabel: Record<EventModality, string> = {
           if (!window.confirm(texto)) return;
         }
 
+        // Borrar es irreversible y se lleva sus asistencias, su comunidad y su
+        // perfil: se pide escribir "borrar", no solo aceptar.
+        if (accion === 'borrar') {
+          const escrito = window.prompt(
+            `Vas a eliminar la cuenta de ${nombre} de forma permanente, con sus asistencias, su comunidad y su perfil. Si tiene eventos publicados no se podrá.\n\nEscribe "borrar" para confirmar.`,
+          );
+          if (escrito?.trim().toLowerCase() !== 'borrar') return;
+        }
+
         const esVerificacion = ['vpersona', 'vcomunidad', 'vquitar'].includes(accion);
+        const esBorrado = accion === 'borrar';
         const cuerpo = esVerificacion
           ? { uid, verification: accion === 'vpersona' ? 'persona' : accion === 'vcomunidad' ? 'comunidad' : null }
           : { uid, accion };
@@ -603,11 +630,16 @@ const modalidadLabel: Record<EventModality, string> = {
         fila.querySelectorAll('button').forEach((b) => (b.disabled = true));
 
         try {
-          const response = await fetch(esVerificacion ? '/api/admin/verificacion' : '/api/admin/usuarios', {
-            method: esVerificacion ? 'PUT' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(cuerpo),
-          });
+          const response = esBorrado
+            ? await fetch(`/api/admin/cuentas/${encodeURIComponent(uid)}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+              })
+            : await fetch(esVerificacion ? '/api/admin/verificacion' : '/api/admin/usuarios', {
+                method: esVerificacion ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cuerpo),
+              });
           const resultado = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(resultado.error ?? 'No se pudo aplicar el cambio.');
           window.location.reload();
