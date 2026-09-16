@@ -2,7 +2,7 @@ export interface FilterHrefOverrides {
   modality?: string;
   city?: string;
   country?: string;
-  timeframe?: 'past';
+  timeframe?: 'past' | 'all';
   search?: string;
   // Pide el listado explicitamente, sin depender de que haya algun filtro
   // puesto. Sin esto, quitar el ultimo filtro -pulsar "Todos" viniendo de "Ver
@@ -17,6 +17,7 @@ export function buildFilterHref(overrides: FilterHrefOverrides): string {
   if (overrides.city) params.set('ciudad', overrides.city);
   if (overrides.country) params.set('pais', overrides.country);
   if (overrides.timeframe === 'past') params.set('tiempo', 'pasados');
+  if (overrides.timeframe === 'all') params.set('tiempo', 'todos');
   if (overrides.search) params.set('q', overrides.search);
   if (overrides.list) params.set('ver', 'todos');
   const query = params.toString();

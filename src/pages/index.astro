@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import EmptyState from '../components/events/EmptyState.astro';
 import EventCard from '../components/events/EventCard.astro';
 import EventFilter from '../components/events/EventFilter.astro';
+import TimeframeFilter from '../components/events/TimeframeFilter.astro';
 import SecondaryFilters from '../components/events/SecondaryFilters.astro';
 import StatusToast from '../components/common/StatusToast.astro';
 import Franja from '../components/common/Franja.astro';
@@ -43,7 +44,15 @@ const modalidad = Astro.url.searchParams.get('modalidad') ?? undefined;
 const ciudad = Astro.url.searchParams.get('ciudad') ?? undefined;
 const pais = Astro.url.searchParams.get('pais') ?? undefined;
 const query = Astro.url.searchParams.get('q') ?? undefined;
-const timeframe: 'upcoming' | 'past' = Astro.url.searchParams.get('tiempo') === 'pasados' ? 'past' : 'upcoming';
+
+// Sin parametro es "proximos", que es lo que se espera al entrar a la
+// plataforma. "todos" reusa el caso que filterEvents ya sabia resolver (no
+// filtra por fecha) pero que hasta ahora ningun control de la interfaz
+// pedia. "pasados" es el mismo valor de URL que ya se usaba.
+const tiempoParam = Astro.url.searchParams.get('tiempo');
+const timeframe: 'upcoming' | 'past' | 'all' =
+  tiempoParam === 'pasados' ? 'past' : tiempoParam === 'todos' ? 'all' : 'upcoming';
+const selectedTimeframe = timeframe === 'past' ? 'past' : timeframe === 'all' ? 'all' : undefined;
 
 let allEvents: NodoEvent[] = [];
 
@@ -67,7 +76,7 @@ const events = filterEvents(allEvents, { modality: modalidad, city: ciudad, coun
 const vistaResultados =
   Astro.url.searchParams.get('ver') === 'todos' ||
   Boolean(modalidad || query) ||
-  timeframe === 'past';
+  timeframe !== 'upcoming';
 
 const proximos = filterEvents(allEvents, { timeframe: 'upcoming' });
 
@@ -438,12 +447,19 @@ if (MOSTRAR_PUBLICACIONES) {
       </div>
 
       {vistaResultados && (
-        <div class="mt-8">
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
           <EventFilter
             selectedModality={modalidad}
             selectedCity={ciudad}
             selectedCountry={pais}
-            selectedTimeframe={timeframe === 'past' ? 'past' : undefined}
+            selectedTimeframe={selectedTimeframe}
+            selectedSearch={query}
+          />
+          <TimeframeFilter
+            selectedModality={modalidad}
+            selectedCity={ciudad}
+            selectedCountry={pais}
+            selectedTimeframe={selectedTimeframe}
             selectedSearch={query}
           />
         </div>
@@ -456,7 +472,7 @@ if (MOSTRAR_PUBLICACIONES) {
       <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="flex items-center gap-3">
           <h2 class="text-lg font-semibold text-texto">
-            {timeframe === 'past' ? 'Eventos pasados' : 'Resultados'}
+            {timeframe === 'past' ? 'Eventos pasados' : timeframe === 'all' ? 'Todos los eventos' : 'Resultados'}
           </h2>
           <span class="text-sm text-suave">{events.length} eventos</span>
         </div>
@@ -466,7 +482,7 @@ if (MOSTRAR_PUBLICACIONES) {
           selectedModality={modalidad}
           selectedCity={ciudad}
           selectedCountry={pais}
-          selectedTimeframe={timeframe === 'past' ? 'past' : undefined}
+          selectedTimeframe={selectedTimeframe}
           selectedSearch={query}
         />
       </div>

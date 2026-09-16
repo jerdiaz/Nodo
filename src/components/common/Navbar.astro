@@ -26,12 +26,14 @@ const searchCountry = Astro.url.searchParams.get('pais') ?? '';
 // cabria junto a lo que ya lleva.
 //
 // La condicion es la misma que decide la vista en index.astro: el listado
-// pedido a mano, modalidad, busqueda o pasados. La ciudad no cuenta, porque
-// filtra el carril sin sacar de la portada.
+// pedido a mano, modalidad, busqueda, o cualquier pestaña de tiempo que no
+// sea la de por defecto (proximos). La ciudad no cuenta, porque filtra el
+// carril sin sacar de la portada.
 const enResultados =
   Astro.url.searchParams.get('ver') === 'todos' ||
   Boolean(Astro.url.searchParams.get('modalidad') || searchQuery) ||
-  Astro.url.searchParams.get('tiempo') === 'pasados';
+  Astro.url.searchParams.get('tiempo') === 'pasados' ||
+  Astro.url.searchParams.get('tiempo') === 'todos';
 ---
 
 {/*

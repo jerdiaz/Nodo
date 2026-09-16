@@ -8,7 +8,7 @@ interface Props {
   selectedModality?: string;
   selectedCity?: string;
   selectedCountry?: string;
-  selectedTimeframe?: 'past';
+  selectedTimeframe?: 'past' | 'all';
   selectedSearch?: string;
 }
 
@@ -95,15 +95,4 @@ const showCityFilter = !selectedModality || selectedModality === 'presencial';
       ))}
     </div>
   )}
-
-  <a
-    href={
-      selectedTimeframe === 'past'
-        ? buildFilterHref({ modality: selectedModality, city: selectedCity, search: selectedSearch, list: true })
-        : buildFilterHref({ modality: selectedModality, city: selectedCity, timeframe: 'past', search: selectedSearch, list: true })
-    }
-    class="text-xs text-tenue underline-offset-2 transition hover:text-suave hover:underline"
-  >
-    {selectedTimeframe === 'past' ? 'Ver próximos eventos' : 'Ver eventos pasados'}
-  </a>
 </div>
