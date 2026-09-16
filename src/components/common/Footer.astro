@@ -177,16 +177,33 @@ const columns = [
         <a href="/contacto" class="font-medium transition hover:text-white">Contacto</a>
       </div>
 
-      <a
-        href="https://sentralabs.co"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Sitio desarrollado por Sentra Labs, abre sentralabs.co"
-        class="inline-flex shrink-0 items-center gap-3 transition hover:text-white"
-      >
-        Desarrollado por
-        <img src="/logo/sentralabs.png" alt="Sentra Labs" width="1458" height="513" class="h-7 w-auto" />
-      </a>
+      {/*
+        El logo y su Instagram van juntos pero son dos enlaces: el logo lleva
+        al sitio, el icono a la cuenta. El icono es mas pequeno que los de las
+        redes de la organizacion de arriba, porque aqui es una firma y no una
+        seccion.
+      */}
+      <div class="flex shrink-0 items-center gap-3">
+        <a
+          href="https://sentralabs.co"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Sitio desarrollado por Sentra Labs, abre sentralabs.co"
+          class="inline-flex items-center gap-3 transition hover:text-white"
+        >
+          Desarrollado por
+          <img src="/logo/sentralabs.png" alt="Sentra Labs" width="1458" height="513" class="h-7 w-auto" />
+        </a>
+        <a
+          href="https://www.instagram.com/sentralabs.co/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Instagram de Sentra Labs"
+          class="flex size-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition active:scale-[0.95] hover:border-white/50 hover:text-white"
+        >
+          <SocialIcon name="instagram" class="size-4" />
+        </a>
+      </div>
     </div>
   </div>
 </footer>
