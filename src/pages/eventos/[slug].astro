@@ -217,8 +217,13 @@ const tzAbbreviation = new Intl.DateTimeFormat('es', { timeZone: event.timezone,
   .formatToParts(event.startDate)
   .find((part) => part.type === 'timeZoneName')?.value;
 
-const googleCalendarUrl = getGoogleCalendarUrl(event);
-const icsDataUrl = getIcsDataUrl(event);
+// El enlace de reunion se gana confirmando asistencia. Quien organiza lo ve
+// siempre, que para eso lo puso. Todo lo que se pinta para el resto -la ficha,
+// los botones de calendario, el JSON-LD- va sin el.
+const puedeVerEnlace = isAttending || isOwner;
+
+const googleCalendarUrl = getGoogleCalendarUrl(event, { conEnlaceDeReunion: puedeVerEnlace });
+const icsDataUrl = getIcsDataUrl(event, { conEnlaceDeReunion: puedeVerEnlace });
 const pageUrl = new URL(Astro.url.pathname, Astro.site?.origin ?? Astro.url.origin).toString();
 // Escapa "<" para que una descripción de evento con "</script>" no pueda cerrar
 // este bloque JSON-LD e inyectar HTML/JS — el texto es contenido de usuario sin sanitizar.
@@ -485,15 +490,28 @@ function textoAsistentes(total: number): string {
                   <p class="text-sm text-suave">También disponible en línea</p>
                 )}
 
+                {/*
+                  El enlace no viaja en el HTML de quien no ha confirmado: no
+                  esta oculto, no esta. Al confirmar, el API lo devuelve y el
+                  script de abajo lo pinta en este mismo hueco sin recargar.
+                */}
                 {event.meetingUrl && event.modality !== 'presencial' && (
-                  <a
-                    href={event.meetingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="mt-0.5 block break-all text-sm text-acento-texto hover:underline"
-                  >
-                    {event.meetingUrl}
-                  </a>
+                  <div data-enlace-reunion class="mt-0.5">
+                    {puedeVerEnlace ? (
+                      <a
+                        href={event.meetingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="block break-all text-sm text-acento-texto hover:underline"
+                      >
+                        {event.meetingUrl}
+                      </a>
+                    ) : (
+                      <p class="text-sm text-suave">
+                        Confirma tu asistencia para recibir el enlace. Te llega también por correo.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
               {mapsUrl && event.modality !== 'virtual' && (
@@ -982,6 +1000,29 @@ function textoAsistentes(total: number): string {
 
           const result = await response.json();
           botones.forEach((otro) => (otro.dataset.attending = String(result.attending)));
+
+          // El enlace de reunion llega en la respuesta solo cuando se acaba de
+          // confirmar; al retirar la asistencia se vuelve al aviso. Se
+          // construye con createElement y no con innerHTML porque el enlace lo
+          // escribio quien organiza y no es texto de confianza.
+          const huecoEnlace = document.querySelector<HTMLElement>('[data-enlace-reunion]');
+          if (huecoEnlace) {
+            huecoEnlace.textContent = '';
+            if (result.attending && typeof result.meetingUrl === 'string' && result.meetingUrl) {
+              const enlace = document.createElement('a');
+              enlace.href = result.meetingUrl;
+              enlace.target = '_blank';
+              enlace.rel = 'noopener noreferrer';
+              enlace.className = 'block break-all text-sm text-acento-texto hover:underline';
+              enlace.textContent = result.meetingUrl;
+              huecoEnlace.appendChild(enlace);
+            } else if (!result.attending) {
+              const aviso = document.createElement('p');
+              aviso.className = 'text-sm text-suave';
+              aviso.textContent = 'Confirma tu asistencia para recibir el enlace. Te llega también por correo.';
+              huecoEnlace.appendChild(aviso);
+            }
+          }
           contadores.forEach((contador) => (contador.textContent = textoAsistentes(result.count)));
 
           // La rejilla de asistentes de mas abajo tambien es estado: la propia

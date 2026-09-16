@@ -22,10 +22,14 @@ export function getEventJsonLd(event: NodoEvent, pageUrl: string): Record<string
     });
   }
 
-  if ((event.modality === 'virtual' || event.modality === 'hibrido') && event.meetingUrl) {
+  // La ubicacion virtual es la ficha, nunca la sala de reunion. Esto lo lee
+  // Google para indexar: poner aqui el enlace de Meet o Zoom era publicarlo
+  // en el buscador, atado al titulo del evento. El enlace real se ve en la
+  // ficha despues de confirmar asistencia y llega por correo.
+  if (event.modality === 'virtual' || event.modality === 'hibrido') {
     locations.push({
       '@type': 'VirtualLocation',
-      url: event.meetingUrl,
+      url: pageUrl,
     });
   }
 

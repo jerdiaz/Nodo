@@ -4,27 +4,36 @@ function toUtcBasicDate(date: Date): string {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 }
 
-function getFullEventLocation(event: NodoEvent): string {
+// El enlace de reunion solo lo lleva quien tiene derecho a el. Los botones de
+// calendario de la ficha se pintan para cualquiera -incluido quien no ha
+// confirmado-, asi que ahi va sin enlace; el .ics del correo de confirmacion,
+// que solo recibe quien confirmo, lo lleva.
+export interface OpcionesCalendario {
+  conEnlaceDeReunion?: boolean;
+}
+
+function getFullEventLocation(event: NodoEvent, opciones: OpcionesCalendario = {}): string {
   const physical = [event.venue, event.address, event.city].filter(Boolean).join(', ');
+  const enlace = opciones.conEnlaceDeReunion === false ? undefined : event.meetingUrl;
 
   if (event.modality === 'virtual') {
-    return event.meetingUrl ?? '';
+    return enlace ?? 'En línea';
   }
 
-  if (event.modality === 'hibrido' && event.meetingUrl) {
-    return [physical, event.meetingUrl].filter(Boolean).join(' — ');
+  if (event.modality === 'hibrido' && enlace) {
+    return [physical, enlace].filter(Boolean).join(' — ');
   }
 
   return physical;
 }
 
-export function getGoogleCalendarUrl(event: NodoEvent): string {
+export function getGoogleCalendarUrl(event: NodoEvent, opciones: OpcionesCalendario = {}): string {
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: event.title,
     dates: `${toUtcBasicDate(event.startDate)}/${toUtcBasicDate(event.endDate)}`,
     details: event.description,
-    location: getFullEventLocation(event),
+    location: getFullEventLocation(event, opciones),
   });
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -77,7 +86,7 @@ function unirLineasIcs(lineas: string[]): string {
   return lineas.map(foldIcsLine).join('\r\n');
 }
 
-function toIcsEventLines(event: NodoEvent): string[] {
+function toIcsEventLines(event: NodoEvent, opciones: OpcionesCalendario = {}): string[] {
   return [
     'BEGIN:VEVENT',
     `UID:${event.id}@nodo.app`,
@@ -86,7 +95,7 @@ function toIcsEventLines(event: NodoEvent): string[] {
     `DTEND:${toUtcBasicDate(event.endDate)}`,
     `SUMMARY:${escapeIcsText(event.title)}`,
     `DESCRIPTION:${escapeIcsText(event.description)}`,
-    `LOCATION:${escapeIcsText(getFullEventLocation(event))}`,
+    `LOCATION:${escapeIcsText(getFullEventLocation(event, opciones))}`,
     'END:VEVENT',
   ];
 }
@@ -105,7 +114,7 @@ export function buildIcsCalendar(events: NodoEvent[], calendarName: string): str
     `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
     'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
     'X-PUBLISHED-TTL:PT6H',
-    ...events.flatMap(toIcsEventLines),
+    ...events.flatMap((event) => toIcsEventLines(event)),
     'END:VCALENDAR',
   ];
 
@@ -116,19 +125,19 @@ export function buildIcsCalendar(events: NodoEvent[], calendarName: string): str
 // adjuntarlo a un correo: el boton de la ficha necesita una data URL, pero el
 // adjunto necesita el texto crudo, y duplicar la plantilla del VEVENT entre los
 // dos era garantizar que acabaran discrepando.
-export function buildIcsEvent(event: NodoEvent): string {
+export function buildIcsEvent(event: NodoEvent, opciones: OpcionesCalendario = {}): string {
   return unirLineasIcs([
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//Innvita//Cartelera Comunitaria//ES',
     'CALSCALE:GREGORIAN',
-    ...toIcsEventLines(event),
+    ...toIcsEventLines(event, opciones),
     'END:VCALENDAR',
   ]);
 }
 
-export function getIcsDataUrl(event: NodoEvent): string {
-  return `data:text/calendar;charset=utf8,${encodeURIComponent(buildIcsEvent(event))}`;
+export function getIcsDataUrl(event: NodoEvent, opciones: OpcionesCalendario = {}): string {
+  return `data:text/calendar;charset=utf8,${encodeURIComponent(buildIcsEvent(event, opciones))}`;
 }
 
 // --- Invitaciones para el correo ---------------------------------------------

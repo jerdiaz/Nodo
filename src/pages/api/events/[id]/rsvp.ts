@@ -92,7 +92,15 @@ export const POST: APIRoute = async ({ params, cookies }) => {
       }
     }
 
-    return jsonResponse({ attending: result.attending, count: result.count }, 200);
+    // El enlace de reunion se entrega aqui, al confirmar, y solo aqui: la ficha
+    // no lo lleva en el HTML de quien no ha confirmado, asi que este es el
+    // unico camino por el que llega al navegador ademas del correo.
+    const meetingUrl =
+      result.attending && data.modality !== 'presencial' && typeof data.meetingUrl === 'string'
+        ? data.meetingUrl
+        : undefined;
+
+    return jsonResponse({ attending: result.attending, count: result.count, meetingUrl }, 200);
   } catch (error) {
     if (error instanceof Error && error.message === AFORO_COMPLETO) {
       return jsonResponse({ error: 'Este evento ya llenó su aforo.' }, 409);
