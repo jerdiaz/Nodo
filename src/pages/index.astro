@@ -599,6 +599,17 @@ if (MOSTRAR_PUBLICACIONES) {
           </div>
 
           {/*
+            Misma pestaña que en la vista de resultados, pero visible ya desde
+            la portada: antes solo se llegaba a "Pasados"/"Todos" dando clic en
+            "Ver todos los eventos" primero, y eso lo dejaba tan escondido como
+            el enlace de texto que reemplazo. Pulsar cualquiera de las dos
+            lleva directo al listado, como ya hacia el link de antes.
+          */}
+          <div class="mb-6">
+            <TimeframeFilter selectedModality={undefined} selectedCity={ciudad} selectedCountry={pais} selectedSearch={query} />
+          </div>
+
+          {/*
             En telefono se muestran tres y no cuatro: apiladas en una columna,
             la cuarta solo alarga el scroll antes de llegar al resto de la
             pagina. El boton de debajo lleva al listado completo.
