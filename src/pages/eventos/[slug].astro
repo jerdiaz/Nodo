@@ -414,7 +414,15 @@ function textoAsistentes(total: number): string {
       <aside class="lg:order-2 lg:col-span-5 lg:row-span-2">
         <div class="lg:sticky lg:top-10">
           <div class="aspect-[16/9] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave shadow-[var(--c-sombra)]">
-            {event.bannerUrl && <img src={event.bannerUrl} alt="" class="h-full w-full object-cover" />}
+            {event.bannerUrl ? (
+              <img src={event.bannerUrl} alt="" class="h-full w-full object-cover" />
+            ) : (
+              // Mismo respaldo que la tarjeta (ver EventCard.astro): el isotipo
+              // de la Semana Global del Emprendimiento, sin recortar. El padding
+              // va en la imagen y no en el contenedor -que tambien envuelve el
+              // banner real- para no meterle aire de mas a un banner subido.
+              <img src="/banner/predeterminado.webp" alt="" class="h-full w-full object-contain p-10" />
+            )}
           </div>
 
           {/*

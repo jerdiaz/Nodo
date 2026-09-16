@@ -70,7 +70,13 @@ const caras = attendees.slice(0, 4);
           loading="lazy"
         />
       ) : (
-        <div class="h-full w-full bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave" />
+        // Sin banner propio, el isotipo de la Semana Global del Emprendimiento
+        // (fondo quitado, ver public/banner/predeterminado.webp) flota sobre el
+        // mismo degradado neutro de siempre. object-contain y no cover: es un
+        // logo ancho con texto, recortarlo a 16:9 le comeria el aro o el texto.
+        <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-fondo-alt via-fondo-alt to-linea-suave p-6">
+          <img src="/banner/predeterminado.webp" alt="" class="h-full w-full object-contain" loading="lazy" />
+        </div>
       )}
 
       {/*
