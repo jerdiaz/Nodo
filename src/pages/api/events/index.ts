@@ -6,6 +6,7 @@ import { validateEventPayload } from '../../../lib/eventValidation';
 import { getAdminDb } from '../../../lib/firebase/server';
 import { getCommunityByOwner, toEventCommunity } from '../../../lib/firebase/communities';
 import { slugify } from '../../../lib/slug';
+import { contarEventoCreado } from '../../../lib/firebase/metricas';
 
 function randomSuffix(length = 4): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -81,6 +82,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   if (!creado) {
     return jsonResponse({ error: 'No se pudo reservar un título único. Inténtalo de nuevo.' }, 409);
   }
+
+  // Se cuenta aqui y no leyendo la coleccion: un evento borrado sale de ella,
+  // y "cuantos se crearon" no deberia bajar porque alguien borrara el suyo.
+  void contarEventoCreado().catch(() => {});
 
   return jsonResponse({ success: true, slug }, 201);
 };

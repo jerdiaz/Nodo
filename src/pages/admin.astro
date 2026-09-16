@@ -5,6 +5,9 @@ import { Ban, Search, ShieldCheck, Trash2, Users } from '@lucide/astro';
 import { getCurrentUser } from '../lib/auth';
 import { isAdmin } from '../lib/firebase/users';
 import { getAdminEventRows } from '../lib/firebase/events';
+import { getAdminUserRows, type AdminUserRow } from '../lib/firebase/users';
+import { getRegistrosPorDia, getSeriePorDia, type PuntoSerie } from '../lib/firebase/metricas';
+import GraficoBarras from '../components/admin/GraficoBarras.astro';
 import { formatEventDate, formatEventTime, formatEventPrice } from '../lib/format';
 import type { EventModality } from '../types/event';
 
@@ -28,6 +31,27 @@ try {
   console.warn('No se pudo listar los eventos para el panel de administración:', error);
 }
 
+// Los ultimos treinta dias, las tres series a la vez: no dependen entre si.
+// Cualquiera que falle deja su grafico en ceros en vez de tumbar el panel.
+const DIAS = 30;
+const vacia = (): PuntoSerie[] => [];
+const [visitas, registros, eventosCreados] = await Promise.all([
+  getSeriePorDia('visitas', DIAS).catch(vacia),
+  getRegistrosPorDia(DIAS).catch(vacia),
+  getSeriePorDia('eventos', DIAS).catch(vacia),
+]);
+const visitasConSesion = visitas.reduce((suma, punto) => suma + (punto.conSesion ?? 0), 0);
+
+let cuentas: AdminUserRow[] = [];
+
+try {
+  cuentas = await getAdminUserRows();
+} catch (error) {
+  console.warn('No se pudo listar las cuentas:', error);
+}
+
+const proveedorLabel: Record<string, string> = { 'google.com': 'Google', 'microsoft.com': 'Microsoft' };
+
 const ahora = Date.now();
 
 const modalidadLabel: Record<EventModality, string> = {
@@ -47,7 +71,7 @@ const modalidadLabel: Record<EventModality, string> = {
       <ShieldCheck class="size-7 text-acento-texto" stroke-width={1.75} />
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-texto">Administración</h1>
-        <p class="text-sm text-suave">Verificación, administradores, bloqueos y eventos.</p>
+        <p class="text-sm text-suave">Métricas, cuentas, verificación, bloqueos y eventos.</p>
       </div>
     </div>
 
@@ -56,6 +80,139 @@ const modalidadLabel: Record<EventModality, string> = {
       y eventos (el directorio). Sin pestanas: son dos tareas distintas y en
       una sola pagina se ve el alcance de una sola mirada.
     */}
+    <section class="mt-10">
+      <h2 class="text-lg font-semibold text-texto">Últimos {DIAS} días</h2>
+      <p class="mt-1 text-sm text-suave">
+        Las visitas y los eventos creados se cuentan desde que existe este panel; los registros salen de
+        Firebase Auth y son completos.
+      </p>
+      <div class="mt-5 grid gap-4 lg:grid-cols-3">
+        <GraficoBarras
+          titulo="Visitas a la página"
+          unidad={['visita', 'visitas']}
+          serie={visitas}
+          detalle={`${visitasConSesion.toLocaleString('es-CO')} con sesión iniciada`}
+        />
+        <GraficoBarras titulo="Cuentas nuevas" unidad={['registro', 'registros']} serie={registros} />
+        <GraficoBarras titulo="Eventos publicados" unidad={['evento', 'eventos']} serie={eventosCreados} />
+      </div>
+    </section>
+
+    <section class="mt-10">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-texto">Personas registradas</h2>
+          <p class="mt-1 text-sm text-suave">
+            Todas las cuentas que han entrado alguna vez, {cuentas.length} en total. Desde aquí se modera cada
+            una; la búsqueda de abajo sigue sirviendo para ver el detalle de una.
+          </p>
+        </div>
+        <input
+          id="cuentas-filtro"
+          type="search"
+          placeholder="Filtrar por nombre, @usuario o correo"
+          class="w-full max-w-xs rounded-xl bg-superficie px-3.5 py-2 text-sm text-texto placeholder:text-tenue ring-1 ring-inset ring-linea focus-visible:outline-none focus:ring-2 focus:ring-acento"
+        />
+      </div>
+
+      <p id="cuentas-aviso" hidden class="mt-3 text-sm text-acento-texto"></p>
+
+      <div class="mt-5 overflow-x-auto rounded-3xl border border-linea bg-superficie">
+        <table class="w-full text-sm">
+          <thead class="bg-fondo-alt text-left text-xs uppercase tracking-wide text-tenue">
+            <tr>
+              <th class="px-4 py-3 font-medium">Persona</th>
+              <th class="px-4 py-3 font-medium">Alta</th>
+              <th class="px-4 py-3 font-medium">Estado</th>
+              <th class="px-4 py-3 text-right font-medium">Moderar</th>
+            </tr>
+          </thead>
+          <tbody id="cuentas-cuerpo">
+            {cuentas.map((cuenta) => (
+              <tr
+                class="border-t border-linea-suave align-top"
+                data-cuenta
+                data-uid={cuenta.uid}
+                data-nombre={cuenta.nombre}
+                data-texto={[cuenta.nombre, cuenta.username ?? '', cuenta.email ?? ''].join(' ').toLowerCase()}
+              >
+                <td class="px-4 py-3">
+                  <p class="flex items-center gap-1.5 font-medium text-texto">
+                    {cuenta.nombre}
+                    {cuenta.verification && <VerifiedBadge type={cuenta.verification} class="size-4" />}
+                  </p>
+                  <p class="text-xs text-suave">
+                    {cuenta.username ? `@${cuenta.username}` : 'sin nombre de usuario'}
+                    {cuenta.email ? ` · ${cuenta.email}` : ''}
+                    {` · ${proveedorLabel[cuenta.proveedor] ?? cuenta.proveedor}`}
+                  </p>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-suave">
+                  {cuenta.creado ? formatEventDate(cuenta.creado) : '—'}
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap gap-1">
+                    {cuenta.admin && (
+                      <span class="rounded-full bg-acento-suave px-2 py-0.5 text-[11px] font-medium text-acento-texto">admin</span>
+                    )}
+                    {cuenta.blocked && (
+                      <span class="inline-flex items-center gap-1 rounded-full bg-acento-suave px-2 py-0.5 text-[11px] font-medium text-acento-texto">
+                        <Ban class="size-3" stroke-width={2} />
+                        bloqueada
+                      </span>
+                    )}
+                    {cuenta.sinPerfil && (
+                      <span class="rounded-full border border-linea px-2 py-0.5 text-[11px] font-medium text-suave">sin completar registro</span>
+                    )}
+                    {!cuenta.sinPerfil && !cuenta.telefono && (
+                      <span class="rounded-full border border-linea px-2 py-0.5 text-[11px] font-medium text-suave">sin celular</span>
+                    )}
+                    {!cuenta.admin && !cuenta.blocked && !cuenta.sinPerfil && cuenta.telefono && (
+                      <span class="text-xs text-tenue">—</span>
+                    )}
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  {/*
+                    Un desplegable por fila y no una hilera de botones: son
+                    seis acciones por persona, y seis botones por fila en una
+                    tabla de decenas de filas es una pared. El menu se cierra
+                    solo al elegir.
+                  */}
+                  <details class="relative inline-block text-left">
+                    <summary class="cursor-pointer list-none rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-texto transition hover:border-acento [&::-webkit-details-marker]:hidden">
+                      Acciones
+                    </summary>
+                    <div class="absolute right-0 z-20 mt-1 w-56 rounded-2xl border border-linea bg-superficie p-1.5 shadow-[var(--c-sombra-alta)]">
+                      {[
+                        ['vpersona', 'Verificar: identidad confirmada', cuenta.verification === 'persona'],
+                        ['vcomunidad', 'Verificar: comunidad oficial', cuenta.verification === 'comunidad'],
+                        ['vquitar', 'Quitar verificación', !cuenta.verification],
+                        [cuenta.admin ? 'quitar-admin' : 'hacer-admin', cuenta.admin ? 'Quitar administrador' : 'Hacer administrador', false],
+                        [cuenta.blocked ? 'desbloquear' : 'bloquear', cuenta.blocked ? 'Desbloquear' : 'Bloquear', false],
+                      ].map(([accion, etiqueta, deshabilitado]) => (
+                        <button
+                          type="button"
+                          data-accion-fila={accion}
+                          disabled={Boolean(deshabilitado)}
+                          class="block w-full rounded-xl px-3 py-2 text-left text-sm text-texto transition hover:bg-fondo-alt disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {etiqueta}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {cuentas.length === 0 && (
+          <p class="px-6 py-10 text-center text-sm text-suave">No se pudo cargar la lista de cuentas.</p>
+        )}
+      </div>
+    </section>
+
     <section class="mt-10 rounded-3xl border border-linea bg-superficie p-6">
       <h2 class="text-lg font-semibold text-texto">Cuentas</h2>
       <p class="mt-1 text-sm text-suave">
@@ -406,6 +563,80 @@ const modalidadLabel: Record<EventModality, string> = {
       boton.disabled = false;
     }
   }
+
+  // --- Listado de cuentas: filtro y acciones por fila ------------------------
+  const filtroCuentas = document.getElementById('cuentas-filtro') as HTMLInputElement | null;
+  const filasCuentas = [...document.querySelectorAll<HTMLTableRowElement>('[data-cuenta]')];
+  const avisoCuentas = document.getElementById('cuentas-aviso') as HTMLParagraphElement | null;
+
+  filtroCuentas?.addEventListener('input', () => {
+    const escrito = filtroCuentas.value.trim().toLowerCase();
+    filasCuentas.forEach((fila) => {
+      fila.hidden = Boolean(escrito) && !(fila.dataset.texto ?? '').includes(escrito);
+    });
+  });
+
+  // Las mismas rutas que usa el panel de busqueda de abajo, pero por uid: asi
+  // se modera tambien a quien no tiene nombre de usuario. Tras aplicar se
+  // recarga la pagina, que es la forma mas simple de que todas las insignias
+  // y el menu de cada fila reflejen el estado nuevo.
+  filasCuentas.forEach((fila) => {
+    fila.querySelectorAll<HTMLButtonElement>('[data-accion-fila]').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const accion = boton.dataset.accionFila ?? '';
+        const uid = fila.dataset.uid ?? '';
+        const nombre = fila.dataset.nombre ?? 'esta cuenta';
+
+        if (accion === 'quitar-admin' || accion === 'bloquear') {
+          const texto =
+            accion === 'quitar-admin'
+              ? `¿Quitar el acceso de administrador a ${nombre}?`
+              : `¿Bloquear a ${nombre}? No podrá publicar y sus eventos se ocultarán de la cartelera.`;
+          if (!window.confirm(texto)) return;
+        }
+
+        const esVerificacion = ['vpersona', 'vcomunidad', 'vquitar'].includes(accion);
+        const cuerpo = esVerificacion
+          ? { uid, verification: accion === 'vpersona' ? 'persona' : accion === 'vcomunidad' ? 'comunidad' : null }
+          : { uid, accion };
+
+        fila.querySelectorAll('button').forEach((b) => (b.disabled = true));
+
+        try {
+          const response = await fetch(esVerificacion ? '/api/admin/verificacion' : '/api/admin/usuarios', {
+            method: esVerificacion ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cuerpo),
+          });
+          const resultado = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(resultado.error ?? 'No se pudo aplicar el cambio.');
+          window.location.reload();
+        } catch (error) {
+          if (avisoCuentas) {
+            avisoCuentas.textContent = error instanceof Error ? error.message : 'No se pudo aplicar el cambio.';
+            avisoCuentas.hidden = false;
+          }
+          fila.querySelectorAll('button').forEach((b) => (b.disabled = false));
+        }
+      });
+    });
+  });
+
+  // Un solo menu abierto a la vez: abrir uno cierra los demas.
+  document.querySelectorAll<HTMLDetailsElement>('[data-cuenta] details').forEach((menu) => {
+    menu.addEventListener('toggle', () => {
+      if (!menu.open) return;
+      document.querySelectorAll<HTMLDetailsElement>('[data-cuenta] details').forEach((otro) => {
+        if (otro !== menu) otro.open = false;
+      });
+    });
+  });
+
+  document.addEventListener('click', (evento) => {
+    document.querySelectorAll<HTMLDetailsElement>('[data-cuenta] details[open]').forEach((menu) => {
+      if (!menu.contains(evento.target as Node)) menu.open = false;
+    });
+  });
 
   document.querySelectorAll<HTMLButtonElement>('.accion').forEach((boton) => {
     boton.addEventListener('click', () => void aplicarAccion(boton));

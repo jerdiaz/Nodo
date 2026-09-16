@@ -23,8 +23,12 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
   const payload = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
 
   const username = typeof payload.username === 'string' ? payload.username.trim().toLowerCase() : '';
+  // Desde el listado del panel se modera por uid: la mitad de las cuentas
+  // nunca termino la bienvenida y no tiene nombre de usuario por el que
+  // buscarla. El uid viene de la propia lista, no lo teclea nadie.
+  const uidDirecto = typeof payload.uid === 'string' ? payload.uid.trim() : '';
 
-  if (!username) {
+  if (!username && !uidDirecto) {
     return jsonResponse({ error: 'Indica el nombre de usuario.' }, 400);
   }
 
@@ -35,7 +39,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     return jsonResponse({ error: 'El tipo de verificación no es válido.' }, 400);
   }
 
-  const targetUid = await getUidByUsername(username);
+  const targetUid = uidDirecto || (await getUidByUsername(username));
 
   if (!targetUid) {
     return jsonResponse({ error: `No existe ninguna cuenta con el usuario @${username}.` }, 404);

@@ -1,0 +1,176 @@
+---
+// Una serie diaria como barras, con el total del periodo como titular.
+//
+// SVG generado en el servidor y sin libreria: son tres graficos de una serie
+// cada uno en una pagina que ve una persona. Una libreria de graficos para eso
+// es mas codigo del que dibuja.
+//
+// Un solo tono, el acento del sitio via token, para que siga al tema. Con una
+// serie por grafico no hace falta leyenda: el titulo dice que es. Las barras
+// van finas, con la punta redondeada y separadas por un hueco del color del
+// fondo; el eje y la rejilla son tenues, y solo se rotulan el maximo y el
+// ultimo dia, no cada barra. Debajo, una tabla con los datos: la version que
+// lee un lector de pantalla y la que se copia a una hoja de calculo.
+import type { PuntoSerie } from '../../lib/firebase/metricas';
+
+interface Props {
+  titulo: string;
+  // Que se cuenta, en singular y plural, para el titular: ["visita", "visitas"].
+  unidad: [string, string];
+  serie: PuntoSerie[];
+  // Una segunda cifra bajo el titular, opcional ("12 con sesión").
+  detalle?: string;
+}
+
+const { titulo, unidad, serie, detalle } = Astro.props;
+
+const total = serie.reduce((suma, punto) => suma + punto.total, 0);
+const maximo = Math.max(1, ...serie.map((punto) => punto.total));
+const indiceMaximo = serie.findIndex((punto) => punto.total === maximo);
+const ultimo = serie.length - 1;
+
+// Geometria. El ancho es fijo y el SVG escala con viewBox; asi el grafico se
+// adapta al ancho de la tarjeta sin recalcular nada.
+const ANCHO = 600;
+const ALTO = 160;
+const MARGEN_ARRIBA = 18;
+const MARGEN_ABAJO = 22;
+const AREA = ALTO - MARGEN_ARRIBA - MARGEN_ABAJO;
+const HUECO = 2;
+const anchoBarra = ANCHO / Math.max(1, serie.length) - HUECO;
+
+function alto(valor: number): number {
+  return valor === 0 ? 0 : Math.max(3, (valor / maximo) * AREA);
+}
+
+function x(indice: number): number {
+  return indice * (anchoBarra + HUECO);
+}
+
+// Etiquetas del eje: el primer dia, uno a la mitad y el ultimo. Tres fechas
+// bastan para ubicarse en un mes; treinta serian ruido.
+const etiquetasEje = [0, Math.floor(ultimo / 2), ultimo].filter((valor, i, arr) => arr.indexOf(valor) === i);
+
+function diaCorto(fecha: string): string {
+  const [, mes, dia] = fecha.split('-');
+  return `${Number(dia)}/${Number(mes)}`;
+}
+
+function diaLargo(fecha: string): string {
+  const [anio, mes, dia] = fecha.split('-').map(Number);
+  return new Intl.DateTimeFormat('es', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(anio!, mes! - 1, dia!)),
+  );
+}
+
+// Lineas de rejilla: a la mitad y arriba del todo, con su valor a la derecha.
+const rejilla = [maximo, Math.round(maximo / 2)].filter((valor, i, arr) => valor > 0 && arr.indexOf(valor) === i);
+---
+
+<div class="rounded-3xl border border-linea bg-superficie p-5">
+  <p class="text-sm font-medium text-suave">{titulo}</p>
+  <p class="mt-1 text-3xl font-bold tracking-tight text-texto">
+    {total.toLocaleString('es-CO')}{' '}
+    <span class="text-base font-medium text-suave">{total === 1 ? unidad[0] : unidad[1]}</span>
+  </p>
+  {detalle && <p class="mt-0.5 text-sm text-suave">{detalle}</p>}
+
+  <svg
+    viewBox={`0 0 ${ANCHO} ${ALTO}`}
+    class="mt-4 w-full"
+    role="img"
+    aria-label={`${titulo}: ${total} ${unidad[1]} en los últimos ${serie.length} días`}
+  >
+    {rejilla.map((valor) => {
+      const y = MARGEN_ARRIBA + AREA - (valor / maximo) * AREA;
+      return (
+        <g>
+          <line x1="0" x2={ANCHO} y1={y} y2={y} stroke="var(--c-linea-suave)" stroke-width="1" />
+          <text x={ANCHO} y={y - 4} text-anchor="end" font-size="10" fill="var(--c-texto-tenue)">
+            {valor}
+          </text>
+        </g>
+      );
+    })}
+
+    {serie.map((punto, i) => {
+      const h = alto(punto.total);
+      const y = MARGEN_ARRIBA + AREA - h;
+      const rotular = punto.total > 0 && (i === indiceMaximo || i === ultimo);
+      return (
+        <g>
+          {/*
+            La punta redondeada solo arriba: un rect con rx redondea las cuatro
+            esquinas, asi que se dibuja un poco mas alto de lo que mide y se
+            recorta por abajo con la linea base, que va encima.
+          */}
+          <rect
+            x={x(i)}
+            y={y}
+            width={anchoBarra}
+            height={h + 4}
+            rx="4"
+            fill="var(--c-acento)"
+            opacity={punto.total === 0 ? 0 : 1}
+          >
+            <title>{`${diaLargo(punto.fecha)}: ${punto.total} ${punto.total === 1 ? unidad[0] : unidad[1]}`}</title>
+          </rect>
+          {rotular && (
+            <text
+              x={x(i) + anchoBarra / 2}
+              y={y - 5}
+              text-anchor="middle"
+              font-size="11"
+              font-weight="600"
+              fill="var(--c-texto)"
+            >
+              {punto.total}
+            </text>
+          )}
+        </g>
+      );
+    })}
+
+    {/* Linea base, encima de las barras para recortarles la base. */}
+    <rect x="0" y={MARGEN_ARRIBA + AREA} width={ANCHO} height="4" fill="var(--c-superficie)" />
+    <line
+      x1="0"
+      x2={ANCHO}
+      y1={MARGEN_ARRIBA + AREA + 0.5}
+      y2={MARGEN_ARRIBA + AREA + 0.5}
+      stroke="var(--c-linea)"
+      stroke-width="1"
+    />
+
+    {etiquetasEje.map((i) => (
+      <text
+        x={x(i) + anchoBarra / 2}
+        y={ALTO - 6}
+        text-anchor={i === 0 ? 'start' : i === ultimo ? 'end' : 'middle'}
+        font-size="10"
+        fill="var(--c-texto-tenue)"
+      >
+        {diaCorto(serie[i]!.fecha)}
+      </text>
+    ))}
+  </svg>
+
+  <details class="mt-3">
+    <summary class="cursor-pointer text-xs font-medium text-suave hover:text-texto">Ver los datos</summary>
+    <div class="mt-2 max-h-48 overflow-auto rounded-xl border border-linea-suave">
+      <table class="w-full text-xs">
+        <thead class="sticky top-0 bg-fondo-alt text-left text-tenue">
+          <tr><th class="px-3 py-1.5 font-medium">Día</th><th class="px-3 py-1.5 text-right font-medium">{unidad[1]}</th></tr>
+        </thead>
+        <tbody>
+          {[...serie].reverse().map((punto) => (
+            <tr class="border-t border-linea-suave text-texto">
+              <td class="px-3 py-1.5">{diaLargo(punto.fecha)}</td>
+              <td class="px-3 py-1.5 text-right tabular-nums">{punto.total}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </details>
+</div>

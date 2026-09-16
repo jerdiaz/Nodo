@@ -25,6 +25,10 @@ function mapDocToProfile(doc: FirebaseFirestore.DocumentSnapshot): UserProfile |
     verification: data.verification,
     admin: data.admin === true,
     blocked: data.blocked === true,
+    // Los dos se guardaban pero no se leian: el celular salia vacio al editar
+    // el perfil y el interruptor de avisos por correo no se respetaba nunca.
+    phone: typeof data.phone === 'string' ? data.phone : undefined,
+    emailAvisos: data.emailAvisos === false ? false : undefined,
   };
 }
 
@@ -90,6 +94,62 @@ export async function setEmailAvisos(uid: string, activos: boolean): Promise<voi
   await usersCollection()
     .doc(uid)
     .set({ emailAvisos: activos ? FieldValue.delete() : false }, { merge: true });
+}
+
+// --- Directorio del panel de administracion ---------------------------------
+
+export interface AdminUserRow {
+  uid: string;
+  nombre: string;
+  username?: string;
+  email: string | null;
+  proveedor: string;
+  creado: Date | null;
+  // Sin documento en `users`: entro con Google o Microsoft pero nunca termino
+  // la bienvenida. Existe en Auth y puede confirmar asistencias, pero no
+  // tiene nombre de usuario, asi que no se le puede buscar por @.
+  sinPerfil: boolean;
+  admin: boolean;
+  verification?: VerificationType;
+  blocked: boolean;
+  telefono: boolean;
+}
+
+// Todas las cuentas, las de Auth cruzadas con su perfil de Firestore. Auth es
+// la lista completa -ahi esta quien entro alguna vez-; el perfil solo existe
+// para quien completo la bienvenida. De la mas reciente a la mas antigua.
+export async function getAdminUserRows(): Promise<AdminUserRow[]> {
+  const cuentas: import('firebase-admin/auth').UserRecord[] = [];
+  let pagina = await getAdminAuth().listUsers(1000);
+
+  for (;;) {
+    cuentas.push(...pagina.users);
+    if (!pagina.pageToken) break;
+    pagina = await getAdminAuth().listUsers(1000, pagina.pageToken);
+  }
+
+  const perfiles = await getUserProfiles(cuentas.map((cuenta) => cuenta.uid));
+
+  return cuentas
+    .map((cuenta) => {
+      const perfil = perfiles.get(cuenta.uid);
+      const nombrePerfil = perfil ? [perfil.firstName, perfil.lastName].filter(Boolean).join(' ') : '';
+
+      return {
+        uid: cuenta.uid,
+        nombre: nombrePerfil || cuenta.displayName || cuenta.email || 'Sin nombre',
+        username: perfil?.username,
+        email: cuenta.email ?? null,
+        proveedor: cuenta.providerData[0]?.providerId ?? 'desconocido',
+        creado: cuenta.metadata.creationTime ? new Date(cuenta.metadata.creationTime) : null,
+        sinPerfil: !perfil,
+        admin: perfil?.admin === true,
+        verification: perfil?.verification,
+        blocked: perfil?.blocked === true,
+        telefono: Boolean(perfil?.phone),
+      };
+    })
+    .sort((a, b) => (b.creado?.getTime() ?? 0) - (a.creado?.getTime() ?? 0));
 }
 
 // Los correos no viven en el perfil de Firestore: estan en Firebase Auth, y
