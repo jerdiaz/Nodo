@@ -56,9 +56,12 @@ const caras = await getAttendeeFaces(eventos.map((event) => event.id), 4).catch(
 const miembros = await getMemberCount(community.id).catch(() => 0);
 
 // Solo se leen si hace falta pintarlas: nadie mas que quien administra ve
-// solicitudes ni la lista de miembros.
+// solicitudes ni la lista de miembros. El dueño se excluye de "miembros": no
+// es alguien a quien esta lista pueda tocarle el rol, ya administra siempre.
 const solicitudes = puedeAdministrar ? await getPendingRequests(community.id).catch(() => []) : [];
-const activos = puedeAdministrar ? await getActiveMembers(community.id).catch(() => []) : [];
+const activos = puedeAdministrar
+  ? (await getActiveMembers(community.id).catch(() => [])).filter((miembro) => miembro.uid !== community.ownerUid)
+  : [];
 const perfiles = puedeAdministrar
   ? await getUserProfiles([...solicitudes.map((s) => s.uid), ...activos.map((a) => a.uid)])
   : new Map();
@@ -160,7 +163,7 @@ function nombreDe(uid: string): string {
     </header>
 
     {puedeAdministrar && (solicitudes.length > 0 || activos.length > 0) && (
-      <section data-slug={community.slug} class="mt-10 space-y-6 rounded-3xl border border-linea bg-superficie p-6">
+      <section data-slug={community.slug} data-uid={user?.uid} class="mt-10 space-y-6 rounded-3xl border border-linea bg-superficie p-6">
         <h2 class="text-lg font-bold text-texto">Solicitudes y miembros</h2>
 
         {solicitudes.length > 0 && (
@@ -372,6 +375,7 @@ function nombreDe(uid: string): string {
   // recargar es la forma mas simple de que la pagina diga lo que hay guardado.
   const seccionMiembros = document.querySelector<HTMLElement>('section[data-slug]');
   const slugComunidad = seccionMiembros?.dataset.slug;
+  const miUid = seccionMiembros?.dataset.uid;
 
   document.querySelectorAll<HTMLButtonElement>('[data-accion]').forEach((boton) => {
     boton.addEventListener('click', async () => {
@@ -379,6 +383,13 @@ function nombreDe(uid: string): string {
       const uid = fila?.dataset.miembro;
 
       if (!uid || !slugComunidad) return;
+
+      // Quitarte el admin a ti mismo te deja sin poder administrar hasta que
+      // alguien mas te lo devuelva: un clic de mas no deberia bastar para eso.
+      if (boton.dataset.accion === 'quitar-admin' && uid === miUid) {
+        const confirmado = window.confirm('Vas a quitarte el rol de admin a ti mismo. ¿Continuar?');
+        if (!confirmado) return;
+      }
 
       boton.disabled = true;
 
