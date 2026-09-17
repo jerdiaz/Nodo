@@ -4,7 +4,7 @@ import Card from '../../../components/ui/Card.astro';
 import Button from '../../../components/ui/Button.astro';
 import ImageCropper from '../../../components/ui/ImageCropper.astro';
 import { getCurrentUser } from '../../../lib/auth';
-import { getCommunityBySlug } from '../../../lib/firebase/communities';
+import { getCommunityBySlug, isCommunityAdmin } from '../../../lib/firebase/communities';
 
 const user = await getCurrentUser(Astro.cookies);
 
@@ -21,7 +21,7 @@ if (!community) {
 // Quien no la administra se va a la ficha publica, que es lo que si puede ver.
 // La API vuelve a comprobarlo: esto solo evita enseñar un formulario que no
 // llevaria a ninguna parte.
-if (community.ownerUid !== user.uid) {
+if (!(await isCommunityAdmin(community, user.uid))) {
   return Astro.redirect(`/comunidades/${community.slug}`);
 }
 

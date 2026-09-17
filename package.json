@@ -12,7 +12,8 @@
     "check": "astro check",
     "astro": "astro",
     "db:seed": "node --env-file-if-exists=.env scripts/seed.mjs",
-    "db:backfill-rsvps": "node --env-file-if-exists=.env scripts/backfill-rsvp-counts.mjs"
+    "db:backfill-rsvps": "node --env-file-if-exists=.env scripts/backfill-rsvp-counts.mjs",
+    "db:migrar-seguidores": "node --env-file-if-exists=.env scripts/migrar-seguidores.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.5",

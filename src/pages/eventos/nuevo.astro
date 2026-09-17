@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import EventForm from '../../components/events/EventForm.astro';
 import { getCurrentUser } from '../../lib/auth';
-import { getCommunityByOwner } from '../../lib/firebase/communities';
+import { getMembershipsForUser } from '../../lib/firebase/communities';
 
 const user = await getCurrentUser(Astro.cookies);
 
@@ -10,9 +10,10 @@ if (!user) {
   return Astro.redirect(`/?login=required&destino=${encodeURIComponent(Astro.url.pathname)}`);
 }
 
-// Si no administra ninguna, el formulario no dibuja el selector y el evento
+// Si no pertenece a ninguna, el formulario no dibuja el selector y el evento
 // sale a su nombre, como hasta ahora.
-const community = await getCommunityByOwner(user.uid).catch(() => null);
+const memberships = await getMembershipsForUser(user.uid).catch(() => []);
+const communities = memberships.map((membership) => membership.community);
 ---
 
 <BaseLayout title="Publicar evento — Innvita" description="Publica un evento en la cartelera comunitaria de Innvita.">
@@ -22,6 +23,6 @@ const community = await getCommunityByOwner(user.uid).catch(() => null);
       <p class="mt-2 text-sm text-suave">Completa los datos para publicarlo en la comunidad.</p>
     </div>
 
-    <EventForm community={community} />
+    <EventForm communities={communities} />
   </div>
 </BaseLayout>

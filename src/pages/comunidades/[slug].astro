@@ -4,11 +4,19 @@ import EmptyState from '../../components/events/EmptyState.astro';
 import EventCard from '../../components/events/EventCard.astro';
 import Button from '../../components/ui/Button.astro';
 import { getCurrentUser } from '../../lib/auth';
-import { getCommunityBySlug, getMemberCount, isMember } from '../../lib/firebase/communities';
+import {
+  getActiveMembers,
+  getCommunityBySlug,
+  getMemberCount,
+  getMembership,
+  getPendingRequests,
+  isFollowing,
+} from '../../lib/firebase/communities';
+import { getUserProfiles } from '../../lib/firebase/users';
 import { getEvents } from '../../lib/firebase/events';
 import { getAttendeeFaces } from '../../lib/firebase/rsvps';
 import { formatMonthYear } from '../../lib/format';
-import { CalendarDays, Pencil, Users } from '@lucide/astro';
+import { CalendarDays, Check, LogOut, Pencil, ShieldCheck, ShieldOff, Users, X } from '@lucide/astro';
 import type { NodoEvent } from '../../types/event';
 
 const community = await getCommunityBySlug(Astro.params.slug ?? '');
@@ -19,6 +27,11 @@ if (!community) {
 
 const user = await getCurrentUser(Astro.cookies);
 const esDueno = user?.uid === community.ownerUid;
+const membresia = user && !esDueno ? await getMembership(community.id, user.uid).catch(() => null) : null;
+const esActivo = esDueno || membresia?.status === 'active';
+const puedeAdministrar = esDueno || (membresia?.status === 'active' && membresia.role === 'admin');
+const solicitudPendiente = membresia?.status === 'pending';
+const siguiendo = user ? await isFollowing(community.id, user.uid).catch(() => false) : false;
 
 let allEvents: NodoEvent[] = [];
 
@@ -41,7 +54,19 @@ const pasados = eventos
 const caras = await getAttendeeFaces(eventos.map((event) => event.id), 4).catch(() => new Map());
 
 const miembros = await getMemberCount(community.id).catch(() => 0);
-const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => false) : false;
+
+// Solo se leen si hace falta pintarlas: nadie mas que quien administra ve
+// solicitudes ni la lista de miembros.
+const solicitudes = puedeAdministrar ? await getPendingRequests(community.id).catch(() => []) : [];
+const activos = puedeAdministrar ? await getActiveMembers(community.id).catch(() => []) : [];
+const perfiles = puedeAdministrar
+  ? await getUserProfiles([...solicitudes.map((s) => s.uid), ...activos.map((a) => a.uid)])
+  : new Map();
+
+function nombreDe(uid: string): string {
+  const perfil = perfiles.get(uid);
+  return perfil ? [perfil.firstName, perfil.lastName].filter(Boolean).join(' ') || 'Alguien' : 'Alguien';
+}
 ---
 
 <BaseLayout title={`${community.name} — Innvita`} description={community.description ?? `Comunidad ${community.name} en Innvita.`}>
@@ -78,7 +103,7 @@ const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => fa
       </div>
 
       <div class="flex shrink-0 items-center gap-3">
-        {esDueno ? (
+        {puedeAdministrar ? (
           <>
             <a
               href={`/comunidades/${community.slug}/editar`}
@@ -89,20 +114,142 @@ const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => fa
             </a>
             <Button href="/eventos/nuevo">Publicar evento</Button>
           </>
+        ) : esActivo ? (
+          <>
+            <span class="flex h-10 items-center gap-2 rounded-full border border-linea px-4 text-sm font-semibold text-suave">
+              <Users class="size-4" stroke-width={1.75} />
+              Eres miembro
+            </span>
+            <button
+              id="community-salir"
+              type="button"
+              data-slug={community.slug}
+              title="Salir de la comunidad"
+              class="flex size-10 items-center justify-center rounded-full border border-linea text-suave transition active:scale-[0.97] hover:border-acento hover:text-texto disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <LogOut class="size-4" stroke-width={1.75} />
+            </button>
+            <Button href="/eventos/nuevo">Publicar evento</Button>
+          </>
         ) : (
-          <button
-            id="community-join"
-            type="button"
-            data-slug={community.slug}
-            data-joined={yaEsMiembro ? 'true' : 'false'}
-            data-sesion={user ? 'activa' : 'inactiva'}
-            class="h-10 rounded-full bg-acento px-5 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {yaEsMiembro ? 'Siguiendo' : 'Unirme'}
-          </button>
+          <>
+            <button
+              id="community-join"
+              type="button"
+              data-slug={community.slug}
+              data-following={siguiendo ? 'true' : 'false'}
+              data-sesion={user ? 'activa' : 'inactiva'}
+              class="h-10 rounded-full border border-linea px-4 text-sm font-semibold text-texto transition active:scale-[0.97] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {siguiendo ? 'Siguiendo' : 'Seguir'}
+            </button>
+            <button
+              id="community-solicitar"
+              type="button"
+              data-slug={community.slug}
+              data-sesion={user ? 'activa' : 'inactiva'}
+              data-pendiente={solicitudPendiente ? 'true' : 'false'}
+              disabled={solicitudPendiente}
+              class="h-10 rounded-full bg-acento px-5 text-sm font-semibold tracking-[0.02em] text-acento-contraste transition active:scale-[0.97] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {solicitudPendiente ? 'Solicitud enviada' : 'Solicitar membresía'}
+            </button>
+          </>
         )}
       </div>
     </header>
+
+    {puedeAdministrar && (solicitudes.length > 0 || activos.length > 0) && (
+      <section data-slug={community.slug} class="mt-10 space-y-6 rounded-3xl border border-linea bg-superficie p-6">
+        <h2 class="text-lg font-bold text-texto">Solicitudes y miembros</h2>
+
+        {solicitudes.length > 0 && (
+          <div>
+            <h3 class="text-sm font-semibold text-suave">Solicitudes pendientes</h3>
+            <ul class="mt-3 space-y-3">
+              {solicitudes.map((solicitud) => (
+                <li data-miembro={solicitud.uid} class="flex items-center gap-3">
+                  {perfiles.get(solicitud.uid)?.avatarUrl ? (
+                    <img src={perfiles.get(solicitud.uid)!.avatarUrl} alt="" class="size-10 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span class="grid size-10 shrink-0 place-items-center rounded-full bg-fondo-alt text-sm font-medium text-suave">
+                      {nombreDe(solicitud.uid).charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-semibold text-texto">{nombreDe(solicitud.uid)}</p>
+                    {perfiles.get(solicitud.uid)?.username && (
+                      <p class="text-xs text-tenue">@{perfiles.get(solicitud.uid)!.username}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    data-accion="aprobar"
+                    title="Aprobar"
+                    class="flex size-9 shrink-0 items-center justify-center rounded-full border border-linea text-acento-texto transition active:scale-[0.97] hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Check class="size-4" stroke-width={2} />
+                  </button>
+                  <button
+                    type="button"
+                    data-accion="declinar"
+                    title="Declinar"
+                    class="flex size-9 shrink-0 items-center justify-center rounded-full border border-linea text-suave transition active:scale-[0.97] hover:border-acento hover:text-texto disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <X class="size-4" stroke-width={2} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {activos.length > 0 && (
+          <div>
+            <h3 class="text-sm font-semibold text-suave">Miembros</h3>
+            <ul class="mt-3 space-y-3">
+              {activos.map((miembro) => (
+                <li data-miembro={miembro.uid} class="flex items-center gap-3">
+                  {perfiles.get(miembro.uid)?.avatarUrl ? (
+                    <img src={perfiles.get(miembro.uid)!.avatarUrl} alt="" class="size-10 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span class="grid size-10 shrink-0 place-items-center rounded-full bg-fondo-alt text-sm font-medium text-suave">
+                      {nombreDe(miembro.uid).charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-semibold text-texto">{nombreDe(miembro.uid)}</p>
+                    {perfiles.get(miembro.uid)?.username && (
+                      <p class="text-xs text-tenue">@{perfiles.get(miembro.uid)!.username}</p>
+                    )}
+                  </div>
+                  <span class="shrink-0 text-xs font-medium text-tenue">{miembro.role === 'admin' ? 'Admin' : 'Miembro'}</span>
+                  {miembro.role === 'admin' ? (
+                    <button
+                      type="button"
+                      data-accion="quitar-admin"
+                      title="Quitar admin"
+                      class="flex size-9 shrink-0 items-center justify-center rounded-full border border-linea text-suave transition active:scale-[0.97] hover:border-acento hover:text-texto disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <ShieldOff class="size-4" stroke-width={1.75} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      data-accion="hacer-admin"
+                      title="Hacer admin"
+                      class="flex size-9 shrink-0 items-center justify-center rounded-full border border-linea text-suave transition active:scale-[0.97] hover:border-acento hover:text-texto disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <ShieldCheck class="size-4" stroke-width={1.75} />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+    )}
 
     <div class="mt-12 space-y-12">
       {proximos.length > 0 && (
@@ -134,23 +281,26 @@ const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => fa
 </BaseLayout>
 
 <script>
-  const boton = document.getElementById('community-join') as HTMLButtonElement | null;
+  function abrirModalSesion(): void {
+    (document.getElementById('nodo-modal-sesion') as HTMLDialogElement | null)?.showModal();
+  }
 
-  boton?.addEventListener('click', async () => {
-    // Sin sesion no se puede seguir a nadie: en vez de fallar contra la API, se
-    // abre el mismo modal que usa el resto del sitio.
-    if (boton.dataset.sesion !== 'activa') {
-      (document.getElementById('nodo-modal-sesion') as HTMLDialogElement | null)?.showModal();
+  // --- Seguir / dejar de seguir ---------------------------------------------
+  const botonSeguir = document.getElementById('community-join') as HTMLButtonElement | null;
+
+  botonSeguir?.addEventListener('click', async () => {
+    if (botonSeguir.dataset.sesion !== 'activa') {
+      abrirModalSesion();
       return;
     }
 
-    const siguiendo = boton.dataset.joined === 'true';
-    boton.disabled = true;
+    const siguiendo = botonSeguir.dataset.following === 'true';
+    botonSeguir.disabled = true;
 
     try {
       // Content-Type obligatorio: sin el, Astro trata la peticion como envio de
       // formulario y detras del proxy responde 403 sin llegar a la ruta.
-      const respuesta = await fetch(`/api/comunidades/${boton.dataset.slug}/unirse`, {
+      const respuesta = await fetch(`/api/comunidades/${botonSeguir.dataset.slug}/unirse`, {
         method: siguiendo ? 'DELETE' : 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -160,12 +310,94 @@ const yaEsMiembro = user ? await isMember(community.id, user.uid).catch(() => fa
       }
 
       const cuerpo = await respuesta.json();
-      boton.dataset.joined = cuerpo.joined ? 'true' : 'false';
-      boton.textContent = cuerpo.joined ? 'Siguiendo' : 'Unirme';
+      botonSeguir.dataset.following = cuerpo.following ? 'true' : 'false';
+      botonSeguir.textContent = cuerpo.following ? 'Siguiendo' : 'Seguir';
     } catch (error) {
       console.error(error);
     } finally {
-      boton.disabled = false;
+      botonSeguir.disabled = false;
     }
+  });
+
+  // --- Solicitar membresía ---------------------------------------------------
+  const botonSolicitar = document.getElementById('community-solicitar') as HTMLButtonElement | null;
+
+  botonSolicitar?.addEventListener('click', async () => {
+    if (botonSolicitar.dataset.sesion !== 'activa') {
+      abrirModalSesion();
+      return;
+    }
+
+    botonSolicitar.disabled = true;
+
+    try {
+      const respuesta = await fetch(`/api/comunidades/${botonSolicitar.dataset.slug}/miembros`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!respuesta.ok) {
+        throw new Error('No se pudo enviar la solicitud.');
+      }
+
+      botonSolicitar.textContent = 'Solicitud enviada';
+    } catch (error) {
+      console.error(error);
+      botonSolicitar.disabled = false;
+    }
+  });
+
+  // --- Salir de la comunidad ---------------------------------------------------
+  const botonSalir = document.getElementById('community-salir') as HTMLButtonElement | null;
+
+  botonSalir?.addEventListener('click', async () => {
+    botonSalir.disabled = true;
+
+    try {
+      const respuesta = await fetch(`/api/comunidades/${botonSalir.dataset.slug}/miembros`, { method: 'DELETE' });
+
+      if (!respuesta.ok) {
+        throw new Error('No se pudo salir de la comunidad.');
+      }
+
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      botonSalir.disabled = false;
+    }
+  });
+
+  // --- Aprobar, declinar, hacer o quitar admin --------------------------------
+  // Tras aplicar se recarga: el estado de cada fila vive en el servidor, y
+  // recargar es la forma mas simple de que la pagina diga lo que hay guardado.
+  const seccionMiembros = document.querySelector<HTMLElement>('section[data-slug]');
+  const slugComunidad = seccionMiembros?.dataset.slug;
+
+  document.querySelectorAll<HTMLButtonElement>('[data-accion]').forEach((boton) => {
+    boton.addEventListener('click', async () => {
+      const fila = boton.closest<HTMLElement>('[data-miembro]');
+      const uid = fila?.dataset.miembro;
+
+      if (!uid || !slugComunidad) return;
+
+      boton.disabled = true;
+
+      try {
+        const respuesta = await fetch(`/api/comunidades/${slugComunidad}/miembros/${uid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accion: boton.dataset.accion }),
+        });
+
+        if (!respuesta.ok) {
+          throw new Error('No se pudo aplicar la acción.');
+        }
+
+        window.location.reload();
+      } catch (error) {
+        console.error(error);
+        boton.disabled = false;
+      }
+    });
   });
 </script>

@@ -4,7 +4,7 @@ import { jsonResponse } from '../../../lib/api';
 import { getDisplayUser } from '../../../lib/auth';
 import { validateEventPayload } from '../../../lib/eventValidation';
 import { getAdminDb } from '../../../lib/firebase/server';
-import { getCommunityByOwner, toEventCommunity } from '../../../lib/firebase/communities';
+import { canPublishForCommunity, getCommunityBySlug, toEventCommunity } from '../../../lib/firebase/communities';
 import { slugify } from '../../../lib/slug';
 import { contarEventoCreado } from '../../../lib/firebase/metricas';
 
@@ -38,11 +38,25 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const { startDate, endDate, ...rest } = validation.data;
   const db = getAdminDb();
 
-  // Quien administra una comunidad elige en el formulario si publica en su
-  // nombre o en el suyo propio. Sin el campo se asume la comunidad, que es lo
-  // que hacia antes de que se pudiera elegir.
+  // Quien pertenece a una o mas comunidades elige en el formulario si publica
+  // en su nombre o en el de una de ellas. El formulario manda cual con
+  // `communityId` porque, a diferencia de antes, puede haber mas de una
+  // posible.
   const publishAs = (body as Record<string, unknown> | null)?.publishAs;
-  const comunidad = publishAs === 'persona' ? null : await getCommunityByOwner(user.uid);
+  const communityId = (body as Record<string, unknown> | null)?.communityId;
+  let comunidad = null;
+
+  if (publishAs === 'comunidad') {
+    if (typeof communityId !== 'string' || !communityId) {
+      return jsonResponse({ error: 'Falta elegir a nombre de qué comunidad publicas.' }, 400);
+    }
+
+    comunidad = await getCommunityBySlug(communityId);
+
+    if (!comunidad || !(await canPublishForCommunity(comunidad, user.uid))) {
+      return jsonResponse({ error: 'No puedes publicar a nombre de esa comunidad.' }, 403);
+    }
+  }
 
   const baseSlug = slugify(rest.title) || 'evento';
   const data = {

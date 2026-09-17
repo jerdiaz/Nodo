@@ -5,6 +5,7 @@ import { validateCommunityPayload } from '../../../lib/communityValidation';
 import {
   deleteCommunity,
   getCommunityBySlug,
+  isCommunityAdmin,
   updateCommunity,
 } from '../../../lib/firebase/communities';
 import { deleteOwnedImage } from '../../../lib/images';
@@ -25,7 +26,7 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
   // La propiedad se comprueba aqui, en el codigo, leyendo el documento antes de
   // escribirlo: el Admin SDK se salta firestore.rules, asi que las reglas no
   // sirven de barrera para lo que pasa por esta ruta.
-  if (community.ownerUid !== user.uid) {
+  if (!(await isCommunityAdmin(community, user.uid))) {
     return jsonResponse({ error: 'Solo quien administra la comunidad puede editarla.' }, 403);
   }
 
@@ -62,7 +63,7 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
     return jsonResponse({ error: 'La comunidad no existe.' }, 404);
   }
 
-  if (community.ownerUid !== user.uid) {
+  if (!(await isCommunityAdmin(community, user.uid))) {
     return jsonResponse({ error: 'Solo quien administra la comunidad puede eliminarla.' }, 403);
   }
 

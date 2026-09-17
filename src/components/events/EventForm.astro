@@ -8,18 +8,32 @@ import DateTimePicker from './DateTimePicker.astro';
 
 interface Props {
   event?: NodoEvent;
-  // La comunidad que administra quien esta rellenando el formulario, si tiene
-  // alguna. Sin ella no hay nada que elegir y el selector no se dibuja.
-  community?: NodoCommunity | null;
+  // Las comunidades a cuyo nombre puede publicar quien rellena el formulario
+  // -las que administra o de las que es miembro activo-. Vacio: no hay nada
+  // que elegir y el selector no se dibuja.
+  communities?: NodoCommunity[];
 }
 
-const { event, community } = Astro.props;
+const { event, communities = [] } = Astro.props;
 const isEdit = Boolean(event);
 
-// Al crear se propone la comunidad, que es para lo que se creo; al editar
-// manda lo que el evento ya tenga, para no cambiarle el autor a quien solo
-// venia a corregir una hora.
-const publishAsValue = isEdit ? (event?.community ? 'comunidad' : 'persona') : 'comunidad';
+// Al crear se propone publicar por la comunidad, si hay alguna, que es para lo
+// que se creo esto; al editar manda lo que el evento ya tenga, para no
+// cambiarle el autor a quien solo venia a corregir una hora.
+const publishAsValue = isEdit
+  ? event?.community
+    ? 'comunidad'
+    : 'persona'
+  : communities.length > 0
+    ? 'comunidad'
+    : 'persona';
+
+// Preselecciona la comunidad que el evento ya tenia si sigue entre las
+// disponibles (puede que ya no lo sea, si salio de ella); si no, la primera.
+const selectedCommunityId =
+  isEdit && event?.community && communities.some((c) => c.id === event.community!.id)
+    ? event.community.id
+    : communities[0]?.id;
 
 function toDatetimeLocalValue(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -130,7 +144,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
       <p class="mt-1.5 text-xs text-tenue">Déjalo vacío si tú mismo eres quien organiza.</p>
     </div>
 
-    {community && (
+    {communities.length > 0 && (
       <div>
         <label class="block text-sm font-medium text-texto">Publicar como</label>
         <div
@@ -142,10 +156,24 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
             A mi nombre
           </button>
           <button type="button" role="radio" aria-checked={publishAsValue === 'comunidad'} data-publish-option="comunidad" class="publish-tab truncate rounded-xl px-3 py-2 text-sm font-medium transition active:scale-[0.97]">
-            {community.name}
+            {communities.length === 1 ? communities[0]!.name : 'Comunidad'}
           </button>
         </div>
         <input type="hidden" id="publishAs" name="publishAs" value={publishAsValue} />
+
+        {communities.length > 1 ? (
+          <select
+            id="communityId"
+            name="communityId"
+            data-community-select
+            class={`${inputClass} ${publishAsValue === 'comunidad' ? '' : 'hidden'}`}
+          >
+            {communities.map((c) => <option value={c.id} selected={c.id === selectedCommunityId}>{c.name}</option>)}
+          </select>
+        ) : (
+          <input type="hidden" id="communityId" name="communityId" value={communities[0]!.id} />
+        )}
+
         <p class="mt-1.5 text-xs text-tenue">
           En la cartelera se ve el nombre que elijas aquí. Quien lo creó siempre aparece en la ficha del evento.
         </p>
@@ -466,9 +494,11 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
   const form = document.getElementById('event-form') as HTMLFormElement;
   const modalityInput = document.getElementById('modality') as HTMLInputElement;
   const modalityTabs = document.querySelectorAll<HTMLButtonElement>('.modality-tab');
-  // Solo existe si esta persona administra una comunidad.
+  // Solo existen si esta persona pertenece a una o mas comunidades.
   const publishTabs = document.querySelectorAll<HTMLButtonElement>('.publish-tab');
   const publishInput = document.getElementById('publishAs') as HTMLInputElement | null;
+  // Solo existe cuando hay mas de una comunidad entre las que elegir.
+  const communitySelect = document.querySelector<HTMLSelectElement>('[data-community-select]');
   const locationGroup = document.querySelector('[data-field-group="location"]') as HTMLElement;
   const onlineGroup = document.querySelector('[data-field-group="online"]') as HTMLElement;
   const reachGroup = document.querySelector('[data-field-group="reach"]') as HTMLElement;
@@ -692,6 +722,8 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
       tab.classList.toggle('text-suave', !isActive);
       tab.classList.toggle('hover:text-texto', !isActive);
     });
+
+    communitySelect?.classList.toggle('hidden', value !== 'comunidad');
   }
 
   publishTabs.forEach((tab) => {
@@ -1277,6 +1309,7 @@ const inputClassFila = inputClass.replace('mt-1.5 ', '').replace('w-full ', '');
         endDate: toIsoStringOrEmpty(formData.get('endDate'), eventTimezone),
         timezone: eventTimezone || undefined,
         publishAs: formData.get('publishAs') || undefined,
+        communityId: formData.get('communityId') || undefined,
         organizingEntityName: formData.get('organizingEntityName') || undefined,
         organizingEntityUrl: formData.get('organizingEntityUrl') || undefined,
         tags: tagsRaw

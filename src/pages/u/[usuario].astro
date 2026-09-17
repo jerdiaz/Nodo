@@ -5,7 +5,7 @@ import EventCard from '../../components/events/EventCard.astro';
 import SocialIcon from '../../components/ui/SocialIcon.astro';
 import VerifiedBadge from '../../components/ui/VerifiedBadge.astro';
 import { getAccountCreatedAt, getCurrentUser } from '../../lib/auth';
-import { getCommunities, isMember } from '../../lib/firebase/communities';
+import { getMembershipsForUser } from '../../lib/firebase/communities';
 import { getEvents } from '../../lib/firebase/events';
 import { getAttendeeFaces } from '../../lib/firebase/rsvps';
 import { getUidByUsername, getUserProfile } from '../../lib/firebase/users';
@@ -52,15 +52,8 @@ const pasados = publicados
 // cuáles pertenece alguien es una lectura por comunidad. Con el puñado que hay
 // sale más barato que mantener una lista duplicada en cada usuario; si algún
 // día son cientos, habrá que darle la vuelta.
-const todas = await getCommunities().catch(() => []);
-const comunidades = (
-  await Promise.all(
-    todas.map(async (comunidad) => ({
-      comunidad,
-      dentro: comunidad.ownerUid === uid || (await isMember(comunidad.id, uid).catch(() => false)),
-    })),
-  )
-).filter((entrada) => entrada.dentro);
+const memberships = await getMembershipsForUser(uid).catch(() => []);
+const comunidades = memberships.map(({ community, role }) => ({ comunidad: community, role }));
 
 const createdAt = await getAccountCreatedAt(uid).catch(() => null);
 
@@ -200,7 +193,7 @@ const secciones = [
           </h2>
 
           <div class="mt-5 grid gap-4 sm:grid-cols-2">
-            {comunidades.map(({ comunidad }) => (
+            {comunidades.map(({ comunidad, role }) => (
               <a
                 href={`/comunidades/${comunidad.slug}`}
                 class="flex items-center gap-4 rounded-3xl border border-linea bg-superficie p-4 transition active:scale-[0.98] hover:border-acento"
@@ -217,7 +210,7 @@ const secciones = [
                   <p class="truncate font-semibold text-texto">{comunidad.name}</p>
                   <p class="mt-0.5 flex items-center gap-1.5 text-xs text-suave">
                     <Users class="size-3.5 shrink-0" stroke-width={1.75} />
-                    {comunidad.ownerUid === uid ? 'Administra' : 'Miembro'}
+                    {role === 'owner' || role === 'admin' ? 'Administra' : 'Miembro'}
                   </p>
                 </div>
               </a>

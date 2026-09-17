@@ -3,7 +3,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { jsonResponse } from '../../../lib/api';
 import { getCurrentUser } from '../../../lib/auth';
 import { validateEventPayload } from '../../../lib/eventValidation';
-import { getCommunityByOwner, toEventCommunity } from '../../../lib/firebase/communities';
+import { canPublishForCommunity, getCommunityBySlug, toEventCommunity } from '../../../lib/firebase/communities';
 import { deleteEventWithRsvps, mapDocToEvent } from '../../../lib/firebase/events';
 import { deleteEventNotifications } from '../../../lib/firebase/notifications';
 import { getAdminDb } from '../../../lib/firebase/server';
@@ -92,13 +92,23 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
   // solo si el formulario manda el campo: una peticion que no lo lleve deja la
   // comunidad como estaba en vez de borrarla por omision.
   const publishAs = (body as Record<string, unknown> | null)?.publishAs;
+  const communityId = (body as Record<string, unknown> | null)?.communityId;
   let community: FirebaseFirestore.FieldValue | ReturnType<typeof toEventCommunity> | undefined;
 
   if (publishAs === 'persona') {
     community = FieldValue.delete();
   } else if (publishAs === 'comunidad') {
-    const comunidad = await getCommunityByOwner(user.uid);
-    community = comunidad ? toEventCommunity(comunidad) : FieldValue.delete();
+    if (typeof communityId !== 'string' || !communityId) {
+      return jsonResponse({ error: 'Falta elegir a nombre de qué comunidad publicas.' }, 400);
+    }
+
+    const comunidad = await getCommunityBySlug(communityId);
+
+    if (!comunidad || !(await canPublishForCommunity(comunidad, user.uid))) {
+      return jsonResponse({ error: 'No puedes publicar a nombre de esa comunidad.' }, 403);
+    }
+
+    community = toEventCommunity(comunidad);
   }
 
   await docRef.update({
