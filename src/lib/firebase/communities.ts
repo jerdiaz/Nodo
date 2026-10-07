@@ -126,10 +126,14 @@ export async function isMember(communityId: string, uid: string): Promise<boolea
 }
 
 // Si ya hay una solicitud (pendiente o activa) no se pisa: pedir dos veces no
-// debe reiniciar el turno de quien ya estaba en la fila.
-export async function requestMembership(communityId: string, uid: string): Promise<CommunityMembership> {
+// debe reiniciar el turno de quien ya estaba en la fila. `nueva` dice si esta
+// llamada la creo, que es cuando hay que avisar a quien administra.
+export async function requestMembership(
+  communityId: string,
+  uid: string,
+): Promise<{ membership: CommunityMembership; nueva: boolean }> {
   const existing = await getMembership(communityId, uid);
-  if (existing) return existing;
+  if (existing) return { membership: existing, nueva: false };
 
   await membersCollection(communityId).doc(uid).set({
     role: 'member',
@@ -137,7 +141,7 @@ export async function requestMembership(communityId: string, uid: string): Promi
     requestedAt: FieldValue.serverTimestamp(),
   });
 
-  return { role: 'member', status: 'pending', requestedAt: new Date() };
+  return { membership: { role: 'member', status: 'pending', requestedAt: new Date() }, nueva: true };
 }
 
 export async function approveMembership(communityId: string, uid: string): Promise<void> {

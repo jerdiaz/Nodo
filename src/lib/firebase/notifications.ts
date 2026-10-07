@@ -13,7 +13,10 @@ function itemsCollection(uid: string) {
 // 'rsvp' le llega a quien organiza cuando alguien confirma. 'recordatorio' le
 // llega a quien asiste la vispera de su evento, y es el mismo aviso que sale
 // por correo: quien no abre el correo lo ve igual al entrar al sitio.
-export type NotificationType = 'rsvp' | 'recordatorio';
+// 'solicitud' le llega al dueño de una comunidad cuando alguien pide ser
+// miembro; no tiene evento, y lleva a la ficha de la comunidad, que es donde
+// se aprueba.
+export type NotificationType = 'rsvp' | 'recordatorio' | 'solicitud';
 
 export interface NotificationItem {
   id: string;
@@ -26,6 +29,10 @@ export interface NotificationItem {
   // vez de leer el evento al pintarlo: la campana se abre a menudo y no vale
   // una lectura por linea. Los eventos sin banner no la tienen.
   imageUrl?: string;
+  // Solo en las solicitudes: la comunidad a la que se pidio entrar.
+  communityId?: string;
+  communitySlug?: string;
+  communityName?: string;
   read: boolean;
   createdAt: Date | null;
 }
@@ -38,12 +45,15 @@ function mapItem(doc: FirebaseFirestore.DocumentSnapshot): NotificationItem {
     id: doc.id,
     // Los avisos anteriores al recordatorio no llevan `type` y todos eran de
     // asistencia: por eso el valor por omision es 'rsvp' y no un error.
-    type: data.type === 'recordatorio' ? 'recordatorio' : 'rsvp',
+    type: data.type === 'recordatorio' || data.type === 'solicitud' ? data.type : 'rsvp',
     fromUid: data.fromUid ?? '',
     eventId: data.eventId ?? '',
     eventTitle: data.eventTitle ?? '',
     actorName: data.actorName ?? 'Alguien',
     imageUrl: typeof data.imageUrl === 'string' ? data.imageUrl : undefined,
+    communityId: typeof data.communityId === 'string' ? data.communityId : undefined,
+    communitySlug: typeof data.communitySlug === 'string' ? data.communitySlug : undefined,
+    communityName: typeof data.communityName === 'string' ? data.communityName : undefined,
     read: data.read === true,
     createdAt: creado instanceof Timestamp ? creado.toDate() : null,
   };
@@ -109,6 +119,42 @@ export async function addReminderNotification(input: {
       throw error;
     }
   }
+}
+
+// Quien pide ser miembro le deja un aviso al dueño. Mismo criterio de id
+// determinista que el rsvp: pedir dos veces no duplica el aviso, y aprobar,
+// declinar o salirse lo pueden borrar sin consultas. La miniatura es la foto de
+// quien lo pide, para reconocerle de un vistazo.
+export async function addMembershipRequestNotification(input: {
+  toUid: string;
+  fromUid: string;
+  actorName: string;
+  imageUrl?: string;
+  community: { id: string; slug: string; name: string };
+}): Promise<void> {
+  await itemsCollection(input.toUid).doc(`solicitud__${input.community.id}__${input.fromUid}`).set({
+    type: 'solicitud',
+    fromUid: input.fromUid,
+    actorName: input.actorName,
+    eventId: '',
+    eventTitle: '',
+    imageUrl: input.imageUrl,
+    communityId: input.community.id,
+    communitySlug: input.community.slug,
+    communityName: input.community.name,
+    read: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+}
+
+// Una solicitud resuelta (aprobada, declinada o retirada) ya no pide nada a
+// nadie: el aviso se va con ella.
+export async function removeMembershipRequestNotification(
+  toUid: string,
+  communityId: string,
+  fromUid: string,
+): Promise<void> {
+  await itemsCollection(toUid).doc(`solicitud__${communityId}__${fromUid}`).delete();
 }
 
 // Cuando alguien retira su asistencia, la notificacion que habia dejado deja

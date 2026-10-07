@@ -8,6 +8,7 @@ import {
   isCommunityAdmin,
   setMemberRole,
 } from '../../../../../lib/firebase/communities';
+import { removeMembershipRequestNotification } from '../../../../../lib/firebase/notifications';
 
 const ACCIONES = ['aprobar', 'declinar', 'hacer-admin', 'quitar-admin'] as const;
 type Accion = (typeof ACCIONES)[number];
@@ -63,6 +64,12 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
     case 'quitar-admin':
       await setMemberRole(community.id, uid, 'member');
       break;
+  }
+
+  // Aprobada o declinada, la solicitud ya esta resuelta, la resolviera el dueño
+  // o un moderador: el aviso que le llego al dueño sobra.
+  if (accion === 'aprobar' || accion === 'declinar') {
+    await removeMembershipRequestNotification(community.ownerUid, community.id, uid).catch(() => {});
   }
 
   return jsonResponse({ success: true }, 200);

@@ -28,18 +28,18 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
     // Las notificaciones de un evento que ya no existe no llevan a ningun
     // sitio: se descartan (el id del evento es el id del documento) y, de
-    // paso, se limpian para que no vuelvan a aparecer.
-    const vivos = new Set<string>();
-    const refs = items.map((item) => getAdminDb().collection('events').doc(item.eventId));
-    const existentes = await getAdminDb().getAll(...refs);
+    // paso, se limpian para que no vuelvan a aparecer. Las solicitudes no
+    // cuelgan de un evento sino de una comunidad, y se comprueba esa.
+    const destino = (item: NotificationItem): string =>
+      item.type === 'solicitud' ? `communities/${item.communityId ?? ''}` : `events/${item.eventId}`;
 
-    existentes.forEach((doc) => {
-      if (doc.exists) {
-        vivos.add(doc.id);
-      }
-    });
+    const conDestino = items.filter((item) => (item.type === 'solicitud' ? item.communityId : item.eventId));
+    const existentes = conDestino.length > 0
+      ? await getAdminDb().getAll(...conDestino.map((item) => getAdminDb().doc(destino(item))))
+      : [];
 
-    const muertas = items.filter((item) => !vivos.has(item.eventId));
+    const vivos = new Set(existentes.filter((doc) => doc.exists).map((doc) => doc.ref.path));
+    const muertas = items.filter((item) => !vivos.has(destino(item)));
 
     if (muertas.length > 0) {
       await Promise.all(
@@ -49,7 +49,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       );
     }
 
-    items = items.filter((item) => vivos.has(item.eventId)) as NotificationItem[];
+    items = items.filter((item) => vivos.has(destino(item)));
 
     return jsonResponse({ unread, items }, 200);
   } catch (error) {
