@@ -309,6 +309,7 @@ export interface AdminEventRow {
   organizadorBloqueado: boolean;
   organizadorAdmin: boolean;
   comunidad?: string;
+  comunidadId?: string;
   rsvpCount: number;
   capacity?: number;
   price?: number;
@@ -347,6 +348,7 @@ export async function getAdminEventRows(): Promise<AdminEventRow[]> {
       organizadorBloqueado: perfil?.blocked === true,
       organizadorAdmin: perfil?.admin === true,
       comunidad: data.community?.name,
+      comunidadId: data.community?.id,
       rsvpCount: typeof data.rsvpCount === 'number' ? data.rsvpCount : 0,
       capacity: typeof data.capacity === 'number' ? data.capacity : undefined,
       price: typeof data.price === 'number' ? data.price : undefined,

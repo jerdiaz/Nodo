@@ -5,7 +5,10 @@ import { Ban, Search, ShieldCheck, Trash2, Users } from '@lucide/astro';
 import { getCurrentUser } from '../lib/auth';
 import { isAdmin } from '../lib/firebase/users';
 import { getAdminEventRows } from '../lib/firebase/events';
-import { getAdminUserRows, type AdminUserRow } from '../lib/firebase/users';
+import { getAdminUserRows, getUserProfiles, type AdminUserRow } from '../lib/firebase/users';
+import { getCommunities, getMemberCount } from '../lib/firebase/communities';
+import type { NodoCommunity } from '../types/community';
+import type { UserProfile } from '../types/profile';
 import { getRegistrosPorDia, getSeriePorDia, type PuntoSerie } from '../lib/firebase/metricas';
 import GraficoBarras from '../components/admin/GraficoBarras.astro';
 import { formatEventDate, formatEventTime, formatEventPrice } from '../lib/format';
@@ -50,6 +53,33 @@ try {
   console.warn('No se pudo listar las cuentas:', error);
 }
 
+let comunidades: NodoCommunity[] = [];
+
+try {
+  comunidades = await getCommunities();
+} catch (error) {
+  console.warn('No se pudo listar las comunidades:', error);
+}
+
+// Miembros y dueños de todas a la vez, como en /comunidades. Los eventos se
+// cuentan sobre `filas`, que ya trae el catalogo entero.
+const [miembrosPorComunidad, duenos] = await Promise.all([
+  Promise.all(comunidades.map((comunidad) => getMemberCount(comunidad.id).catch(() => 0))),
+  getUserProfiles(comunidades.map((comunidad) => comunidad.ownerUid)).catch(() => new Map<string, UserProfile>()),
+]);
+
+const filasComunidades = comunidades.map((comunidad, indice) => {
+  const dueno = duenos.get(comunidad.ownerUid);
+
+  return {
+    comunidad,
+    duenoNombre: dueno ? [dueno.firstName, dueno.lastName].filter(Boolean).join(' ') || 'Sin nombre' : 'Cuenta sin perfil',
+    duenoUsername: dueno?.username,
+    miembros: miembrosPorComunidad[indice] ?? 0,
+    eventos: filas.filter((fila) => fila.comunidadId === comunidad.id).length,
+  };
+});
+
 const proveedorLabel: Record<string, string> = { 'google.com': 'Google', 'microsoft.com': 'Microsoft' };
 
 const ahora = Date.now();
@@ -71,7 +101,7 @@ const modalidadLabel: Record<EventModality, string> = {
       <ShieldCheck class="size-7 text-acento-texto" stroke-width={1.75} />
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-texto">Administración</h1>
-        <p class="text-sm text-suave">Métricas, cuentas, verificación, bloqueos y eventos.</p>
+        <p class="text-sm text-suave">Métricas, cuentas, verificación, bloqueos, comunidades y eventos.</p>
       </div>
     </div>
 
@@ -308,6 +338,65 @@ const modalidadLabel: Record<EventModality, string> = {
 
         <p id="admin-mensaje" class="mt-4 hidden text-sm text-acento-texto"></p>
       </div>
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-lg font-semibold text-texto">Comunidades</h2>
+      <p class="mt-1 text-sm text-suave">
+        Todas las comunidades, {filasComunidades.length} en total. Al eliminar una, sus eventos siguen publicados a
+        nombre de quien los creó.
+      </p>
+
+      {filasComunidades.length === 0 ? (
+        <div class="mt-6 rounded-3xl border border-dashed border-linea px-6 py-14 text-center text-sm text-suave">
+          Todavía no hay comunidades.
+        </div>
+      ) : (
+        <ul class="mt-5 space-y-3">
+          {filasComunidades.map((fila) => (
+            <li
+              class="flex flex-wrap items-center gap-4 rounded-3xl border border-linea bg-superficie p-5"
+              data-comunidad={fila.comunidad.slug}
+              data-nombre={fila.comunidad.name}
+            >
+              {fila.comunidad.avatarUrl ? (
+                <img src={fila.comunidad.avatarUrl} alt="" class="size-12 shrink-0 rounded-2xl object-cover" />
+              ) : (
+                <span class="grid size-12 shrink-0 place-items-center rounded-2xl bg-fondo-alt text-base font-semibold text-suave">
+                  {fila.comunidad.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-semibold text-texto">{fila.comunidad.name}</p>
+                <p class="mt-0.5 text-sm text-suave">
+                  {fila.miembros} {fila.miembros === 1 ? 'miembro' : 'miembros'} · {fila.eventos}{' '}
+                  {fila.eventos === 1 ? 'evento' : 'eventos'} · desde {formatEventDate(fila.comunidad.createdAt)}
+                </p>
+                <p class="mt-0.5 text-xs text-suave">
+                  Dueño: <span class="font-medium text-texto">{fila.duenoNombre}</span>
+                  {fila.duenoUsername ? ` · @${fila.duenoUsername}` : ''}
+                </p>
+              </div>
+              <div class="flex shrink-0 gap-2">
+                <a
+                  href={`/comunidades/${fila.comunidad.slug}`}
+                  class="rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-texto transition hover:border-acento"
+                >
+                  Ver comunidad
+                </a>
+                <button
+                  type="button"
+                  data-borrar-comunidad={fila.comunidad.slug}
+                  class="rounded-full border border-acento/40 px-3 py-1.5 text-xs font-medium text-acento-texto transition hover:bg-acento-suave disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 class="mr-1 inline size-3.5" stroke-width={2} />
+                  Eliminar
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
 
     <section class="mt-10">
@@ -772,6 +861,37 @@ const modalidadLabel: Record<EventModality, string> = {
       const visible = !panel.classList.contains('hidden');
       panel.classList.toggle('hidden', visible);
       if (!visible) void cargarAsistentes(abrir.dataset.toggleAsistentes ?? '', panel);
+      return;
+    }
+
+    const borrarComunidad = blanco.closest<HTMLButtonElement>('[data-borrar-comunidad]');
+    if (borrarComunidad) {
+      const slug = borrarComunidad.dataset.borrarComunidad ?? '';
+      const nombre = borrarComunidad.closest<HTMLElement>('[data-comunidad]')?.dataset.nombre ?? 'esta comunidad';
+
+      if (
+        !window.confirm(
+          `¿Eliminar la comunidad "${nombre}"? Se pierden sus miembros, seguidores y foto; sus eventos siguen publicados a nombre de quien los creó. No se puede deshacer.`,
+        )
+      ) {
+        return;
+      }
+
+      borrarComunidad.disabled = true;
+
+      fetch(`/api/admin/comunidades/${encodeURIComponent(slug)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      })
+        .then(async (response) => {
+          const resultado = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(resultado.error ?? 'No se pudo eliminar la comunidad.');
+          window.location.reload();
+        })
+        .catch((error) => {
+          window.alert(error instanceof Error ? error.message : 'No se pudo eliminar la comunidad.');
+          borrarComunidad.disabled = false;
+        });
       return;
     }
 
