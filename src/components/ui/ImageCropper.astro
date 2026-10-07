@@ -182,10 +182,12 @@ const hayValor = Boolean(value);
         URL.revokeObjectURL(objeto);
         imagen = img;
         escala = escalaBase();
-        zoom.min = String(escala);
-        zoom.max = String(escala * 3);
-        zoom.step = String(escala / 100);
-        zoom.value = String(escala);
+        // La barra va de 1x a 3x sobre la escala base, con los min/max/step
+        // fijos del marcado. Con min/step de muchos decimales Chrome redondea
+        // el valor por debajo del minimo, la barra queda invalida y, al estar
+        // dentro del <form> pero en un dialogo cerrado, bloquea el envio sin
+        // avisar.
+        zoom.value = '1';
         // Arranca centrado, que es el encuadre que acierta mas veces.
         x = (ANCHO - img.naturalWidth * escala) / 2;
         y = (ALTO - img.naturalHeight * escala) / 2;
@@ -227,7 +229,7 @@ const hayValor = Boolean(value);
     zoom.addEventListener('input', () => {
       if (!imagen) return;
       const anterior = escala;
-      escala = Number(zoom.value);
+      escala = escalaBase() * Number(zoom.value);
       // Se acerca hacia el centro del marco y no hacia la esquina, que es lo
       // que uno espera al mover la barra.
       x = ANCHO / 2 - ((ANCHO / 2 - x) * escala) / anterior;
