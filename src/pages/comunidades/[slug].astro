@@ -357,7 +357,12 @@ function nombreDe(uid: string): string {
     botonSalir.disabled = true;
 
     try {
-      const respuesta = await fetch(`/api/comunidades/${botonSalir.dataset.slug}/miembros`, { method: 'DELETE' });
+      // Mismo Content-Type que en seguir: sin el, detras del proxy Astro
+      // responde 403 sin llegar a la ruta.
+      const respuesta = await fetch(`/api/comunidades/${botonSalir.dataset.slug}/miembros`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
 
       if (!respuesta.ok) {
         throw new Error('No se pudo salir de la comunidad.');
