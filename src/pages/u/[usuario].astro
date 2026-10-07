@@ -207,7 +207,10 @@ const secciones = [
                 )}
 
                 <div class="min-w-0">
-                  <p class="truncate font-semibold text-texto">{comunidad.name}</p>
+                  <p class="flex min-w-0 items-center gap-1.5 font-semibold text-texto">
+                    <span class="truncate">{comunidad.name}</span>
+                    {comunidad.verified && <VerifiedBadge type="comunidad" class="size-4" />}
+                  </p>
                   <p class="mt-0.5 flex items-center gap-1.5 text-xs text-suave">
                     <Users class="size-3.5 shrink-0" stroke-width={1.75} />
                     {role === 'owner' ? 'Administra' : role === 'admin' ? 'Moderador' : 'Miembro'}

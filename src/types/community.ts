@@ -8,6 +8,9 @@ export interface NodoCommunity {
   // de forma permanente: no hay transferencia de propiedad.
   ownerUid: string;
   createdAt: Date;
+  // La pone un admin del sitio desde el panel. Es la misma insignia "Comunidad
+  // oficial" que la verificacion de cuentas, pero de la comunidad en si.
+  verified?: boolean;
 }
 
 // 'admin' tiene las mismas funciones que el dueño (aprobar miembros, asignar
@@ -35,4 +38,7 @@ export interface EventCommunity {
   slug: string;
   name: string;
   avatarUrl?: string;
+  // Copiada como el nombre y la foto, para pintar la insignia en la cartelera
+  // sin leer la comunidad por cada tarjeta. Solo existe cuando es true.
+  verified?: boolean;
 }

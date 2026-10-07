@@ -111,12 +111,17 @@ const caras = attendees.slice(0, 4);
         <span class="truncate">por {autorNombre}</span>
 
         {/*
-          La palomita es siempre de quien publico el evento, tambien cuando en
-          la tarjeta manda el nombre de la comunidad: lo que esta verificado es
-          la cuenta, no el colectivo.
+          La palomita va con el nombre que se ve: si manda la comunidad, la de
+          la comunidad (que verifica un admin aparte); si no, la de la cuenta
+          de quien publico. Una persona verificada junto al nombre de una
+          comunidad sin verificar haria pasar por oficial a la comunidad.
         */}
-        {event.organizer.verification && (
-          <VerifiedBadge type={event.organizer.verification} class="size-3.5 shrink-0" />
+        {event.community ? (
+          event.community.verified && <VerifiedBadge type="comunidad" class="size-3.5 shrink-0" />
+        ) : (
+          event.organizer.verification && (
+            <VerifiedBadge type={event.organizer.verification} class="size-3.5 shrink-0" />
+          )
         )}
       </p>
 

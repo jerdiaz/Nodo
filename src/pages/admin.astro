@@ -11,7 +11,7 @@ import type { NodoCommunity } from '../types/community';
 import type { UserProfile } from '../types/profile';
 import { getRegistrosPorDia, getSeriePorDia, type PuntoSerie } from '../lib/firebase/metricas';
 import GraficoBarras from '../components/admin/GraficoBarras.astro';
-import { formatEventDate, formatEventTime, formatEventPrice } from '../lib/format';
+import { formatEventDate, formatEventTime, formatEventPrice, formatMonthYear } from '../lib/format';
 import type { EventModality } from '../types/event';
 
 const user = await getCurrentUser(Astro.cookies);
@@ -343,8 +343,8 @@ const modalidadLabel: Record<EventModality, string> = {
     <section class="mt-10">
       <h2 class="text-lg font-semibold text-texto">Comunidades</h2>
       <p class="mt-1 text-sm text-suave">
-        Todas las comunidades, {filasComunidades.length} en total. Al eliminar una, sus eventos siguen publicados a
-        nombre de quien los creó.
+        Todas las comunidades, {filasComunidades.length} en total. Verificar una le pone la insignia de comunidad
+        oficial en su ficha y en sus eventos. Al eliminarla, sus eventos siguen publicados a nombre de quien los creó.
       </p>
 
       {filasComunidades.length === 0 ? (
@@ -358,6 +358,7 @@ const modalidadLabel: Record<EventModality, string> = {
               class="flex flex-wrap items-center gap-4 rounded-3xl border border-linea bg-superficie p-5"
               data-comunidad={fila.comunidad.slug}
               data-nombre={fila.comunidad.name}
+              data-verificada={fila.comunidad.verified ? 'true' : 'false'}
             >
               {fila.comunidad.avatarUrl ? (
                 <img src={fila.comunidad.avatarUrl} alt="" class="size-12 shrink-0 rounded-2xl object-cover" />
@@ -367,17 +368,34 @@ const modalidadLabel: Record<EventModality, string> = {
                 </span>
               )}
               <div class="min-w-0 flex-1">
-                <p class="truncate font-semibold text-texto">{fila.comunidad.name}</p>
+                <p class="flex min-w-0 items-center gap-1.5 font-semibold text-texto">
+                  <span class="truncate">{fila.comunidad.name}</span>
+                  {fila.comunidad.verified && <VerifiedBadge type="comunidad" class="size-4" />}
+                </p>
                 <p class="mt-0.5 text-sm text-suave">
                   {fila.miembros} {fila.miembros === 1 ? 'miembro' : 'miembros'} · {fila.eventos}{' '}
-                  {fila.eventos === 1 ? 'evento' : 'eventos'} · desde {formatEventDate(fila.comunidad.createdAt)}
+                  {fila.eventos === 1 ? 'evento' : 'eventos'} · desde {formatMonthYear(fila.comunidad.createdAt)}
                 </p>
                 <p class="mt-0.5 text-xs text-suave">
                   Dueño: <span class="font-medium text-texto">{fila.duenoNombre}</span>
                   {fila.duenoUsername ? ` · @${fila.duenoUsername}` : ''}
                 </p>
               </div>
-              <div class="flex shrink-0 gap-2">
+              <div class="flex shrink-0 flex-wrap gap-2">
+                <button
+                  type="button"
+                  data-verificar-comunidad={fila.comunidad.slug}
+                  class="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-texto transition hover:border-acento disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {fila.comunidad.verified ? (
+                    'Quitar verificación'
+                  ) : (
+                    <>
+                      <VerifiedBadge type="comunidad" class="size-3.5" />
+                      Verificar
+                    </>
+                  )}
+                </button>
                 <a
                   href={`/comunidades/${fila.comunidad.slug}`}
                   class="rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-texto transition hover:border-acento"
@@ -861,6 +879,36 @@ const modalidadLabel: Record<EventModality, string> = {
       const visible = !panel.classList.contains('hidden');
       panel.classList.toggle('hidden', visible);
       if (!visible) void cargarAsistentes(abrir.dataset.toggleAsistentes ?? '', panel);
+      return;
+    }
+
+    const verificarComunidad = blanco.closest<HTMLButtonElement>('[data-verificar-comunidad]');
+    if (verificarComunidad) {
+      const fila = verificarComunidad.closest<HTMLElement>('[data-comunidad]');
+      const verificada = fila?.dataset.verificada === 'true';
+
+      // Quitarla se confirma: la insignia desaparece tambien de todos sus
+      // eventos. Ponerla no, que se deshace con el mismo boton.
+      if (verificada && !window.confirm(`¿Quitar la verificación a "${fila?.dataset.nombre ?? 'esta comunidad'}"?`)) {
+        return;
+      }
+
+      verificarComunidad.disabled = true;
+
+      fetch(`/api/admin/comunidades/${encodeURIComponent(verificarComunidad.dataset.verificarComunidad ?? '')}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verified: !verificada }),
+      })
+        .then(async (response) => {
+          const resultado = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(resultado.error ?? 'No se pudo cambiar la verificación.');
+          window.location.reload();
+        })
+        .catch((error) => {
+          window.alert(error instanceof Error ? error.message : 'No se pudo cambiar la verificación.');
+          verificarComunidad.disabled = false;
+        });
       return;
     }
 

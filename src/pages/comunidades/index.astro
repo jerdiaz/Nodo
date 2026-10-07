@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import EmptyState from '../../components/events/EmptyState.astro';
 import StatusToast from '../../components/common/StatusToast.astro';
 import Button from '../../components/ui/Button.astro';
+import VerifiedBadge from '../../components/ui/VerifiedBadge.astro';
 import { getCurrentUser } from '../../lib/auth';
 import { getCommunities, getCommunityByOwner, getMemberCount } from '../../lib/firebase/communities';
 import { getEvents } from '../../lib/firebase/events';
@@ -88,7 +89,10 @@ const eliminada = Astro.url.searchParams.get('deleted') === 'true';
               )}
 
               <div class="min-w-0">
-                <h2 class="truncate text-lg font-bold text-texto">{fila.comunidad.name}</h2>
+                <h2 class="flex min-w-0 items-center gap-1.5 text-lg font-bold text-texto">
+                  <span class="truncate">{fila.comunidad.name}</span>
+                  {fila.comunidad.verified && <VerifiedBadge type="comunidad" class="size-4" />}
+                </h2>
                 <p class="mt-0.5 flex items-center gap-3 text-xs text-suave">
                   <span class="flex items-center gap-1">
                     <Users class="size-3.5" stroke-width={1.75} />

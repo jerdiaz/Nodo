@@ -32,6 +32,7 @@ function mapDoc(doc: FirebaseFirestore.DocumentSnapshot): NodoCommunity {
     avatarUrl: data.avatarUrl,
     ownerUid: data.ownerUid,
     createdAt: (data.createdAt as Timestamp | undefined)?.toDate() ?? new Date(0),
+    verified: data.verified === true,
   };
 }
 
@@ -60,6 +61,7 @@ export function toEventCommunity(community: NodoCommunity): EventCommunity {
     slug: community.slug,
     name: community.name,
     avatarUrl: community.avatarUrl,
+    verified: community.verified || undefined,
   };
 }
 
@@ -302,8 +304,6 @@ export async function updateCommunity(
   communityId: string,
   cambios: { name: string; description?: string; avatarUrl?: string },
 ): Promise<void> {
-  const db = getAdminDb();
-
   await communitiesCollection().doc(communityId).set(
     {
       name: cambios.name,
@@ -313,6 +313,13 @@ export async function updateCommunity(
     { merge: true },
   );
 
+  await copiarAEventos(communityId);
+}
+
+// Los eventos llevan una copia de la comunidad (nombre, foto, insignia): cada
+// cambio en ella se reescribe en todos los suyos.
+async function copiarAEventos(communityId: string): Promise<void> {
+  const db = getAdminDb();
   const doc = await communitiesCollection().doc(communityId).get();
   const comunidad = toEventCommunity(mapDoc(doc));
   const eventos = await db.collection('events').where('community.id', '==', communityId).get();
@@ -322,4 +329,14 @@ export async function updateCommunity(
     eventos.docs.forEach((evento) => lote.update(evento.ref, { community: comunidad }));
     await lote.commit();
   }
+}
+
+// Solo desde el panel de administracion del sitio: ni el dueño ni sus
+// moderadores pueden verificar su propia comunidad.
+export async function setCommunityVerified(communityId: string, verified: boolean): Promise<void> {
+  await communitiesCollection()
+    .doc(communityId)
+    .set({ verified: verified ? true : FieldValue.delete() }, { merge: true });
+
+  await copiarAEventos(communityId);
 }

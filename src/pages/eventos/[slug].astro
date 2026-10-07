@@ -398,7 +398,10 @@ function textoAsistentes(total: number): string {
             )}
             <div class="min-w-0 flex-1">
               <p class="text-xs text-tenue">Publicado en</p>
-              <p class="truncate font-semibold text-texto">{event.community.name}</p>
+              <p class="flex min-w-0 items-center gap-1.5 font-semibold text-texto">
+                <span class="truncate">{event.community.name}</span>
+                {event.community.verified && <VerifiedBadge type="comunidad" class="size-4" />}
+              </p>
             </div>
             <ChevronRight class="size-5 shrink-0 text-tenue" stroke-width={2} />
           </a>
