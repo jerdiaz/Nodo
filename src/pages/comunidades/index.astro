@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import EmptyState from '../../components/events/EmptyState.astro';
+import StatusToast from '../../components/common/StatusToast.astro';
 import Button from '../../components/ui/Button.astro';
 import { getCurrentUser } from '../../lib/auth';
 import { getCommunities, getCommunityByOwner, getMemberCount } from '../../lib/firebase/communities';
@@ -41,9 +42,11 @@ const filas = comunidades.map((comunidad, indice) => {
 }).sort((a, b) => b.proximos - a.proximos || b.total - a.total);
 
 const propia = user ? await getCommunityByOwner(user.uid).catch(() => null) : null;
+const eliminada = Astro.url.searchParams.get('deleted') === 'true';
 ---
 
 <BaseLayout title="Comunidades — Innvita" description="Comunidades que publican en la cartelera de Innvita.">
+  {eliminada && <StatusToast paramKey="deleted" message="Comunidad eliminada." />}
   <div class="mx-auto max-w-[1200px] px-6 pb-24 pt-12">
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div>

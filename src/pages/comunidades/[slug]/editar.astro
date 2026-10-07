@@ -3,6 +3,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import Card from '../../../components/ui/Card.astro';
 import Button from '../../../components/ui/Button.astro';
 import ImageCropper from '../../../components/ui/ImageCropper.astro';
+import { TriangleAlert } from '@lucide/astro';
 import { getCurrentUser } from '../../../lib/auth';
 import { getCommunityBySlug, isCommunityAdmin } from '../../../lib/firebase/communities';
 
@@ -87,6 +88,25 @@ const inputClass =
         </div>
       </form>
     </Card>
+
+    <section class="mt-14 border-t border-linea pt-10">
+      <h2 class="text-lg font-semibold text-texto">Eliminar comunidad</h2>
+      <p class="mt-2 text-sm text-suave">
+        Los eventos que ya publicó no se borran: pasan a salir a nombre de quien los creó. Se pierden
+        la foto, los miembros y los seguidores. No se puede deshacer.
+      </p>
+
+      <button
+        id="community-delete"
+        type="button"
+        data-slug={community.slug}
+        data-name={community.name}
+        class="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-acento px-4 py-2 text-sm font-medium text-acento-texto transition active:scale-[0.97] hover:bg-acento-suave disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <TriangleAlert class="size-4" stroke-width={2} />
+        Eliminar comunidad
+      </button>
+    </section>
   </div>
 </BaseLayout>
 
@@ -151,6 +171,35 @@ const inputClass =
         error.classList.remove('hidden');
       }
       if (submit) submit.disabled = false;
+    }
+  });
+
+  const borrar = document.getElementById('community-delete') as HTMLButtonElement | null;
+
+  borrar?.addEventListener('click', async () => {
+    const confirmado = window.confirm(
+      `¿Seguro que quieres eliminar «${borrar.dataset.name}»? Sus eventos seguirán publicados a nombre de quien los creó. Esta acción no se puede deshacer.`,
+    );
+
+    if (!confirmado) return;
+
+    borrar.disabled = true;
+
+    try {
+      const respuesta = await fetch(`/api/comunidades/${borrar.dataset.slug}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!respuesta.ok) {
+        const cuerpo = await respuesta.json().catch(() => ({}));
+        throw new Error(cuerpo.error ?? 'No se pudo eliminar la comunidad.');
+      }
+
+      window.location.href = '/comunidades?deleted=true';
+    } catch (fallo) {
+      window.alert(fallo instanceof Error ? fallo.message : 'No se pudo eliminar la comunidad.');
+      borrar.disabled = false;
     }
   });
 </script>
