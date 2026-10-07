@@ -210,7 +210,7 @@ const secciones = [
                   <p class="truncate font-semibold text-texto">{comunidad.name}</p>
                   <p class="mt-0.5 flex items-center gap-1.5 text-xs text-suave">
                     <Users class="size-3.5 shrink-0" stroke-width={1.75} />
-                    {role === 'owner' || role === 'admin' ? 'Administra' : 'Miembro'}
+                    {role === 'owner' ? 'Administra' : role === 'admin' ? 'Moderador' : 'Miembro'}
                   </p>
                 </div>
               </a>

@@ -173,6 +173,29 @@ export async function getEmailsByUid(uids: string[]): Promise<Map<string, string
   return correos;
 }
 
+// El nombre de la cuenta de Google o Microsoft, para quien entro pero no
+// completo el registro y por tanto no tiene perfil en Firestore. Solo el
+// nombre, nunca el correo: esto se pinta a otras personas.
+export async function getAuthNamesByUid(uids: string[]): Promise<Map<string, string>> {
+  const unicos = [...new Set(uids)];
+  const nombres = new Map<string, string>();
+
+  for (let i = 0; i < unicos.length; i += 100) {
+    const lote = unicos.slice(i, i + 100).map((uid) => ({ uid }));
+
+    try {
+      const resultado = await getAdminAuth().getUsers(lote);
+      resultado.users.forEach((usuario) => {
+        if (usuario.displayName) nombres.set(usuario.uid, usuario.displayName);
+      });
+    } catch (error) {
+      console.warn('No se pudieron obtener los nombres del lote de usuarios:', error);
+    }
+  }
+
+  return nombres;
+}
+
 export async function getUidByCalendarToken(token: string): Promise<string | null> {
   const snapshot = await usersCollection().where('calendarToken', '==', token).limit(1).get();
   return snapshot.docs[0]?.id ?? null;
