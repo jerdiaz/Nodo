@@ -14,7 +14,13 @@ const { event, url, icsUrl } = Astro.props;
 
 const dateLabel = formatEventDateLong(event.startDate, event.timezone);
 const shareText = `${event.title} — ${dateLabel}\n${url}`;
-const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+// El boton de WhatsApp abre un chat con la Fundacion, no un "compartir": eso
+// ya lo cubren Compartir y Copiar enlace. Antes era `wa.me/?text=` sin numero,
+// que en muchos equipos no abria nada al pulsarlo. El numero va sin `+` ni
+// espacios, que es como lo exige wa.me.
+const WHATSAPP_FUNDACION = '19496209602';
+const whatsappUrl = `https://wa.me/${WHATSAPP_FUNDACION}?text=${encodeURIComponent('Quiero saber más. Sobre la cartelera')}`;
 ---
 
 <div data-share-title={event.title} data-share-text={shareText} data-share-url={url}>
@@ -23,7 +29,13 @@ const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
       <Download class="size-4" stroke-width={2} />
       Descargar .ics
     </Button>
-    <Button variant="secondary" href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+    <Button
+      variant="secondary"
+      href={whatsappUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Escribir a la Fundación por WhatsApp"
+    >
       <MessageCircle class="size-4" stroke-width={2} />
       WhatsApp
     </Button>
