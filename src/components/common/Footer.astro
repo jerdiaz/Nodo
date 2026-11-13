@@ -4,12 +4,12 @@ import SocialIcon from '../ui/SocialIcon.astro';
 
 const year = new Date().getFullYear();
 
-// Las redes de Fundacion Conceptos, no las de la plataforma: Innvita no
-// tiene cuentas propias, asi que apuntar a las de la Fundacion es lo unico
-// que le sirve a quien las busca desde aqui.
+// Innvita no tiene cuentas propias, asi que el pie apunta a las de quien la
+// mueve: el Instagram es el de Red Global Colombia, la comunidad que publica los
+// eventos, y el resto son las redes de Fundacion Conceptos. El Instagram de
+// Sentra Labs va aparte, junto al credito de desarrollo.
 const socialLinks = [
-  // Temporal: hasta que la Fundacion tenga su propio Instagram, se usa el de Sentra Labs.
-  { key: 'instagram', href: 'https://www.instagram.com/sentralabs.co/', label: 'Instagram de Sentra Labs' },
+  { key: 'instagram', href: 'https://www.instagram.com/redglobalcol/', label: 'Instagram de Red Global Colombia' },
   { key: 'facebook', href: 'https://www.facebook.com/fundacionconceptos', label: 'Facebook de Fundación Conceptos' },
   { key: 'linkedin', href: 'https://www.linkedin.com/company/funconceptos/', label: 'LinkedIn de Fundación Conceptos' },
   { key: 'x', href: 'https://x.com/funconceptos', label: 'X de Fundación Conceptos' },
