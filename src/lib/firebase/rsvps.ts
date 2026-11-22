@@ -1,6 +1,8 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAdminDb } from './server';
-import { getUserProfiles } from './users';
+import { getEmailsByUid, getUserProfiles } from './users';
+import type { NodoEvent } from '../../types/event';
+import type { UserProfile } from '../../types/profile';
 
 export interface RsvpInfo {
   count: number;
@@ -73,6 +75,59 @@ export async function getRsvpEntries(eventId: string, max: number): Promise<Rsvp
       createdAt: createdAt instanceof Timestamp ? createdAt.toDate() : null,
       pagoConfirmado: doc.data()?.pagoConfirmado === true,
     };
+  });
+}
+
+// En un evento de pago, quien organiza necesita como contactar a cada
+// persona para cuadrar el pago: ahi si se le dan el correo y el celular, y asi
+// lo dicen la pagina de Privacidad y el aviso que ve la persona antes de
+// reservar. En uno gratuito no hacen falta y no se entregan.
+export function esEventoDePago(event: Pick<NodoEvent, 'price'>): boolean {
+  return typeof event.price === 'number' && event.price > 0;
+}
+
+export interface Asistente {
+  perfil: UserProfile;
+  nombre: string;
+  confirmadoEl: Date | null;
+  // Siempre null en un evento gratuito: ver esEventoDePago.
+  correo: string | null;
+  pagoConfirmado: boolean;
+}
+
+// La lista que ve quien organiza, en orden de llegada: la pagina de
+// asistentes y la descarga en Excel salen de aqui, para que las dos apliquen
+// la misma regla sobre que datos de contacto se entregan.
+//
+// Quien confirmo pero ya no tiene perfil (cuenta eliminada) se cae de la
+// lista: no hay nada que enseñar de esa fila.
+export async function getAsistentes(
+  event: Pick<NodoEvent, 'id' | 'price'>,
+  max: number,
+): Promise<Asistente[]> {
+  const entradas = await getRsvpEntries(event.id, max);
+  const uids = entradas.map((entrada) => entrada.uid);
+  const [perfiles, correos] = await Promise.all([
+    getUserProfiles(uids),
+    esEventoDePago(event) ? getEmailsByUid(uids) : Promise.resolve(new Map<string, string | null>()),
+  ]);
+
+  return entradas.flatMap((entrada) => {
+    const perfil = perfiles.get(entrada.uid);
+
+    if (!perfil) {
+      return [];
+    }
+
+    return [
+      {
+        perfil,
+        nombre: [perfil.firstName, perfil.lastName].filter(Boolean).join(' ') || 'Sin nombre',
+        confirmadoEl: entrada.createdAt,
+        correo: correos.get(perfil.uid) ?? null,
+        pagoConfirmado: entrada.pagoConfirmado,
+      },
+    ];
   });
 }
 

@@ -4,6 +4,8 @@ import EventForm from '../../../components/events/EventForm.astro';
 import { getCurrentUser } from '../../../lib/auth';
 import { getMembershipsForUser } from '../../../lib/firebase/communities';
 import { getEventBySlug } from '../../../lib/firebase/events';
+import { getRsvpInfo } from '../../../lib/firebase/rsvps';
+import { ChevronRight, FileSpreadsheet, Users } from '@lucide/astro';
 
 const { slug } = Astro.params;
 const event = slug ? await getEventBySlug(slug).catch(() => null) : null;
@@ -22,8 +24,14 @@ if (user.uid !== event.organizer.uid) {
   return new Response(null, { status: 403, statusText: 'Forbidden' });
 }
 
-const memberships = await getMembershipsForUser(user.uid).catch(() => []);
+const [memberships, rsvp] = await Promise.all([
+  getMembershipsForUser(user.uid).catch(() => []),
+  // Solo para el numero del bloque de asistentes: si falla, el bloque sigue
+  // y se queda sin cifra en vez de tumbar la edicion.
+  getRsvpInfo(event.id).catch(() => null),
+]);
 const communities = memberships.map((membership) => membership.community);
+const confirmados = rsvp?.count ?? null;
 ---
 
 <BaseLayout title={`Editar ${event.title} — Innvita`} description="Edita los datos de tu evento en Innvita.">
@@ -32,6 +40,50 @@ const communities = memberships.map((membership) => membership.community);
       <h1 class="text-3xl font-bold tracking-tight text-texto">Editar evento</h1>
       <p class="mt-2 text-sm text-suave">Actualiza los datos de tu evento y guarda los cambios.</p>
     </div>
+
+    {/*
+      Antes del formulario y no al final: quien entra a la configuracion de su
+      evento muchas veces viene a ver quien va, no a cambiar datos, y un
+      formulario largo lo dejaria escondido al fondo.
+    */}
+    <section class="mt-10 rounded-3xl border border-linea bg-superficie p-5">
+      <div class="flex items-center gap-3">
+        <span class="grid size-10 shrink-0 place-items-center rounded-full bg-fondo-alt text-suave">
+          <Users class="size-5" stroke-width={1.75} />
+        </span>
+        <div class="min-w-0 flex-1">
+          <h2 class="font-semibold text-texto">Asistentes</h2>
+          <p class="text-sm text-suave">
+            {confirmados === null
+              ? 'Quiénes han confirmado asistencia.'
+              : confirmados === 0
+                ? 'Todavía no hay nadie confirmado.'
+                : `${confirmados} ${confirmados === 1 ? 'persona confirmada' : 'personas confirmadas'}.`}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <a
+          href={`/eventos/${event.slug}/asistentes`}
+          class="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento"
+        >
+          Ver lista
+          <ChevronRight class="size-4" stroke-width={2} />
+        </a>
+
+        {confirmados !== 0 && (
+          <a
+            href={`/api/events/${encodeURIComponent(event.id)}/asistentes.xlsx`}
+            download
+            class="inline-flex items-center gap-2 rounded-full border border-linea px-4 py-2 text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento"
+          >
+            <FileSpreadsheet class="size-4" stroke-width={1.75} />
+            Descargar Excel
+          </a>
+        )}
+      </div>
+    </section>
 
     <EventForm event={event} communities={communities} />
   </div>
