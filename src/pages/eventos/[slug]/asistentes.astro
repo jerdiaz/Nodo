@@ -38,7 +38,7 @@ if (!esOrganizador && !esAdminInvitado) {
 }
 
 // La descarga del organizador solo responde a quien organiza; el admin baja la
-// de su panel, que ademas lleva el correo de todos y el estado de cada cuenta.
+// de su panel, que ademas lleva el estado de cada cuenta.
 const urlExcel = esOrganizador
   ? `/api/events/${encodeURIComponent(event.id)}/asistentes.xlsx`
   : `/api/admin/eventos/${encodeURIComponent(event.id)}/asistentes.xlsx`;
@@ -147,11 +147,9 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
     </div>
 
     {/*
-      En un evento gratuito se enseña el perfil publico de cada quien, el
-      mismo que cualquiera ve en /u/<usuario>: ni correo ni celular. En uno
-      de pago si, porque el pago se cuadra por fuera y quien organiza tiene
-      que poder escribirle a la persona. La pagina de Privacidad lo dice, y la
-      persona lo ve antes de reservar.
+      Correo y celular de cada persona en cualquier evento: quien organiza
+      tiene que poder escribirle a quien va, y en uno de pago, ademas,
+      cuadrar el pago. La pagina de Privacidad lo dice.
     */}
     {esDePago && (
       <div class="mt-6 rounded-2xl border border-linea bg-fondo-alt p-4 text-sm text-suave">
@@ -225,24 +223,22 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
                 <p class="mt-2 line-clamp-2 text-sm leading-6 text-suave">{perfil.bio}</p>
               )}
 
-              {esDePago && (
-                <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                  {correo && (
-                    <a href={`mailto:${correo}`} class="text-acento-texto hover:underline">{correo}</a>
-                  )}
-                  {perfil.phone && (
-                    <a
-                      href={`https://wa.me/${perfil.phone.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-acento-texto hover:underline"
-                    >
-                      {perfil.phone}
-                    </a>
-                  )}
-                  {!correo && !perfil.phone && <span class="text-tenue">Sin datos de contacto</span>}
-                </div>
-              )}
+              <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                {correo && (
+                  <a href={`mailto:${correo}`} class="text-acento-texto hover:underline">{correo}</a>
+                )}
+                {perfil.phone && (
+                  <a
+                    href={`https://wa.me/${perfil.phone.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-acento-texto hover:underline"
+                  >
+                    {perfil.phone}
+                  </a>
+                )}
+                {!correo && !perfil.phone && <span class="text-tenue">Sin datos de contacto</span>}
+              </div>
 
               {enlaces.length > 0 && (
                 <div class="mt-3 flex flex-wrap items-center gap-2">

@@ -78,10 +78,8 @@ export async function getRsvpEntries(eventId: string, max: number): Promise<Rsvp
   });
 }
 
-// En un evento de pago, quien organiza necesita como contactar a cada
-// persona para cuadrar el pago: ahi si se le dan el correo y el celular, y asi
-// lo dicen la pagina de Privacidad y el aviso que ve la persona antes de
-// reservar. En uno gratuito no hacen falta y no se entregan.
+// Un evento de pago se cuadra por fuera: la asistencia es una reserva hasta
+// que quien organiza confirma el pago.
 export function esEventoDePago(event: Pick<NodoEvent, 'price'>): boolean {
   return typeof event.price === 'number' && event.price > 0;
 }
@@ -90,14 +88,15 @@ export interface Asistente {
   perfil: UserProfile;
   nombre: string;
   confirmadoEl: Date | null;
-  // Siempre null en un evento gratuito: ver esEventoDePago.
   correo: string | null;
   pagoConfirmado: boolean;
 }
 
 // La lista que ve quien organiza, en orden de llegada: la pagina de
-// asistentes y la descarga en Excel salen de aqui, para que las dos apliquen
-// la misma regla sobre que datos de contacto se entregan.
+// asistentes y la descarga en Excel salen de aqui, para que las dos entreguen
+// los mismos datos. Correo y celular van en cualquier evento, gratuito o de
+// pago, y asi lo dice la pagina de Privacidad: quien organiza necesita poder
+// escribirle a quien va.
 //
 // Quien confirmo pero ya no tiene perfil (cuenta eliminada) se cae de la
 // lista: no hay nada que enseñar de esa fila.
@@ -107,10 +106,7 @@ export async function getAsistentes(
 ): Promise<Asistente[]> {
   const entradas = await getRsvpEntries(event.id, max);
   const uids = entradas.map((entrada) => entrada.uid);
-  const [perfiles, correos] = await Promise.all([
-    getUserProfiles(uids),
-    esEventoDePago(event) ? getEmailsByUid(uids) : Promise.resolve(new Map<string, string | null>()),
-  ]);
+  const [perfiles, correos] = await Promise.all([getUserProfiles(uids), getEmailsByUid(uids)]);
 
   return entradas.flatMap((entrada) => {
     const perfil = perfiles.get(entrada.uid);
@@ -137,8 +133,6 @@ export interface AsistenteAdmin {
   username: string | null;
   avatarUrl: string | null;
   email: string | null;
-  // Solo en eventos de pago, con la misma regla que ve quien organiza: el
-  // panel no entrega mas contacto del que ya tiene el organizador.
   telefono: string | null;
   verification: UserProfile['verification'] | null;
   admin: boolean;
@@ -149,15 +143,13 @@ export interface AsistenteAdmin {
 
 // La lista del panel de administracion. A diferencia de getAsistentes(), no
 // descarta a quien ya no tiene perfil -sale como "Cuenta eliminada"-, porque
-// el admin revisa el estado real de la coleccion, y el correo va siempre: el
-// panel es el unico sitio donde se expone sin ser de pago, y exige ser admin.
-// La tabla del panel y su descarga en Excel salen de aqui.
+// el admin revisa el estado real de la coleccion. Correo y celular, como en la
+// lista de quien organiza. La tabla del panel y su descarga en Excel salen de
+// aqui.
 export async function getAsistentesAdmin(event: Pick<NodoEvent, 'id' | 'price'>): Promise<AsistenteAdmin[]> {
   const snapshot = await rsvpsCollection(event.id).orderBy('createdAt', 'asc').get();
   const uids = snapshot.docs.map((doc) => doc.id);
   const [perfiles, correos] = await Promise.all([getUserProfiles(uids), getEmailsByUid(uids)]);
-  const dePago = esEventoDePago(event);
-
   return snapshot.docs.map((doc) => {
     const perfil = perfiles.get(doc.id);
     const creado = doc.data()?.createdAt;
@@ -170,7 +162,7 @@ export async function getAsistentesAdmin(event: Pick<NodoEvent, 'id' | 'price'>)
       username: perfil?.username ?? null,
       avatarUrl: perfil?.avatarUrl ?? null,
       email: correos.get(doc.id) ?? null,
-      telefono: dePago ? (perfil?.phone ?? null) : null,
+      telefono: perfil?.phone ?? null,
       verification: perfil?.verification ?? null,
       admin: perfil?.admin === true,
       blocked: perfil?.blocked === true,

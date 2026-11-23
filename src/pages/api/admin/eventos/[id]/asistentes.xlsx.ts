@@ -7,7 +7,7 @@ import { buildXlsx, XLSX_CONTENT_TYPE, type XlsxCell, type XlsxColumn } from '..
 
 // La lista de asistentes de cualquier evento en Excel, para el panel de
 // administracion. Mismos datos que la tabla del panel (getAsistentesAdmin):
-// correo siempre, celular y pago solo en eventos de pago, y las cuentas
+// correo y celular siempre, pago solo en eventos de pago, y las cuentas
 // eliminadas como "Cuenta eliminada" en vez de desaparecer.
 //
 // GET con la cookie de sesion, como la descarga del organizador, para que
@@ -64,7 +64,7 @@ export const GET: APIRoute = async ({ params, cookies, site, url }) => {
     { header: 'Usuario', width: 20 },
     { header: 'Perfil en Innvita', width: 40 },
     { header: 'Correo', width: 32 },
-    ...(dePago ? [{ header: 'Celular', width: 18 }] : []),
+    { header: 'Celular', width: 18 },
     { header: 'Confirmó', width: 18 },
     ...(dePago ? [{ header: 'Pago', width: 14 }] : []),
     { header: 'Estado de la cuenta', width: 22 },
@@ -75,7 +75,7 @@ export const GET: APIRoute = async ({ params, cookies, site, url }) => {
     fila.username ? `@${fila.username}` : '',
     fila.username ? new URL(`/u/${fila.username}`, origen).href : '',
     fila.email ?? '',
-    ...(dePago ? [fila.telefono ?? ''] : []),
+    fila.telefono ?? '',
     fila.confirmadoEl,
     ...(dePago ? [fila.pagoConfirmado ? 'Confirmado' : 'Pendiente'] : []),
     estadoDeCuenta(fila),
@@ -94,8 +94,7 @@ export const GET: APIRoute = async ({ params, cookies, site, url }) => {
       'Content-Type': XLSX_CONTENT_TYPE,
       // El slug es ASCII (lo genera slugify), asi que va tal cual en filename.
       'Content-Disposition': `attachment; filename="asistentes-${event.slug ?? id}.xlsx"`,
-      // Lleva correos de todos los asistentes: que ningun intermediario lo
-      // guarde.
+      // Lleva correos y celulares: que ningun intermediario lo guarde.
       'Cache-Control': 'private, no-store',
     },
   });

@@ -5,8 +5,8 @@ import { esEventoDePago, getAsistentes } from '../../../../lib/firebase/rsvps';
 import { buildXlsx, XLSX_CONTENT_TYPE, type XlsxCell, type XlsxColumn } from '../../../../lib/xlsx';
 
 // La lista de asistentes en Excel, para quien organiza. Mismo permiso y mismos
-// datos que /eventos/<slug>/asistentes: sale de getAsistentes(), asi que el
-// correo y el celular solo van en los eventos de pago, igual que en pantalla.
+// datos que /eventos/<slug>/asistentes: sale de getAsistentes(), con el correo
+// y el celular de cada persona. El pago solo en los eventos de pago.
 //
 // Es un GET con la cookie de sesion para que baste un enlace con `download`:
 // no hay que montar un fetch y un Blob en el cliente.
@@ -55,24 +55,20 @@ export const GET: APIRoute = async ({ params, cookies, site, url }) => {
     { header: 'Nombre', width: 28 },
     { header: 'Usuario', width: 20 },
     { header: 'Perfil en Innvita', width: 40 },
+    { header: 'Correo', width: 32 },
+    { header: 'Celular', width: 18 },
     { header: 'Confirmó', width: 18 },
-    ...(dePago
-      ? [
-          { header: 'Correo', width: 32 },
-          { header: 'Celular', width: 18 },
-          { header: 'Pago', width: 14 },
-        ]
-      : []),
+    ...(dePago ? [{ header: 'Pago', width: 14 }] : []),
   ];
 
   const filas: XlsxCell[][] = asistentes.map((asistente) => [
     asistente.nombre,
     asistente.perfil.username ? `@${asistente.perfil.username}` : '',
     asistente.perfil.username ? new URL(`/u/${asistente.perfil.username}`, origen).href : '',
+    asistente.correo ?? '',
+    asistente.perfil.phone ?? '',
     asistente.confirmadoEl,
-    ...(dePago
-      ? [asistente.correo ?? '', asistente.perfil.phone ?? '', asistente.pagoConfirmado ? 'Confirmado' : 'Pendiente']
-      : []),
+    ...(dePago ? [asistente.pagoConfirmado ? 'Confirmado' : 'Pendiente'] : []),
   ]);
 
   const archivo = buildXlsx({
@@ -88,8 +84,7 @@ export const GET: APIRoute = async ({ params, cookies, site, url }) => {
       'Content-Type': XLSX_CONTENT_TYPE,
       // El slug es ASCII (lo genera slugify), asi que va tal cual en filename.
       'Content-Disposition': `attachment; filename="asistentes-${event.slug}.xlsx"`,
-      // Lleva correos y celulares en los eventos de pago: que ningun
-      // intermediario lo guarde.
+      // Lleva correos y celulares: que ningun intermediario lo guarde.
       'Cache-Control': 'private, no-store',
     },
   });
