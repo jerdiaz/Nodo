@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import VerifiedBadge from '../components/ui/VerifiedBadge.astro';
-import { Ban, Search, ShieldCheck, Trash2, Users } from '@lucide/astro';
+import { Ban, FileSpreadsheet, Search, ShieldCheck, Trash2, Users } from '@lucide/astro';
 import { getCurrentUser } from '../lib/auth';
 import { isAdmin } from '../lib/firebase/users';
 import { getAdminEventRows } from '../lib/firebase/events';
@@ -480,7 +480,7 @@ const modalidadLabel: Record<EventModality, string> = {
                       {aforo ? ` / ${aforo}` : ''}
                       {fila.price ? ` · ${formatEventPrice(fila)}` : ''}
                     </span>
-                    <div class="flex gap-2">
+                    <div class="flex flex-wrap justify-end gap-2">
                       <a
                         href={`/eventos/${fila.slug}`}
                         class="rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-texto transition hover:border-acento"
@@ -494,6 +494,20 @@ const modalidadLabel: Record<EventModality, string> = {
                       >
                         Asistentes
                       </button>
+                      {/*
+                        Siempre visible, como el boton de Asistentes: el
+                        contador puede faltar en eventos anteriores a la
+                        desnormalizacion de rsvpCount y esconderia la descarga
+                        de un evento que si tiene gente.
+                      */}
+                      <a
+                        href={`/api/admin/eventos/${encodeURIComponent(fila.id)}/asistentes.xlsx`}
+                        download
+                        class="rounded-full border border-linea px-3 py-1.5 text-xs font-medium text-texto transition hover:border-acento"
+                      >
+                        <FileSpreadsheet class="mr-1 inline size-3.5" stroke-width={2} />
+                        Excel
+                      </a>
                       <button
                         type="button"
                         data-borrar-evento={fila.id}

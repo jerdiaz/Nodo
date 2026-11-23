@@ -131,6 +131,55 @@ export async function getAsistentes(
   });
 }
 
+export interface AsistenteAdmin {
+  uid: string;
+  nombre: string;
+  username: string | null;
+  avatarUrl: string | null;
+  email: string | null;
+  // Solo en eventos de pago, con la misma regla que ve quien organiza: el
+  // panel no entrega mas contacto del que ya tiene el organizador.
+  telefono: string | null;
+  verification: UserProfile['verification'] | null;
+  admin: boolean;
+  blocked: boolean;
+  confirmadoEl: Date | null;
+  pagoConfirmado: boolean;
+}
+
+// La lista del panel de administracion. A diferencia de getAsistentes(), no
+// descarta a quien ya no tiene perfil -sale como "Cuenta eliminada"-, porque
+// el admin revisa el estado real de la coleccion, y el correo va siempre: el
+// panel es el unico sitio donde se expone sin ser de pago, y exige ser admin.
+// La tabla del panel y su descarga en Excel salen de aqui.
+export async function getAsistentesAdmin(event: Pick<NodoEvent, 'id' | 'price'>): Promise<AsistenteAdmin[]> {
+  const snapshot = await rsvpsCollection(event.id).orderBy('createdAt', 'asc').get();
+  const uids = snapshot.docs.map((doc) => doc.id);
+  const [perfiles, correos] = await Promise.all([getUserProfiles(uids), getEmailsByUid(uids)]);
+  const dePago = esEventoDePago(event);
+
+  return snapshot.docs.map((doc) => {
+    const perfil = perfiles.get(doc.id);
+    const creado = doc.data()?.createdAt;
+
+    return {
+      uid: doc.id,
+      nombre: perfil
+        ? [perfil.firstName, perfil.lastName].filter(Boolean).join(' ') || 'Sin nombre'
+        : 'Cuenta eliminada',
+      username: perfil?.username ?? null,
+      avatarUrl: perfil?.avatarUrl ?? null,
+      email: correos.get(doc.id) ?? null,
+      telefono: dePago ? (perfil?.phone ?? null) : null,
+      verification: perfil?.verification ?? null,
+      admin: perfil?.admin === true,
+      blocked: perfil?.blocked === true,
+      confirmadoEl: creado instanceof Timestamp ? creado.toDate() : null,
+      pagoConfirmado: doc.data()?.pagoConfirmado === true,
+    };
+  });
+}
+
 export const SIN_ASISTENCIA = 'SIN_ASISTENCIA';
 
 // El pago de un evento de pago lo confirma quien organiza, a mano, cuando le
