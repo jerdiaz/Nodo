@@ -45,16 +45,21 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     return jsonResponse({ error: 'Este evento ya terminó.' }, 400);
   }
 
-  // Evento de pago: hace falta un celular en el perfil, porque el pago se
-  // cuadra por fuera y quien organiza necesita como contactar a la persona.
-  // Es obligatorio desde la bienvenida, pero una cuenta anterior a eso puede
-  // no tenerlo todavia: aqui se comprueba de nuevo, que es donde importa.
+  // Hace falta un celular en el perfil para confirmar cualquier evento: quien
+  // organiza lo recibe para poder escribirle, y en uno de pago para cuadrar el
+  // pago. Es obligatorio desde la bienvenida, pero esa pantalla se puede
+  // cerrar sin terminarla y la sesion ya esta abierta: aqui se comprueba de
+  // nuevo, que es donde importa. El codigo le dice al cliente que lleve a la
+  // persona a completarlo y la devuelva al evento.
   const esDePago = typeof data.price === 'number' && data.price > 0;
   const perfil = await getUserProfile(user.uid).catch(() => null);
 
-  if (esDePago && !perfil?.phone) {
+  if (!perfil?.phone) {
     return jsonResponse(
-      { error: 'Para asistir a un evento de pago necesitas un celular en tu perfil. Añádelo en Configuración.' },
+      {
+        error: 'Para confirmar asistencia necesitas un celular en tu perfil.',
+        code: 'FALTA_CELULAR',
+      },
       400,
     );
   }

@@ -1042,6 +1042,14 @@ function textoAsistentes(total: number): string {
 
           if (!response.ok) {
             const result = await response.json().catch(() => ({}));
+
+            // Sin celular no se puede confirmar: se completa en la bienvenida,
+            // que al terminar devuelve a este evento.
+            if (result.code === 'FALTA_CELULAR') {
+              window.location.href = `/bienvenida?destino=${encodeURIComponent(window.location.pathname)}`;
+              return;
+            }
+
             throw new Error(result.error ?? 'No se pudo actualizar tu asistencia.');
           }
 
