@@ -4,6 +4,7 @@ import SocialIcon from '../../../components/ui/SocialIcon.astro';
 import VerifiedBadge from '../../../components/ui/VerifiedBadge.astro';
 import { getCurrentUser } from '../../../lib/auth';
 import { getEventBySlug } from '../../../lib/firebase/events';
+import { isAdmin } from '../../../lib/firebase/users';
 import { esEventoDePago, getAsistentes } from '../../../lib/firebase/rsvps';
 import { formatEventDateLong, formatEventPrice, formatEventTime } from '../../../lib/format';
 import { genColorForEvent } from '../../../lib/genColor';
@@ -26,9 +27,21 @@ if (!user) {
   return Astro.redirect(`/?login=required&destino=${encodeURIComponent(Astro.url.pathname)}`);
 }
 
-if (user.uid !== event.organizer.uid) {
+const esOrganizador = user.uid === event.organizer.uid;
+
+// El admin tambien entra, pero a mirar: confirmar pagos sigue siendo de quien
+// organiza, que es quien recibe el dinero (la ruta del pago lo exige igual).
+const esAdminInvitado = !esOrganizador && (await isAdmin(user.uid).catch(() => false));
+
+if (!esOrganizador && !esAdminInvitado) {
   return new Response(null, { status: 403, statusText: 'Forbidden' });
 }
+
+// La descarga del organizador solo responde a quien organiza; el admin baja la
+// de su panel, que ademas lleva el correo de todos y el estado de cada cuenta.
+const urlExcel = esOrganizador
+  ? `/api/events/${encodeURIComponent(event.id)}/asistentes.xlsx`
+  : `/api/admin/eventos/${encodeURIComponent(event.id)}/asistentes.xlsx`;
 
 // Tope alto pero tope: getAll() resuelve muchos perfiles en un viaje, pero
 // esta pagina los pinta todos y una lista sin limite se hace ingobernable
@@ -123,7 +136,7 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
 
       {asistentes.length > 0 && (
         <a
-          href={`/api/events/${encodeURIComponent(event.id)}/asistentes.xlsx`}
+          href={urlExcel}
           download
           class="inline-flex items-center gap-2 rounded-full border border-linea px-4 py-2 text-sm font-medium text-texto transition active:scale-[0.97] hover:border-acento sm:ml-auto"
         >
@@ -142,9 +155,18 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
     */}
     {esDePago && (
       <div class="mt-6 rounded-2xl border border-linea bg-fondo-alt p-4 text-sm text-suave">
-        Evento de pago ({formatEventPrice(event)}). Cada persona reserva su lugar; tú confirmas el pago cuando lo
-        recibas, y en ese momento le llega el correo con la invitación
-        {event.modality !== 'presencial' ? ' y el enlace de conexión' : ''}.
+        {esAdminInvitado ? (
+          <>
+            Evento de pago ({formatEventPrice(event)}). Ves esta lista como administrador: el pago de cada
+            persona lo confirma quien organiza.
+          </>
+        ) : (
+          <>
+            Evento de pago ({formatEventPrice(event)}). Cada persona reserva su lugar; tú confirmas el pago cuando lo
+            recibas, y en ese momento le llega el correo con la invitación
+            {event.modality !== 'presencial' ? ' y el enlace de conexión' : ''}.
+          </>
+        )}
       </div>
     )}
     <p id="pago-aviso" hidden class="mt-3 text-sm text-acento-texto"></p>
@@ -240,7 +262,28 @@ const lugaresRestantes = event.capacity ? Math.max(0, event.capacity - asistente
               )}
             </div>
 
-            {esDePago && (
+            {esDePago && esAdminInvitado && (
+              <span
+                class:list={[
+                  'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold',
+                  pagoConfirmado ? 'bg-acento-suave text-acento-texto' : 'border border-linea text-suave',
+                ]}
+              >
+                {pagoConfirmado ? (
+                  <>
+                    <Check class="size-3.5" stroke-width={2.5} />
+                    Pago confirmado
+                  </>
+                ) : (
+                  <>
+                    <Clock class="size-3.5" stroke-width={2} />
+                    Pago pendiente
+                  </>
+                )}
+              </span>
+            )}
+
+            {esDePago && esOrganizador && (
               <button
                 type="button"
                 data-pago

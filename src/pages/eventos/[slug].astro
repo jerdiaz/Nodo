@@ -4,7 +4,7 @@ import StatusToast from '../../components/common/StatusToast.astro';
 import ShareButtons from '../../components/events/ShareButtons.astro';
 import Badge from '../../components/ui/Badge.astro';
 import { getCurrentUser } from '../../lib/auth';
-import { getUserProfile } from '../../lib/firebase/users';
+import { getUserProfile, isAdmin } from '../../lib/firebase/users';
 import EventCard from '../../components/events/EventCard.astro';
 import { filterEvents, getEventBySlug, getEvents } from '../../lib/firebase/events';
 import { normalizeCityName } from '../../lib/eventValidation';
@@ -36,6 +36,12 @@ if (!event) {
 
 const user = await getCurrentUser(Astro.cookies);
 const isOwner = user?.uid === event.organizer.uid;
+// El admin ve la lista de asistentes de cualquier evento, igual que quien lo
+// organiza. Solo eso: editar y eliminar siguen siendo de quien lo organiza (el
+// admin borra desde su panel). Se pregunta solo con sesion y sin ser el dueño,
+// para no pagar la lectura extra en cada visita anonima.
+const esAdmin = user && !isOwner ? await isAdmin(user.uid).catch(() => false) : false;
+const puedeVerAsistentes = isOwner || esAdmin;
 const eventEnded = event.endDate.getTime() < Date.now();
 
 // El mismo color que ya lleva la tarjeta en la cartelera, derivado de la
@@ -603,10 +609,10 @@ function textoAsistentes(total: number): string {
             <div class="border-t border-linea bg-fondo-alt p-5">
               <ShareButtons event={event} url={pageUrl} icsUrl={icsDataUrl} />
 
-              {isOwner && (
+              {puedeVerAsistentes && (
                 <div class="mt-5 border-t border-linea pt-4">
                   {/*
-                    Solo lo ve quien organiza. Va como bloque y no como un
+                    Lo ven quien organiza y los admins. Va como bloque y no como un
                     enlace mas en la fila de abajo porque no es una accion de
                     mantenimiento: es lo que se mira antes del evento para
                     saber a cuanta gente esperar.
@@ -622,6 +628,7 @@ function textoAsistentes(total: number): string {
                     <span class="text-suave">{rsvpCount}</span>
                   </a>
 
+                  {isOwner && (
                   <div class="mt-4 flex items-center justify-between">
                     <a
                       href={`/eventos/${event.slug}/editar`}
@@ -638,6 +645,7 @@ function textoAsistentes(total: number): string {
                       Eliminar evento
                     </button>
                   </div>
+                  )}
                 </div>
               )}
             </div>
