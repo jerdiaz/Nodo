@@ -6,8 +6,8 @@ const year = new Date().getFullYear();
 
 // Innvita no tiene cuentas propias, asi que el pie apunta a las de quien la
 // mueve: el Instagram es el de Red Global Colombia, la comunidad que publica los
-// eventos, y el resto son las redes de Fundacion Conceptos. El Instagram de
-// Sentra Labs va aparte, junto al credito de desarrollo.
+// eventos, y el resto son las redes de Fundacion Conceptos. El icono junto al
+// credito de Sentra Labs tambien lleva al Instagram de Red Global Colombia.
 const socialLinks = [
   { key: 'instagram', href: 'https://www.instagram.com/redglobalcol/', label: 'Instagram de Red Global Colombia' },
   { key: 'facebook', href: 'https://www.facebook.com/fundacionconceptos', label: 'Facebook de Fundación Conceptos' },
@@ -179,10 +179,10 @@ const columns = [
       </div>
 
       {/*
-        El logo y su Instagram van juntos pero son dos enlaces: el logo lleva
-        al sitio, el icono a la cuenta. El icono es mas pequeno que los de las
-        redes de la organizacion de arriba, porque aqui es una firma y no una
-        seccion.
+        El logo y el Instagram van juntos pero son dos enlaces: el logo lleva
+        al sitio de Sentra Labs, el icono a la cuenta de Red Global Colombia.
+        El icono es mas pequeno que los de las redes de la organizacion de
+        arriba, porque aqui es una firma y no una seccion.
       */}
       <div class="flex shrink-0 items-center gap-3">
         <a
@@ -196,10 +196,10 @@ const columns = [
           <img src="/logo/sentralabs.png" alt="Sentra Labs" width="1458" height="513" class="h-7 w-auto" />
         </a>
         <a
-          href="https://www.instagram.com/sentralabs.co/"
+          href="https://www.instagram.com/redglobalcol/"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Instagram de Sentra Labs"
+          aria-label="Instagram de Red Global Colombia"
           class="flex size-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition active:scale-[0.95] hover:border-white/50 hover:text-white"
         >
           <SocialIcon name="instagram" class="size-4" />
